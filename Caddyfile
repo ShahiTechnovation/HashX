@@ -1,0 +1,22 @@
+# Caddy reverse proxy for HashX Backend API
+# Provides automated Let's Encrypt / ZeroSSL TLS certificates
+
+{$DOMAIN:api.hashx.global} {
+    encode gzip zstd
+    
+    # Forward all requests to the backend service
+    reverse_proxy localhost:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+

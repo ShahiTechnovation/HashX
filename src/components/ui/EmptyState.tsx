@@ -1,5 +1,5 @@
 import React from "react";
-import { FolderSearch, AlertTriangle, RefreshCw } from "lucide-react";
+import { Inbox, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "./Button";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  action?: React.ReactNode;
   className?: string;
   icon?: React.ReactNode;
 }
@@ -17,27 +18,25 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   actionLabel,
   onAction,
+  action,
   className,
   icon,
 }) => {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-xl border border-dashed border-border bg-surface-1/40",
-        className
-      )}
-    >
-      <div className="p-3.5 rounded-full bg-surface-2 text-foreground-muted mb-3 border border-border">
-        {icon || <FolderSearch className="w-6 h-6" />}
+    <div className={cn("flex flex-col items-center justify-center px-6 py-14 text-center", className)}>
+      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-2 ring-1 ring-inset ring-border text-foreground-muted mb-4">
+        {icon || <Inbox className="w-[18px] h-[18px]" />}
       </div>
-      <h4 className="text-base font-medium text-foreground">{title}</h4>
-      <p className="text-xs text-foreground-secondary max-w-sm mt-1 mb-4 leading-relaxed">
-        {description}
-      </p>
-      {actionLabel && onAction && (
-        <Button variant="secondary" size="sm" onClick={onAction}>
-          {actionLabel}
-        </Button>
+      <h4 className="text-sm font-medium text-foreground">{title}</h4>
+      <p className="text-[13px] text-foreground-muted max-w-sm mt-1 leading-relaxed">{description}</p>
+      {(action || (actionLabel && onAction)) && (
+        <div className="mt-5">
+          {action ?? (
+            <Button variant="secondary" size="sm" onClick={onAction}>
+              {actionLabel}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -51,29 +50,22 @@ interface ErrorStateProps {
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  title = "An Error Occurred",
+  title = "Something went wrong",
   message,
   onRetry,
   className,
 }) => {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center p-6 text-center rounded-xl border border-danger/30 bg-danger/5",
-        className
-      )}
-    >
-      <div className="p-3 rounded-full bg-danger/10 text-danger mb-3 border border-danger/20">
-        <AlertTriangle className="w-6 h-6" />
+    <div className={cn("flex flex-col items-center justify-center px-6 py-12 text-center rounded-lg border border-danger/20 bg-danger/[0.04]", className)}>
+      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-danger/10 ring-1 ring-inset ring-danger/20 text-danger mb-4">
+        <AlertTriangle className="w-[18px] h-[18px]" />
       </div>
-      <h4 className="text-base font-semibold text-danger">{title}</h4>
-      <p className="text-xs text-foreground-secondary max-w-md mt-1 mb-4 font-mono leading-relaxed">
-        {message}
-      </p>
+      <h4 className="text-sm font-medium text-foreground">{title}</h4>
+      <p className="text-xs text-foreground-secondary max-w-md mt-1.5 font-mono leading-relaxed">{message}</p>
       {onRetry && (
-        <Button variant="secondary" size="sm" onClick={onRetry} className="gap-2">
+        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-5">
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>Retry Operation</span>
+          Retry
         </Button>
       )}
     </div>

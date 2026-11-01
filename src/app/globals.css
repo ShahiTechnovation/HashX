@@ -2,110 +2,138 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * HashX PROOF SYSTEM Design Tokens
+ * Dual-environment architecture:
+ * 1. Application: Carbon Control Room (Dark)
+ * 2. Public Marketing: Mineral Light (Tactile light editorial)
+ */
 :root {
-  --background: #0B0911;
-  --surface-1: #13101B;
-  --surface-2: #1A1525;
-  --surface-3: #241D31;
-  --surface-hover: #2B233A;
+  /* Carbon Control Room (Default dark application canvas) */
+  --background: 10 16 18;       /* #0A1012 Carbon Void */
+  --surface-1: 19 28 32;        /* #131C20 Elevated Carbon panel */
+  --surface-2: 24 34 39;        /* #182227 Surface level 2 */
+  --surface-3: 31 43 49;        /* #1F2B31 Surface level 3 / Active */
+  --surface-hover: 38 52 60;    /* #26343C Hover surface */
+  --surface-nav: 13 20 23;      /* #0D1417 Obsidian navigation rail */
 
-  --primary: #8238E8;
-  --primary-hover: #934DF0;
-  --primary-light: #B78AFF;
-  --primary-subtle: #392451;
+  /* Signal Ultramarine — Primary interaction & verified focus */
+  --primary: 52 91 238;         /* #345BEE Signal Ultramarine */
+  --primary-hover: 39 72 199;   /* #2748C7 */
+  --primary-light: 98 130 245;  /* #6282F5 */
+  --primary-subtle: 52 91 238;
 
-  --foreground: #F3F0F8;
-  --foreground-secondary: #ACA5BA;
-  --foreground-muted: #81798F;
+  /* Typographic hierarchy */
+  --foreground: 240 241 237;          /* #F0F1ED Alabaster bone */
+  --foreground-secondary: 145 160 165;/* #91A0A5 Technical slate */
+  --foreground-muted: 90 104 111;     /* #5A686F Quiet annotations */
 
-  --border: #332C40;
-  --border-strong: #4B405C;
+  /* Precision hairline boundaries */
+  --border: 39 49 55;           /* #273137 Carbon hairline */
+  --border-strong: 53 66 73;    /* #354249 Pronounced border */
 
-  --success: #42CA9B;
-  --warning: #E6AF58;
-  --danger: #ED7082;
-  --info: #8F9BEE;
+  /* Semantic status colors */
+  --success: 45 212 191;        /* #2DD4BF Controlled Mint (Verified & Safe) */
+  --warning: 245 158 11;        /* #F59E0B Warm Amber (Human action required / Pending) */
+  --danger: 239 68 68;          /* #EF4444 Muted Signal Red (Blocked threat / Failed) */
+  --info: 38 166 154;           /* #26A69A Slate-Cyan (Safe but not finalized) */
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-space-grotesk), 'Space Grotesk', var(--font-inter), sans-serif;
+}
+
+/* Mineral Light Public Marketing Canvas */
+.mineral-light {
+  --background: 244 242 235;          /* #F4F2EB Warm Mineral White */
+  --surface-1: 251 250 246;           /* #FBFAF6 Paper White */
+  --surface-2: 244 242 235;           /* #F4F2EB Surface low */
+  --surface-3: 235 233 225;
+  --surface-hover: 230 228 220;
+  --surface-nav: 251 250 246;
+  --foreground: 17 23 25;             /* #111719 Deep Carbon Ink */
+  --foreground-secondary: 83 93 97;   /* #535D61 Secondary Graphite */
+  --foreground-muted: 130 140 144;
+  --border: 217 220 215;              /* #D9DCD7 Hairline structural rule */
+  --border-strong: 185 190 185;
+  --primary: 52 91 238;               /* #345BEE Signal Ultramarine */
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
   font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "ss03";
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0911;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2B233A;
-  border-radius: 3px;
+  background: rgb(var(--border) / 0.8);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4B405C;
+  background: rgb(var(--foreground-muted) / 0.6);
 }
 
-/* Focus styles */
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid rgb(var(--primary) / 0.7);
   outline-offset: 2px;
 }
 
-/* Tabular nums for financial data */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Violet accent highlights */
-.glow-subtle {
-  box-shadow: 0 0 24px -4px rgba(130, 56, 232, 0.15);
-}
-
-.glow-focus {
-  box-shadow: 0 0 32px 0 rgba(130, 56, 232, 0.25);
-}
-
-.violet-gradient-border {
-  border-image: linear-gradient(to bottom, #8238e8, #392451, transparent) 1;
-}
-
-/* Print layout optimizations for verifiable receipts */
-@media print {
-  body {
-    background-color: #ffffff !important;
-    color: #111827 !important;
+@layer components {
+  /* Surfaces */
+  .panel {
+    @apply rounded border border-border bg-surface-1 shadow-panel;
   }
 
-  .no-print {
-    display: none !important;
+  .panel-inset {
+    @apply rounded-sm border border-border/80 bg-background/80;
   }
 
-  .print-only {
-    display: block !important;
+  /* Architectural uppercase section label */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-secondary;
   }
 
-  .receipt-container {
-    box-shadow: none !important;
-    border: 1px solid #e5e7eb !important;
-    background: #ffffff !important;
-    color: #111827 !important;
+  /* Form controls */
+  .input {
+    @apply h-8 w-full rounded border border-border bg-surface-2/80 px-3 text-[13px] text-foreground
+      placeholder:text-foreground-muted transition-colors duration-150
+      hover:border-border-strong
+      focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/30;
+  }
+
+  .select {
+    @apply input cursor-pointer appearance-none bg-no-repeat pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2391A0A5' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+  }
+
+  .code-inline {
+    @apply font-mono text-2xs px-1.5 py-0.5 rounded-sm bg-surface-2 border border-border text-foreground-secondary;
   }
 }

@@ -2,52 +2,55 @@ import React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-interface LogoProps {
-  size?: "sm" | "md" | "lg";
-  href?: string;
+interface LogoMarkProps {
   className?: string;
 }
 
-export const Logo: React.FC<LogoProps> = ({ size = "md", href = "/", className }) => {
-  const content = (
-    <div className={cn("inline-flex items-center gap-2.5 group select-none", className)}>
-      <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-surface-2 border border-border group-hover:border-primary-light/50 transition-colors shadow-sm overflow-hidden">
-        {/* Subtle violet ambient light */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-transparent" />
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-4 h-4 text-primary-light relative z-10 transition-transform group-hover:scale-110"
-        >
-          <path d="M4 4l16 16" />
-          <path d="M4 20l16-16" />
-          <circle cx="12" cy="12" r="2.5" fill="#8238E8" stroke="#B78AFF" strokeWidth="1.5" />
-        </svg>
-      </div>
+/**
+ * HashX mark: two crossing strokes broken at the center, with a solid
+ * anchor square where they meet — the point at which intent, fulfillment,
+ * and settlement are bound together.
+ */
+export const LogoMark: React.FC<LogoMarkProps> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={cn("w-5 h-5", className)}>
+    <path d="M4 4l5.5 5.5M14.5 14.5L20 20M20 4l-5.5 5.5M9.5 14.5L4 20" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" />
+    <rect x="10" y="10" width="4" height="4" fill="rgb(var(--primary))" />
+  </svg>
+);
 
-      <div className="flex flex-col">
-        <div className="flex items-center gap-1.5">
-          <span className="font-display font-bold tracking-tight text-foreground text-base">
-            Hash<span className="text-primary-light">X</span>
-          </span>
-          <span className="text-[10px] uppercase font-mono tracking-widest px-1.5 py-0.2 rounded bg-surface-3 text-foreground-secondary border border-border">
-            Global
-          </span>
-        </div>
-        <span className="text-[10px] text-foreground-muted tracking-tight -mt-0.5">
-          Trust Layer
+interface LogoProps {
+  size?: "sm" | "md" | "lg";
+  href?: string | null;
+  showTagline?: boolean;
+  className?: string;
+}
+
+export const Logo: React.FC<LogoProps> = ({ size = "md", href = "/", showTagline = false, className }) => {
+  const sizes = {
+    sm: { mark: "w-4 h-4", text: "text-[15px]" },
+    md: { mark: "w-[18px] h-[18px]", text: "text-[17px]" },
+    lg: { mark: "w-6 h-6", text: "text-2xl" },
+  };
+
+  const content = (
+    <span className={cn("inline-flex items-center gap-2.5 select-none", className)}>
+      <LogoMark className={cn("text-foreground", sizes[size].mark)} />
+      <span className="flex items-baseline gap-2.5">
+        <span className={cn("font-display font-semibold tracking-[-0.03em] text-foreground leading-none", sizes[size].text)}>
+          HashX
         </span>
-      </div>
-    </div>
+        {showTagline && (
+          <span className="hidden sm:inline text-2xs text-foreground-muted border-l border-border pl-2.5 leading-none">
+            Trust Layer for Agent Payments
+          </span>
+        )}
+      </span>
+    </span>
   );
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
+      <Link href={href} aria-label="HashX home" className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60">
         {content}
       </Link>
     );

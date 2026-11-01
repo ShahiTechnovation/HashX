@@ -10,6 +10,7 @@ interface DrawerProps {
   title?: React.ReactNode;
   subtitle?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   width?: "md" | "lg" | "xl";
 }
 
@@ -19,6 +20,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   title,
   subtitle,
   children,
+  footer,
   width = "lg",
 }) => {
   useEffect(() => {
@@ -44,48 +46,34 @@ export const Drawer: React.FC<DrawerProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 overflow-hidden"
-    >
-      <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-hidden">
+      <div className="absolute inset-0 bg-black/60 animate-fade-in" onClick={onClose} aria-hidden="true" />
 
       <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
         <div
           className={cn(
-            "w-screen bg-surface-1 border-l border-border shadow-2xl flex flex-col z-10 animate-fade-in",
+            "w-screen bg-surface-1 border-l border-border shadow-overlay flex flex-col z-10 animate-slide-in-right",
             widthClasses[width]
           )}
         >
-          <div className="flex items-center justify-between p-5 border-b border-border bg-surface-2/60">
-            <div>
-              {title && (
-                <h3 className="text-base font-semibold text-foreground">
-                  {title}
-                </h3>
-              )}
-              {subtitle && (
-                <p className="text-xs text-foreground-secondary mt-0.5">{subtitle}</p>
-              )}
+          <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+            <div className="min-w-0">
+              {title && <h3 className="text-[15px] font-semibold text-foreground tracking-tight">{title}</h3>}
+              {subtitle && <p className="text-xs text-foreground-muted mt-0.5">{subtitle}</p>}
             </div>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close inspector panel"
-              className="p-1.5 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-3 transition-colors"
+              aria-label="Close panel"
+              className="p-1 -mr-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-3 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 scrollbar-thin space-y-4">
-            {children}
-          </div>
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">{children}</div>
+
+          {footer && <div className="px-5 py-3.5 border-t border-border bg-surface-1 flex items-center justify-end gap-2">{footer}</div>}
         </div>
       </div>
     </div>

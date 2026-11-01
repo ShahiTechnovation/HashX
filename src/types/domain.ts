@@ -291,6 +291,8 @@ export interface HashXClient {
   submitDelivery(input: SubmitDeliveryInput): Promise<Delivery>;
   verifyDelivery(input: VerifyDeliveryInput): Promise<DeliveryVerificationResult>;
   requestPayment(input: RequestPaymentInput): Promise<PaymentAttempt>;
+  approveSigning(paymentAttemptId: string): Promise<PaymentAttempt>;
+  approveSubmission(paymentAttemptId: string, signature?: Hash): Promise<PaymentAttempt>;
   getPaymentStatus(invoiceId: string): Promise<PaymentAttempt>;
   getReceipt(invoiceId: string): Promise<VerifiableReceipt>;
 }

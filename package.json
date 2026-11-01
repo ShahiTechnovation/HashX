@@ -2,7 +2,7 @@
   "name": "hashx-global",
   "version": "1.0.0",
   "private": true,
-  "description": "HashX Global — The Trust Layer for Agentic Commerce",
+  "description": "HashX — The Trust Layer for Agent Payments",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,7 +10,13 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "server:dev": "pnpm --prefix server dev",
+    "server:build": "pnpm --prefix server build",
+    "server:start": "pnpm --prefix server start",
+    "server:test": "pnpm --prefix server test",
+    "test:contracts": "pnpm --prefix contracts test",
+    "test:all": "pnpm test && pnpm test:contracts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

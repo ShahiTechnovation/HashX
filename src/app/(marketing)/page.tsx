@@ -3,465 +3,800 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  ShieldCheck,
-  ShieldAlert,
-  Coins,
-  CheckCircle2,
-  Lock,
   ArrowRight,
-  Terminal,
-  FileText,
-  Clock,
-  Sparkles,
-  ChevronRight,
-  Layers,
   Check,
-  Code,
+  X,
+  FileSignature,
+  ScanSearch,
+  Lock,
+  Landmark,
+  ShieldAlert,
+  Terminal,
   ExternalLink,
+  Code2,
+  Copy,
 } from "lucide-react";
-import { Logo } from "@/components/brand/Logo";
-import { Button } from "@/components/ui/Button";
-import { CopyableValue } from "@/components/ui/CopyableValue";
-import { CodeViewer } from "@/components/ui/CodeViewer";
+import { ProofCircuit } from "@/components/brand/ProofCircuit";
 
 export default function MarketingHomePage() {
-  const [activeStep, setActiveStep] = useState<number>(3); // Default to fulfillment verification
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  const workflowSteps = [
-    {
-      num: 1,
-      title: "Seller Agent",
-      role: "Propose & Sign",
-      desc: "Issues structured invoice signed with EIP-712 from authorized wallet.",
-    },
-    {
-      num: 2,
-      title: "Invoice Checks",
-      role: "Validate Integrity",
-      desc: "Recomputes EIP-712 digest, checks signer binding, nonce replay, and expiration.",
-    },
-    {
-      num: 3,
-      title: "Fulfillment Verifier",
-      role: "Deterministic RPC",
-      desc: "Recomputes telemetry data against HashKey Chain RPC. Prevents fraudulent claims.",
-    },
-    {
-      num: 4,
-      title: "Human Authorization",
-      role: "Two-Stage Approval",
-      desc: "Human verifies exact raw amount, payer, payee, and quote expiry before wallet signing.",
-    },
-    {
-      num: 5,
-      title: "HSP Settlement",
-      role: "Agentic Payment Rail",
-      desc: "Executes on-chain payment on HashKey Chain with strict safe vs finalized distinction.",
-    },
-    {
-      num: 6,
-      title: "Verifiable Receipt",
-      role: "Auditable Commitment",
-      desc: "Irreversible receipt binding invoice, fulfillment telemetry, and settlement tx.",
-    },
-  ];
+  const pythonSnippet = `# 1. Instantiate HashX Verified Middleware Client
+from hashx import HashXTrustLayer
+
+client = HashXTrustLayer(
+    agent_id="agt_9941_autonomous",
+    settlement_rail="hashkey_hsp_mainnet",
+    human_approval_threshold_usd=5000.00
+)
+
+# 2. Register Verifiable Service Delivery
+delivery_witness = client.mcp.submit_delivery(
+    task_id="tsk_matrix_computation_81",
+    artifact_hash="bafybeicx4z7e9w849qm018a99k4z0029bca71092e01f01",
+    witness_proof_type="deterministic_rpc_witness"
+)
+
+# 3. Request Settlement Release with Human Stage-2 Check
+payment_receipt = client.mcp.request_payment(
+    invoice_id="inv_eip712_8a9f41c2",
+    amount_usdc=14200.00,
+    recipient="0x429A88c2195f38f1b901ca94892c902384f938f1",
+    evidence_token=delivery_witness.token
+)
+
+assert payment_receipt.status == "HSP_SETTLED"
+# Verifiable Receipt Root Anchored: 0x4f12d8a0c...e08a`;
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(pythonSnippet);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary-subtle selection:text-primary-light">
-      {/* Navigation */}
-      <header className="h-20 border-b border-border/80 bg-background/80 backdrop-blur-md sticky top-0 z-40 px-6 sm:px-12 flex items-center justify-between">
-        <Logo />
+    <div className="mineral-light min-h-screen bg-[#F4F2EB] text-[#111719] font-sans selection:bg-[#345BEE] selection:text-white">
+      {/* TOP EDITORIAL HEADER */}
+      <header className="w-full bg-[#FBFAF6] border-b border-[#D9DCD7] sticky top-0 z-50">
+        <div className="flex justify-between items-center w-full px-5 sm:px-8 lg:px-12 max-w-[1360px] mx-auto h-16">
+          {/* Brand Cluster with Architectural Monogram */}
+          <div className="flex items-center space-x-4">
+            <Link className="flex items-center space-x-3 group" href="/">
+              <div className="w-7 h-7 border border-[#111719] flex items-center justify-center relative bg-[#FBFAF6]">
+                <span className="absolute w-[1px] h-full bg-[#111719]" />
+                <span className="absolute h-[1px] w-full bg-[#111719]" />
+                <span className="w-2.5 h-2.5 border border-[#345BEE] bg-[#FBFAF6] z-10" />
+              </div>
+              <span className="font-display text-lg tracking-tight text-[#111719] uppercase font-semibold">
+                HashX
+              </span>
+            </Link>
+            <div className="hidden lg:flex items-center pl-3 border-l border-[#D9DCD7] text-[11px] font-mono text-[#535D61]">
+              <span>SPEC: HSP-2025.A</span>
+            </div>
+          </div>
 
-        <nav className="hidden md:flex items-center gap-8 text-xs font-medium text-foreground-secondary">
-          <a href="#how-it-works" className="hover:text-foreground transition-colors">
-            How It Works
-          </a>
-          <a href="#pillars" className="hover:text-foreground transition-colors">
-            Architecture
-          </a>
-          <a href="#developers" className="hover:text-foreground transition-colors">
-            Developers (MCP)
-          </a>
-          <Link href="/app/demo" className="hover:text-foreground transition-colors">
-            Demo Center
-          </Link>
-        </nav>
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-7 text-[12px] font-mono tracking-wider uppercase">
+            <a className="text-[#345BEE] border-b border-[#345BEE] pb-0.5 font-semibold" href="#circuit">
+              Proof Circuit
+            </a>
+            <a className="text-[#535D61] hover:text-[#111719] transition-colors" href="#adversarial">
+              Threat Matrix
+            </a>
+            <a className="text-[#535D61] hover:text-[#111719] transition-colors" href="#pipeline">
+              Lifecycle
+            </a>
+            <a className="text-[#535D61] hover:text-[#111719] transition-colors" href="#inspector">
+              Trust Inspector
+            </a>
+            <a className="text-[#535D61] hover:text-[#111719] transition-colors" href="#mcp">
+              MCP Tools
+            </a>
+            <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app/demo">
+              Demo
+            </Link>
+          </nav>
 
-        <div className="flex items-center gap-3">
-          <Link href="/app">
-            <Button variant="primary" size="sm" className="gap-2">
-              <span>Launch App</span>
+          {/* Right Telemetry & Actions */}
+          <div className="flex items-center space-x-3">
+            <div className="hidden sm:flex items-center space-x-2 px-2.5 py-1 border border-[#D9DCD7] bg-[#F4F2EB] text-[11px] font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2DD4BF] animate-pulse" />
+              <span className="text-[#535D61] font-medium">HSP-Mainnet Live</span>
+            </div>
+            <Link
+              href="/app"
+              className="px-4 py-2 bg-[#111719] hover:bg-[#1a2327] text-[#FBFAF6] font-mono text-[11px] tracking-wider uppercase transition-colors flex items-center space-x-1.5 rounded-sm"
+            >
+              <span>Open Platform</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </Button>
-          </Link>
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-16 pb-24 px-6 sm:px-12 overflow-hidden border-b border-border/60">
-        {/* Subtle Violet Atmospheric Glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-primary/15 blur-[140px] pointer-events-none rounded-full" />
-
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          {/* Left Column: Storytelling */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-2 border border-border text-[11px] font-mono text-primary-light">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span>AGENTIC COMMERCE INFRASTRUCTURE</span>
+      {/* MAIN EDITORIAL CANVAS */}
+      <main className="w-full max-w-[1360px] mx-auto px-5 sm:px-8 lg:px-12 pt-10 sm:pt-14 pb-24">
+        {/* HERO SECTION: ASYMMETRIC MONOGRAPH */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start pb-16 border-b border-[#D9DCD7]">
+          {/* Left Column: Editorial Positioning & Manifesto (7 cols) */}
+          <div className="lg:col-span-7 flex flex-col justify-between pr-0 lg:pr-4">
+            {/* Monograph Revision Tag */}
+            <div className="inline-flex items-center space-x-2 border-b border-[#D9DCD7] pb-2 mb-6">
+              <span className="text-[11px] font-mono text-[#345BEE] font-semibold">
+                [ PROTOCOL MONOGRAPH // REV 2.4 ]
+              </span>
+              <span className="text-[#D9DCD7] font-mono">|</span>
+              <span className="text-[11px] font-mono text-[#535D61] tracking-widest uppercase">
+                HASHX — THE TRUST LAYER FOR AGENT PAYMENTS
+              </span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-foreground leading-[1.1]">
-              The Trust Layer for <br />
-              <span className="bg-gradient-to-r from-white via-foreground to-primary-light bg-clip-text text-transparent">
-                Agentic Commerce.
-              </span>
+            {/* Monumental Headline */}
+            <h1 className="font-display text-[42px] sm:text-[56px] lg:text-[62px] leading-[1.02] tracking-[-0.035em] text-[#111719] mb-6 font-semibold">
+              Before agents pay,<br />
+              <span className="text-[#345BEE] italic font-light">demand</span> proof.
             </h1>
 
-            <p className="text-base sm:text-lg text-foreground-secondary max-w-xl leading-relaxed">
-              An AI agent should not pay another agent simply because it receives a payment request. HashX verifies commercial intent, validates objective fulfillment, authorizes exact payments, and reconciles HSP settlement on HashKey Chain.
+            {/* High-density Editorial Copy */}
+            <p className="text-[16px] sm:text-[17px] text-[#535D61] max-w-xl mb-8 leading-relaxed font-normal">
+              A payment request is not proof of a fulfilled agreement. HashX authenticates commercial intent,
+              verifies digital service delivery against chain data, enforces explicit human authorization, and
+              reconciles settlement through HashKey HSP.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/app">
-                <Button variant="primary" size="lg" className="gap-2 text-sm shadow-xl">
-                  <span>Launch HashX Platform</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+            {/* Action Pair */}
+            <div className="flex flex-wrap items-center gap-3.5 mb-10">
+              <Link
+                href="/app"
+                className="px-6 py-3.5 bg-[#111719] hover:bg-[#1a2327] text-[#FBFAF6] font-mono text-[12px] tracking-wider uppercase flex items-center space-x-2 transition-colors rounded-sm"
+              >
+                <span>Explore the Platform</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
-
-              <Link href="/app/demo">
-                <Button variant="secondary" size="lg" className="gap-2 text-sm">
-                  <Sparkles className="w-4 h-4 text-primary-light" />
-                  <span>Guided Demo Center</span>
-                </Button>
-              </Link>
+              <a
+                href="#circuit"
+                className="px-6 py-3.5 bg-[#FBFAF6] border border-[#111719] hover:bg-[#111719] hover:text-[#FBFAF6] text-[#111719] font-mono text-[12px] tracking-wider uppercase transition-colors flex items-center space-x-2 rounded-sm"
+              >
+                <span>Inspect Verification Circuit</span>
+              </a>
             </div>
 
-            {/* Value Indicators */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-border/60 max-w-lg text-xs font-mono">
-              <div>
-                <span className="text-foreground font-bold block text-sm">EIP-712</span>
-                <span className="text-foreground-muted">Cryptographic Invoices</span>
+            {/* Architectural Telemetry Register */}
+            <div className="grid grid-cols-3 border border-[#D9DCD7] bg-[#FBFAF6] divide-x divide-[#D9DCD7] rounded-sm">
+              <div className="p-3.5">
+                <span className="block font-mono text-[10px] text-[#535D61] tracking-wider uppercase mb-1">
+                  INTENT SPEC
+                </span>
+                <span className="font-mono text-[13px] text-[#111719] font-semibold">EIP-712 / V4</span>
               </div>
-              <div>
-                <span className="text-foreground font-bold block text-sm">Deterministic</span>
-                <span className="text-foreground-muted">RPC Fulfillment Checks</span>
+              <div className="p-3.5">
+                <span className="block font-mono text-[10px] text-[#535D61] tracking-wider uppercase mb-1">
+                  SETTLEMENT RAIL
+                </span>
+                <span className="font-mono text-[13px] text-[#111719] font-semibold">HashKey HSP</span>
               </div>
-              <div>
-                <span className="text-foreground font-bold block text-sm">Two-Stage</span>
-                <span className="text-foreground-muted">Human Approvals</span>
+              <div className="p-3.5">
+                <span className="block font-mono text-[10px] text-[#535D61] tracking-wider uppercase mb-1">
+                  HUMAN GATE
+                </span>
+                <span className="font-mono text-[13px] text-[#2DD4BF] font-semibold">Two-Stage Sign-off</span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Interactive Live Verification Flow Preview */}
-          <div className="lg:col-span-5">
-            <div className="p-6 rounded-2xl border border-border bg-surface-1 shadow-2xl space-y-4 relative">
-              <div className="flex items-center justify-between pb-3 border-b border-border text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-success" />
-                  <span className="font-mono text-foreground font-semibold">Active Trust Verification</span>
-                </div>
-                <span className="font-mono text-[11px] text-foreground-muted">HashKey Chain (133)</span>
+          {/* Right Column: Signature Proof Circuit (5 cols) */}
+          <div className="lg:col-span-5 relative" id="circuit">
+            <ProofCircuit variant="marketing" />
+          </div>
+        </section>
+
+        {/* HORIZONTAL PROOF STRIP */}
+        <section className="py-12 border-b border-[#D9DCD7]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#D9DCD7] border border-[#D9DCD7] bg-[#FBFAF6] rounded-sm">
+            {/* Col 01 */}
+            <div className="p-6 flex flex-col justify-between">
+              <div>
+                <span className="font-mono text-[11px] text-[#535D61] block mb-3">COL 01 // 04</span>
+                <h3 className="font-display text-sm font-semibold text-[#111719] mb-2 uppercase tracking-wide">
+                  Signed Intent
+                </h3>
+                <p className="text-[13px] text-[#535D61] leading-relaxed">
+                  Domain-bound EIP-712 structured payloads prevent parameter hijacking, nonce reordering, and arbitrary agent fee tampering.
+                </p>
               </div>
-
-              {/* Live Flow Steps */}
-              <div className="space-y-2.5">
-                <div className="p-3 rounded-xl bg-surface-2 border border-border flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                    <span className="font-mono text-foreground">Signed Invoice Authenticated</span>
-                  </div>
-                  <span className="font-mono text-[11px] text-success font-semibold">PASS</span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-surface-2 border border-border flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                    <span className="font-mono text-foreground">Telemetry Recomputation Valid</span>
-                  </div>
-                  <span className="font-mono text-[11px] text-success font-semibold">14 TXS</span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-primary-subtle/30 border border-primary/40 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <Lock className="w-4 h-4 text-primary-light" />
-                    <span className="font-mono text-foreground font-medium">Human Authorization Confirmed</span>
-                  </div>
-                  <span className="font-mono text-[11px] text-primary-light font-bold">1.00 USDT</span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-surface-2 border border-border flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <Coins className="w-4 h-4 text-success" />
-                    <span className="font-mono text-foreground">HSP Rail Reconciled</span>
-                  </div>
-                  <span className="font-mono text-[11px] text-success font-semibold">FINALIZED</span>
-                </div>
+              <div className="mt-6 pt-3 border-t border-[#D9DCD7] text-[11px] font-mono text-[#345BEE] font-semibold">
+                RFC-EIP-712-VERIFIED
               </div>
+            </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono">
-                <span className="text-foreground-muted">Proof Digest:</span>
-                <span className="text-primary-light">0x5a6b...a6b7</span>
+            {/* Col 02 */}
+            <div className="p-6 flex flex-col justify-between">
+              <div>
+                <span className="font-mono text-[11px] text-[#535D61] block mb-3">COL 02 // 04</span>
+                <h3 className="font-display text-sm font-semibold text-[#111719] mb-2 uppercase tracking-wide">
+                  Deterministic Delivery
+                </h3>
+                <p className="text-[13px] text-[#535D61] leading-relaxed">
+                  Chain-witnessed execution receipts independently verified before liquidity releases. Zero payments for unfulfilled tasks.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-[#D9DCD7] text-[11px] font-mono text-[#2DD4BF] font-semibold">
+                RPC_EVIDENCE_CHECK_OK
+              </div>
+            </div>
+
+            {/* Col 03 */}
+            <div className="p-6 flex flex-col justify-between">
+              <div>
+                <span className="font-mono text-[11px] text-[#535D61] block mb-3">COL 03 // 04</span>
+                <h3 className="font-display text-sm font-semibold text-[#111719] mb-2 uppercase tracking-wide">
+                  Human Sign-Off Gate
+                </h3>
+                <p className="text-[13px] text-[#535D61] leading-relaxed">
+                  Two-stage explicit human authorization: commercial term validation before signing, treasury approval before submission.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-[#D9DCD7] text-[11px] font-mono text-[#111719] font-semibold">
+                TWO_STAGE_ENFORCED
+              </div>
+            </div>
+
+            {/* Col 04 */}
+            <div className="p-6 flex flex-col justify-between">
+              <div>
+                <span className="font-mono text-[11px] text-[#535D61] block mb-3">COL 04 // 04</span>
+                <h3 className="font-display text-sm font-semibold text-[#111719] mb-2 uppercase tracking-wide">
+                  HSP Settlement
+                </h3>
+                <p className="text-[13px] text-[#535D61] leading-relaxed">
+                  Settlement executed and reconciled through HashKey HSP rails, providing atomic clearing and verifiable receipts.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-[#D9DCD7] text-[11px] font-mono text-[#345BEE] font-semibold">
+                HSP_RECONCILER_ACTIVE
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Interactive Verification Sequence */}
-      <section id="how-it-works" className="py-20 px-6 sm:px-12 bg-surface-1/40 border-b border-border/60">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-primary-light">
-              Protocol Lifecycle
+        {/* THE ADVERSARIAL COMPARISON: "A request is not an agreement" */}
+        <section className="py-16 border-b border-[#D9DCD7]" id="adversarial">
+          <div className="mb-10">
+            <span className="text-[11px] font-mono text-[#345BEE] block mb-1 tracking-wider uppercase font-semibold">
+              THREAT MATRIX &amp; ADVERSARIAL REASONING
             </span>
-            <h2 className="text-3xl font-display font-bold text-foreground">
-              Verification Before Payment
+            <h2 className="font-display text-[32px] sm:text-[38px] text-[#111719] tracking-tight uppercase font-semibold">
+              A request is not an agreement.
             </h2>
-            <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed">
-              Every stage of the agent commerce lifecycle produces immutable cryptographic proofs before financial authorization can proceed.
+            <p className="text-[14px] text-[#535D61] max-w-2xl mt-2 leading-relaxed">
+              Autonomous agents operate with unbounded execution speed. Without an enforced proof circuit,
+              standard multi-agent architectures leak corporate treasury through 4 primary systemic vulnerabilities.
             </p>
           </div>
 
-          {/* Stepper Tabs */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {workflowSteps.map((step) => {
-              const isSelected = activeStep === step.num;
-              return (
-                <button
-                  key={step.num}
-                  type="button"
-                  onClick={() => setActiveStep(step.num)}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? "border-primary bg-surface-2 shadow-lg ring-1 ring-primary"
-                      : "border-border bg-surface-1 hover:bg-surface-2"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="w-6 h-6 rounded-full bg-surface-3 font-mono text-xs font-bold flex items-center justify-center text-primary-light">
-                      {step.num}
-                    </span>
-                    <span className="text-[10px] font-mono text-foreground-muted uppercase">
-                      {step.role}
-                    </span>
-                  </div>
-                  <div className="font-semibold text-xs text-foreground">{step.title}</div>
-                  <p className="text-[11px] text-foreground-secondary mt-1 line-clamp-2">
-                    {step.desc}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left: Vulnerable Unsafe Flow */}
+            <div className="border border-[#EF4444] bg-[#FBFAF6] p-6 relative rounded-sm">
+              <div className="flex items-center justify-between border-b border-[#D9DCD7] pb-3 mb-6">
+                <div>
+                  <span className="font-mono text-[11px] font-bold text-[#EF4444] uppercase block tracking-wider">
+                    UNSAFE AGENT PAYMENT FLOW
+                  </span>
+                  <span className="text-[11px] font-mono text-[#535D61]">CONVENTIONAL AGENT STACK</span>
+                </div>
+                <span className="px-2 py-0.5 bg-[#EF4444]/10 text-[#EF4444] font-mono text-[11px] font-semibold border border-[#EF4444]/30">
+                  HIGH ATTACK SURFACE
+                </span>
+              </div>
 
-          {/* Expanded Step Detail Box */}
-          <div className="p-6 rounded-2xl border border-border bg-surface-1 shadow-sm">
-            <div className="max-w-3xl space-y-2">
-              <span className="text-xs font-mono text-primary-light font-semibold uppercase">
-                Stage {activeStep} Detail — {workflowSteps[activeStep - 1].title}
+              <div className="space-y-3.5">
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <ShieldAlert className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      01. Invoice Spoofing &amp; Payee Substitution
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Agent receives unverified payment URI. Compromised sub-agent substitutes fraudulent destination address without cryptographic signature binding.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <X className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      02. Phantom Delivery Releases
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Funds disbursed automatically upon an LLM claim of &quot;Task Complete&quot; without deterministic proof of artifact generation.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <ShieldAlert className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      03. Nonce Desynchronization &amp; Replays
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Looping agent retry mechanisms submit duplicate payment requests for the same single API delivery.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <X className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      04. Blind Autonomous Token Drains
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Zero human supervisor checkpoints exist between model tool execution and wallet signing.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#D9DCD7] flex items-center justify-between text-[11px] font-mono text-[#EF4444]">
+                <span>RESIDUAL RISK: CRITICAL</span>
+                <span>SETTLEMENT ASSURANCE: 0.0%</span>
+              </div>
+            </div>
+
+            {/* Right: HashX Verified Control Flow */}
+            <div className="border-2 border-[#345BEE] bg-[#FBFAF6] p-6 relative rounded-sm">
+              <div className="flex items-center justify-between border-b border-[#D9DCD7] pb-3 mb-6">
+                <div>
+                  <span className="font-mono text-[11px] font-bold text-[#345BEE] uppercase block tracking-wider">
+                    HASHX VERIFIED CONTROL FLOW
+                  </span>
+                  <span className="text-[11px] font-mono text-[#535D61]">DETERMINISTIC TRUST ENGINE</span>
+                </div>
+                <span className="px-2 py-0.5 bg-[#2DD4BF] text-[#0A1012] font-mono text-[11px] font-semibold">
+                  PROOF ENFORCED
+                </span>
+              </div>
+
+              <div className="space-y-3.5">
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <Check className="w-4 h-4 text-[#345BEE] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      01. Cryptographic EIP-712 Signatures
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Payee, chain ID, specific task hash, and timestamp deadlines are cryptographically pinned to the seller agent&apos;s verified key.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <Check className="w-4 h-4 text-[#2DD4BF] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      02. Chain Delivery Evidence Verification
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Payment eligibility requires matching artifact hash and state verification against HashKey RPC before approval can open.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <Lock className="w-4 h-4 text-[#345BEE] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      03. Two-Stage Explicit Human Authorization
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Explicit human review on exact payment terms, merchant identity, and quote expiration before wallet signing and dispatch.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#F4F2EB] border border-[#D9DCD7] flex items-start space-x-3 rounded-sm">
+                  <Landmark className="w-4 h-4 text-[#2DD4BF] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-display text-xs font-semibold uppercase block text-[#111719]">
+                      04. HashKey HSP Settlement Reconciliation
+                    </span>
+                    <p className="text-[12px] text-[#535D61] mt-0.5 leading-snug">
+                      Final settlement executes across HashKey HSP institutional rails with immutable receipt commitment logged.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#D9DCD7] flex items-center justify-between text-[11px] font-mono text-[#2DD4BF]">
+                <span>RESIDUAL RISK: ZERO-ARBITRARY</span>
+                <span className="font-bold">SETTLEMENT ASSURANCE: DETERMINISTIC</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 6-STEP VERIFICATION PIPELINE (CARBON DARK BAND) */}
+        <section className="my-16 bg-[#0A1012] text-[#F0F1ED] p-8 md:p-12 border border-[#273137] rounded" id="pipeline">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-[#273137] pb-6 mb-8">
+            <div>
+              <span className="text-[11px] font-mono text-[#2DD4BF] block mb-1 uppercase font-semibold">
+                EXECUTION LIFECYCLE
               </span>
-              <h3 className="text-lg font-bold text-foreground">
-                {workflowSteps[activeStep - 1].role}
-              </h3>
-              <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed">
-                {workflowSteps[activeStep - 1].desc}
-              </p>
+              <h2 className="font-display text-[28px] sm:text-[34px] text-[#F0F1ED] tracking-tight uppercase font-semibold">
+                The 6-Step Verification Pipeline
+              </h2>
+            </div>
+            <div className="mt-4 md:mt-0 font-mono text-[11px] text-[#91A0A5]">
+              <span>DETERMINISTIC LATENCY: &lt;850ms END-TO-END</span>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Problem vs Solution Comparison Section */}
-      <section className="py-20 px-6 sm:px-12 border-b border-border/60">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <h2 className="text-3xl font-display font-bold text-foreground">
-              A payment request isn't proof of a fulfilled agreement.
-            </h2>
-            <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed">
-              In autonomous commerce, relying on simple checkout redirects or unauthenticated requests leads to critical security vulnerabilities.
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            {/* Step 01 */}
+            <div className="bg-[#131C20] border border-[#273137] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#2DD4BF] block mb-2 font-bold">01 // INTENT</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">Payload Bound</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  Commercial parameters locked into immutable EIP-712 schema.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#2DD4BF]">
+                NONCE: VALID
+              </div>
+            </div>
+
+            {/* Step 02 */}
+            <div className="bg-[#131C20] border border-[#273137] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#2DD4BF] block mb-2 font-bold">02 // INVOICE</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">EIP-712 Signed</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  Seller agent key binds task scope and settlement amount.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#2DD4BF]">
+                SIG: secp256k1
+              </div>
+            </div>
+
+            {/* Step 03 */}
+            <div className="bg-[#131C20] border border-[#273137] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#2DD4BF] block mb-2 font-bold">03 // EVIDENCE</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">Work Verified</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  Deliverable verified against HashKey RPC state and artifact digest.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#2DD4BF]">
+                RPC WITNESS: MATCH
+              </div>
+            </div>
+
+            {/* Step 04 */}
+            <div className="bg-[#131C20] border-2 border-[#345BEE] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#345BEE] block mb-2 font-bold">04 // GATE</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">Human Review</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  Two-stage sign-off confirms terms and authorizes HSP submission.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#345BEE] font-bold">
+                2-STAGE APPROVAL
+              </div>
+            </div>
+
+            {/* Step 05 */}
+            <div className="bg-[#131C20] border border-[#273137] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#2DD4BF] block mb-2 font-bold">05 // SETTLE</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">HSP Execution</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  HashKey payment settlement engine processes payment.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#2DD4BF]">
+                SAFE → FINALIZED
+              </div>
+            </div>
+
+            {/* Step 06 */}
+            <div className="bg-[#131C20] border border-[#273137] p-4 flex flex-col justify-between rounded-sm">
+              <div>
+                <span className="font-mono text-[11px] text-[#2DD4BF] block mb-2 font-bold">06 // RECEIPT</span>
+                <h4 className="font-display text-xs uppercase text-[#F0F1ED] mb-1 font-semibold">Verifiable Record</h4>
+                <p className="text-[12px] text-[#91A0A5] leading-snug">
+                  Evidence-backed receipt commitment generated and verifiable by anyone.
+                </p>
+              </div>
+              <div className="mt-4 pt-2 border-t border-[#273137] font-mono text-[10px] text-[#2DD4BF]">
+                RECEIPT COMMITTED
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* TRUST INSPECTOR PRODUCT PREVIEW */}
+        <section className="py-16 border-b border-[#D9DCD7]" id="inspector">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
+            <div>
+              <span className="text-[11px] font-mono text-[#345BEE] block mb-1 uppercase font-semibold">
+                INTERACTIVE AUDIT CONSOLE
+              </span>
+              <h2 className="font-display text-[32px] sm:text-[38px] text-[#111719] tracking-tight uppercase font-semibold">
+                The Trust Inspector
+              </h2>
+              <p className="text-[14px] text-[#535D61] mt-1 max-w-xl">
+                Engineers and treasury managers inspect cryptographic signatures, fulfillment evidence, and payment eligibility in real time.
+              </p>
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center space-x-3">
+              <span className="text-[11px] font-mono text-[#535D61]">INSPECTOR ENGINE v2.4</span>
+              <Link
+                href="/app/trust"
+                className="px-3.5 py-1.5 border border-[#D9DCD7] bg-[#FBFAF6] hover:bg-[#F4F2EB] text-[11px] font-mono text-[#111719] rounded-sm transition-colors"
+              >
+                Open Trust Inspector
+              </Link>
+            </div>
+          </div>
+
+          {/* Console Preview Container */}
+          <div className="border border-[#D9DCD7] bg-[#FBFAF6] rounded-sm">
+            <div className="border-b border-[#D9DCD7] px-6 py-3 flex flex-wrap justify-between items-center bg-[#F4F2EB]">
+              <div className="flex items-center space-x-3 text-[12px] font-mono">
+                <span className="text-[#535D61]">VERIFIER CONTRACT:</span>
+                <span className="text-[#111719] font-semibold">0x71C0...948A (HashKey Chain)</span>
+              </div>
+              <div className="flex items-center space-x-4 text-[11px] font-mono">
+                <span className="text-[#535D61]">BLOCK: #19,482,914</span>
+                <span className="text-[#2DD4BF] font-semibold">● DETERMINISTIC STATE CONFIRMED</span>
+              </div>
+            </div>
+
+            <div className="p-6 border-b border-[#D9DCD7] bg-[#FBFAF6] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-[#2DD4BF] text-[#0A1012] flex items-center justify-center rounded-sm">
+                  <Check className="w-7 h-7 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="font-mono text-[10px] text-[#535D61] tracking-wider uppercase block">
+                    VERIFICATION VERDICT
+                  </span>
+                  <span className="font-display text-[22px] sm:text-[26px] text-[#111719] font-semibold tracking-tight">
+                    PAYMENT ELIGIBLE // ALL CHECKS PASSED
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-start md:items-end">
+                <span className="px-3 py-1 bg-[#2DD4BF] text-[#0A1012] font-mono text-[11px] font-bold uppercase tracking-wider rounded-sm">
+                  VERIFIED: PROOF SECURED
+                </span>
+                <span className="text-[11px] font-mono text-[#535D61] mt-1">TIMESTAMP: 2026-11-01 23:45:12 UTC</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#D9DCD7] border-b border-[#D9DCD7]">
+              {/* Payee Integrity */}
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-mono text-[11px] text-[#535D61] uppercase font-bold">
+                    01 / PAYEE INTEGRITY CHECK
+                  </span>
+                  <span className="text-[#2DD4BF] font-mono text-[11px] font-bold">PASSED</span>
+                </div>
+                <div className="space-y-2 text-[12px] font-mono">
+                  <div className="flex justify-between py-1 border-b border-[#D9DCD7]">
+                    <span className="text-[#535D61]">Payee Address:</span>
+                    <span className="text-[#111719] font-semibold">0x429A...38F1</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[#D9DCD7]">
+                    <span className="text-[#535D61]">Signing Key Match:</span>
+                    <span className="text-[#111719]">secp256k1 Signature Verified</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[#535D61]">EIP-712 Domain:</span>
+                    <span className="text-[#345BEE]">HashX Global (Chain ID: 1)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Witness */}
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-mono text-[11px] text-[#535D61] uppercase font-bold">
+                    02 / DELIVERY WITNESS
+                  </span>
+                  <span className="text-[#2DD4BF] font-mono text-[11px] font-bold">CONFIRMED</span>
+                </div>
+                <div className="space-y-2 text-[12px] font-mono">
+                  <div className="flex justify-between py-1 border-b border-[#D9DCD7]">
+                    <span className="text-[#535D61]">Artifact Hash:</span>
+                    <span className="text-[#111719] font-semibold">bafybeicx4z7e9w...849</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[#D9DCD7]">
+                    <span className="text-[#535D61]">RPC Recomputation:</span>
+                    <span className="text-[#2DD4BF]">Deterministic Consensus</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[#535D61]">Output State Delta:</span>
+                    <span className="text-[#111719] font-semibold">0 Delta Bytes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-[#F4F2EB] flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] font-mono">
+              <div className="flex items-center space-x-3 w-full md:w-auto">
+                <span className="text-[#535D61] uppercase font-bold">INVOICE DIGEST:</span>
+                <code className="bg-[#FBFAF6] border border-[#D9DCD7] px-3 py-1 text-[#111719] text-xs rounded-sm">
+                  0x8a9f24c01e389b42c9081e74f10928a4918e0a12
+                </code>
+              </div>
+              <Link
+                href="/app/trust"
+                className="px-4 py-2 border border-[#111719] hover:bg-[#111719] hover:text-[#FBFAF6] text-[#111719] font-mono text-[11px] uppercase tracking-wider transition-colors rounded-sm"
+              >
+                Inspect Live Invoices
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* DEVELOPER MCP SECTION */}
+        <section className="py-16" id="mcp">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            <div className="lg:col-span-5 pr-0 lg:pr-4">
+              <span className="text-[11px] font-mono text-[#345BEE] block mb-1 uppercase tracking-wider font-semibold">
+                DEVELOPER ARCHITECTURE
+              </span>
+              <h2 className="font-display text-[30px] sm:text-[36px] text-[#111719] tracking-tight uppercase font-semibold mb-4">
+                Native Model Context Protocol (MCP).
+              </h2>
+              <p className="text-[14px] text-[#535D61] mb-6 leading-relaxed">
+                HashX functions as the cryptographic verification middleware between autonomous AI agents and execution rails. We decouple commercial intent and fulfillment verification from raw payment settlement.
+              </p>
+
+              <div className="space-y-3 mb-6">
+                <div className="p-3.5 border border-[#D9DCD7] bg-[#FBFAF6] rounded-sm">
+                  <span className="font-display text-xs font-semibold uppercase block text-[#111719] mb-1">
+                    Zero Private Key Exposure
+                  </span>
+                  <p className="text-[12px] text-[#535D61]">
+                    Agents invoke standardized MCP tools. The private key never enters the LLM prompt or model context window.
+                  </p>
+                </div>
+                <div className="p-3.5 border border-[#D9DCD7] bg-[#FBFAF6] rounded-sm">
+                  <span className="font-display text-xs font-semibold uppercase block text-[#111719] mb-1">
+                    Self-Describing JSON Schemas
+                  </span>
+                  <p className="text-[12px] text-[#535D61]">
+                    Native compatibility with Claude Desktop, Cursor, LangChain, and autonomous multi-agent pipelines.
+                  </p>
+                </div>
+              </div>
+
+              {/* 8 Native Tools List */}
+              <div className="p-4 bg-[#FBFAF6] border-l-2 border-[#345BEE] border-y border-r border-[#D9DCD7] rounded-sm">
+                <span className="font-mono text-[10px] text-[#345BEE] font-bold uppercase tracking-wider block mb-2">
+                  THE 8 NATIVE MCP VERIFICATION TOOLS
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-[12px] font-mono text-[#111719]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>create_invoice</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>verify_delivery</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>sign_invoice</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>request_payment</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>verify_invoice</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>get_payment_status</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>submit_delivery</code>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#345BEE]" />
+                    <code>get_receipt</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Code Terminal (7 cols) */}
+            <div className="lg:col-span-7 bg-[#0A1012] border border-[#273137] p-6 text-[#F0F1ED] rounded">
+              <div className="flex items-center justify-between border-b border-[#273137] pb-3 mb-4">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
+                  <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
+                  <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
+                  <span className="font-mono text-[11px] text-[#91A0A5] pl-2">hashx_mcp_client.py</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyCode}
+                    className="flex items-center gap-1 font-mono text-[11px] text-[#91A0A5] hover:text-[#F0F1ED] transition-colors"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedCode ? "COPIED" : "COPY"}</span>
+                  </button>
+                  <span className="font-mono text-[11px] text-[#2DD4BF] pl-2 border-l border-[#273137]">
+                    MCP SPEC v2.4
+                  </span>
+                </div>
+              </div>
+
+              <pre className="font-mono text-[12px] text-[#F0F1ED] overflow-x-auto leading-relaxed py-2">
+                <code>{pythonSnippet}</code>
+              </pre>
+
+              <div className="mt-4 pt-3 border-t border-[#273137] flex justify-between items-center font-mono text-[11px]">
+                <span className="text-[#91A0A5]">RUNTIME: PYTHON 3.11+ / NODE 20+</span>
+                <Link href="/app/developers" className="text-[#2DD4BF] hover:underline flex items-center space-x-1">
+                  <span>Explore Developer Registry</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* EDITORIAL FOOTER */}
+      <footer className="w-full bg-[#FBFAF6] border-t border-[#D9DCD7]">
+        <div className="w-full px-5 sm:px-8 lg:px-12 py-10 max-w-[1360px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-3">
+              <div className="w-5 h-5 border border-[#111719] flex items-center justify-center relative bg-[#FBFAF6]">
+                <span className="absolute w-[1px] h-full bg-[#111719]" />
+                <span className="absolute h-[1px] w-full bg-[#111719]" />
+              </div>
+              <span className="font-display text-sm text-[#111719] uppercase tracking-wide font-semibold">
+                HashX
+              </span>
+              <span className="text-[11px] font-mono text-[#535D61] border-l border-[#D9DCD7] pl-2">
+                THE TRUST LAYER FOR AGENT PAYMENTS
+              </span>
+            </div>
+            <p className="text-[12px] text-[#535D61] max-w-md">
+              Automation should move money. Verification should make it safe. All settlement reconciled to actual finality.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Unsafe Commerce */}
-            <div className="p-6 sm:p-8 rounded-2xl border border-danger/30 bg-danger/5 space-y-4">
-              <div className="flex items-center gap-2 text-danger font-semibold text-sm">
-                <ShieldAlert className="w-5 h-5" />
-                <span>Unsafe Naive Agent Spending</span>
-              </div>
-
-              <ul className="space-y-3 text-xs text-foreground-secondary">
-                <li className="flex items-start gap-2">
-                  <span className="text-danger font-bold">✕</span>
-                  <span><strong>Payee Substitution:</strong> Prompt injection alters payee address in flight.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-danger font-bold">✕</span>
-                  <span><strong>Faked Delivery:</strong> Agents claim completion without verifiable telemetry proofs.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-danger font-bold">✕</span>
-                  <span><strong>Replay / Double Spend:</strong> Network retries create multiple duplicate checkout orders.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-danger font-bold">✕</span>
-                  <span><strong>Premature Finality:</strong> Unconfirmed transactions marked final prematurely.</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* HashX Verification First */}
-            <div className="p-6 sm:p-8 rounded-2xl border border-success/30 bg-success/5 space-y-4">
-              <div className="flex items-center gap-2 text-success font-semibold text-sm">
-                <ShieldCheck className="w-5 h-5" />
-                <span>HashX Verification-First Standard</span>
-              </div>
-
-              <ul className="space-y-3 text-xs text-foreground-secondary">
-                <li className="flex items-start gap-2">
-                  <span className="text-success font-bold">✓</span>
-                  <span><strong>EIP-712 Domain Separation:</strong> Altered payee triggers <code>SIGNATURE_INVALID</code>.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-success font-bold">✓</span>
-                  <span><strong>Deterministic RPC Verifier:</strong> Recomputes metrics directly on HashKey Chain.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-success font-bold">✓</span>
-                  <span><strong>Idempotency Invariant:</strong> Existing payment attempt returned; zero duplicate orders.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-success font-bold">✓</span>
-                  <span><strong>HSP Finality Reconciler:</strong> Strict distinction between <code>payment-safe</code> and <code>finalized</code>.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3 Core Pillars */}
-      <section id="pillars" className="py-20 px-6 sm:px-12 bg-surface-1/30 border-b border-border/60">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-mono uppercase tracking-widest text-primary-light">
-              Core Architecture
-            </span>
-            <h2 className="text-3xl font-display font-bold text-foreground">
-              Built on Three Uncompromising Pillars
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl border border-border bg-surface-1 space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-primary-light font-mono font-bold">
-                01
-              </div>
-              <h3 className="text-lg font-bold text-foreground">Verify</h3>
-              <p className="text-xs text-foreground-secondary leading-relaxed">
-                Cryptographic invoice authentication using EIP-712 domain separation, seller counterparty resolution, and deterministic fulfillment verification against HashKey Chain RPC.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl border border-border bg-surface-1 space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-primary-light font-mono font-bold">
-                02
-              </div>
-              <h3 className="text-lg font-bold text-foreground">Authorize</h3>
-              <p className="text-xs text-foreground-secondary leading-relaxed">
-                Human-controlled authorization of exact payment terms. Full visibility of raw token amounts, payee address, merchant attribution, and quote expiration before signing.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl border border-border bg-surface-1 space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-primary-light font-mono font-bold">
-                03
-              </div>
-              <h3 className="text-lg font-bold text-foreground">Settle</h3>
-              <p className="text-xs text-foreground-secondary leading-relaxed">
-                HSP payment rail settlement with 15-second status polling, verified finality, timeout recovery, and immutable evidence commitments on HashKey Chain.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Developer / MCP Section */}
-      <section id="developers" className="py-20 px-6 sm:px-12 border-b border-border/60">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 text-xs font-mono text-primary-light">
-              <Terminal className="w-4 h-4" />
-              <span>MODEL CONTEXT PROTOCOL (MCP)</span>
-            </div>
-            <h2 className="text-3xl font-display font-bold text-foreground">
-              First-Class Tooling for AI Agents
-            </h2>
-            <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed">
-              Integrate HashX directly into your autonomous agents via standardized MCP Streamable HTTP interfaces.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl border border-border bg-surface-1">
-            <CodeViewer
-              title="Agent MCP Tool Call Example: verify_invoice"
-              data={{
-                tool: "verify_invoice",
-                arguments: {
-                  invoice_id: "inv-golden-path-scenario-d",
-                  expected_seller_id: "cp-seller-01",
-                  expected_buyer_ref: "buyer-job-audit-hashkey-104",
-                },
-                result: {
-                  decision: "PASS",
-                  checks: {
-                    schema: "PASS",
-                    signature: "PASS",
-                    identity_binding: "PASS",
-                    expiry: "PASS",
-                    nonce_unused: "PASS",
-                    terms_consistent: "PASS",
-                  },
-                  invoice_digest: "0x5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b",
-                },
-              }}
-              maxHeight="max-h-72"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-6 sm:px-12 bg-surface-1 border-t border-border text-xs text-foreground-secondary">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <Logo />
-
-          <div className="flex items-center gap-6 text-xs font-mono">
-            <Link href="/app" className="hover:text-foreground transition-colors">
-              App
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] font-mono">
+            <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app">
+              Console
             </Link>
-            <Link href="/app/invoices" className="hover:text-foreground transition-colors">
-              Invoices
-            </Link>
-            <Link href="/app/trust" className="hover:text-foreground transition-colors">
+            <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app/trust">
               Trust Inspector
             </Link>
-            <Link href="/app/settlements" className="hover:text-foreground transition-colors">
-              Settlements
-            </Link>
-            <Link href="/app/developers" className="hover:text-foreground transition-colors">
+            <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app/developers">
               MCP Tools
             </Link>
-            <Link href="/app/demo" className="text-primary-light hover:underline font-semibold">
-              Demo Center
+            <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app/demo">
+              Proof Lab
             </Link>
-          </div>
-
-          <div className="text-[11px] text-foreground-muted font-mono">
-            HashKey Chain • EVM Chain ID 133 / 177
+            <span className="text-[#2DD4BF] font-semibold">Status: HSP-Mainnet Live</span>
           </div>
         </div>
       </footer>

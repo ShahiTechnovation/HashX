@@ -1,4 +1,4 @@
-# HashX Global — The Trust Layer for Agentic Commerce
+# HashX — The Trust Layer for Agent Payments
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.2.1-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.0-blue)](https://react.dev/)
@@ -7,17 +7,14 @@
 [![Tests](https://img.shields.io/badge/Tests-23_Passed-success)](https://vitest.dev/)
 [![A11y](https://img.shields.io/badge/Accessibility-WCAG_2.2_AA-green)](https://www.w3.org/WAI/standards-guidelines/wcag/)
 
-> **HashX Global** is a verification-first agent-to-agent commerce protocol built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
+> **HashX** is a verification-first agent-to-agent commerce protocol built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
 >
 > An AI agent should never authorize payment merely because another agent sends a payment request. A commercial obligation must first be cryptographically authenticated, fulfilled according to testable terms, approved by a human, and reconciled to settlement.
 
 ---
 
-## 💎 Visual Benchmark: Obsidian × Electric Violet
-Inspired by **Spectram Fintech**, **InvoPilot**, modern cybersecurity observability suites, and blockchain explorers:
-- **Palette**: Dark Obsidian background (`#0B0911`), Electric Violet primary (`#8238E8`), Emerald success (`#42CA9B`), Rose danger (`#ED7082`), Amber warning (`#E6AF58`).
-- **Typography**: Inter / Geist Sans for operational clarity, Geist Mono for technical hashes, tabular numerals for currency.
-- **Accessibility**: 100% WCAG 2.2 AA compliant. Status is never conveyed by color alone.
+## Design System
+Graphite base, warm near-white type, and electric violet used only as a signal. Inter for UI, Geist for display, Geist Mono for machine data. Status is never conveyed by color alone, and `payment-safe` is always rendered as **not final**. See [docs/design-system.md](docs/design-system.md).
 
 ---
 
@@ -163,3 +160,4 @@ pnpm typecheck
 2. **Deterministic RPC Recomputation**: Digital work claims are verified against HashKey Chain node data, not LLM opinions.
 3. **Idempotent Payment Rails**: Multiple concurrent requests never create duplicate financial obligations.
 4. **Honest Settlement States**: `payment-safe` is never misrepresented as finalized.
+

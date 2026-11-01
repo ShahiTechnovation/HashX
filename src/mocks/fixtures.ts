@@ -224,7 +224,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_EXISTING: PaymentAttempt = {
   invoiceId: "inv-replay-scenario-c",
   flowId: "hsp-flow-89912",
   paymentRequestId: "hsp-pr-5510294",
-  merchantName: "HashX Global",
+  merchantName: "HashX",
   attributionVerified: true,
   payer: "0x1234567890123456789012345678901234567890",
   payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -236,7 +236,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_EXISTING: PaymentAttempt = {
   createdAt: "2026-10-31T11:20:00Z",
   updatedAt: "2026-10-31T11:21:00Z",
   approvalSummary: {
-    merchantName: "HashX Global",
+    merchantName: "HashX",
     attributionVerified: true,
     payer: "0x1234567890123456789012345678901234567890",
     payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -341,7 +341,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_GOLDEN: PaymentAttempt = {
   invoiceId: "inv-golden-path-scenario-d",
   flowId: "hsp-flow-90124",
   paymentRequestId: "hsp-pr-5519821",
-  merchantName: "HashX Global",
+  merchantName: "HashX",
   attributionVerified: true,
   payer: "0x1234567890123456789012345678901234567890",
   payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -355,7 +355,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_GOLDEN: PaymentAttempt = {
   createdAt: "2026-10-31T14:14:00Z",
   updatedAt: "2026-10-31T14:18:00Z",
   approvalSummary: {
-    merchantName: "HashX Global",
+    merchantName: "HashX",
     attributionVerified: true,
     payer: "0x1234567890123456789012345678901234567890",
     payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -460,7 +460,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_PENDING_APPROVAL: PaymentAttempt = {
   invoiceId: "inv-pending-approval-05",
   flowId: "hsp-flow-90455",
   paymentRequestId: "hsp-pr-5520119",
-  merchantName: "HashX Global",
+  merchantName: "HashX",
   attributionVerified: true,
   payer: "0x1234567890123456789012345678901234567890",
   payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -472,7 +472,7 @@ export const FIXTURE_PAYMENT_ATTEMPT_PENDING_APPROVAL: PaymentAttempt = {
   createdAt: "2026-10-31T16:15:00Z",
   updatedAt: "2026-10-31T16:15:00Z",
   approvalSummary: {
-    merchantName: "HashX Global",
+    merchantName: "HashX",
     attributionVerified: true,
     payer: "0x1234567890123456789012345678901234567890",
     payee: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
@@ -512,3 +512,4 @@ export const ALL_INITIAL_PAYMENT_ATTEMPTS: PaymentAttempt[] = [
 export const ALL_INITIAL_RECEIPTS: VerifiableReceipt[] = [
   FIXTURE_RECEIPT_GOLDEN,
 ];
+

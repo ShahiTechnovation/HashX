@@ -1,0 +1,852 @@
+﻿<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HashX - The Trust Layer for Agent Payments</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary-fixed-dim": "#bec8cd",
+            "surface-variant": "#dee3e6",
+            "secondary-fixed": "#62fae3",
+            "secondary": "#006b5f",
+            "outline": "#747687",
+            "surface-bright": "#f5fafd",
+            "surface-container-lowest": "#ffffff",
+            "border-hairline": "#D9DCD7",
+            "on-tertiary": "#ffffff",
+            "surface-container-high": "#e3e9ec",
+            "tertiary-fixed": "#dae4e9",
+            "surface-container-highest": "#dee3e6",
+            "on-error-container": "#93000a",
+            "on-tertiary-container": "#e3edf2",
+            "on-tertiary-fixed-variant": "#3e484c",
+            "on-tertiary-fixed": "#131d20",
+            "status-amber": "#F59E0B",
+            "on-error": "#ffffff",
+            "surface-container": "#e9eff1",
+            "on-surface-variant": "#444655",
+            "outline-variant": "#c4c5d8",
+            "error": "#ba1a1a",
+            "on-background": "#161d1f",
+            "surface-tint": "#234ee2",
+            "surface": "#f5fafd",
+            "carbon-void": "#0A1012",
+            "surface-dim": "#d5dbdd",
+            "inverse-primary": "#b8c3ff",
+            "primary-container": "#345bee",
+            "carbon-surface": "#131C20",
+            "on-surface": "#161d1f",
+            "error-container": "#ffdad6",
+            "on-secondary-fixed-variant": "#005047",
+            "on-primary-fixed": "#001355",
+            "tertiary-container": "#626c70",
+            "on-secondary-container": "#007165",
+            "surface-container-low": "#eff4f7",
+            "inverse-surface": "#2b3134",
+            "secondary-container": "#62fae3",
+            "status-danger": "#EF4444",
+            "tertiary": "#4a5458",
+            "surface-mineral": "#F4F2EB",
+            "secondary-fixed-dim": "#3cddc7",
+            "on-primary-container": "#e8eaff",
+            "primary-fixed": "#dde1ff",
+            "carbon-text": "#F0F1ED",
+            "on-primary": "#ffffff",
+            "on-primary-fixed-variant": "#0035bd",
+            "on-secondary": "#ffffff",
+            "carbon-border": "#273137",
+            "background": "#f5fafd",
+            "primary": "#063fd5",
+            "primary-fixed-dim": "#b8c3ff",
+            "inverse-on-surface": "#ecf2f4",
+            "surface-paper": "#FBFAF6",
+            "on-secondary-fixed": "#00201c"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-sm": "0.5rem",
+            "space-lg": "1.5rem",
+            "margin": "3rem",
+            "space-xl": "2.5rem",
+            "space-xs": "0.25rem",
+            "space-md": "1rem",
+            "margin-mobile": "1.25rem",
+            "gutter": "1.5rem",
+            "gutter-mobile": "0.75rem"
+          },
+          "fontFamily": {
+            "display-hero": ["Space Grotesk"],
+            "telemetry-data": ["JetBrains Mono"],
+            "display-hero-mobile": ["Space Grotesk"],
+            "telemetry-micro": ["JetBrains Mono"],
+            "headline-lg": ["Space Grotesk"],
+            "label-caps": ["Space Grotesk"],
+            "body-lg": ["Inter"],
+            "headline-sm": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-lg-mobile": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "display-hero": ["56px", { "lineHeight": "60px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "telemetry-data": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "display-hero-mobile": ["36px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "telemetry-micro": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+            "headline-lg": ["36px", { "lineHeight": "42px", "letterSpacing": "-0.025em", "fontWeight": "500" }],
+            "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "body-lg": ["17px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+            "body-md": ["14px", { "lineHeight": "21px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "body-sm": ["12px", { "lineHeight": "17px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-lg-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    ::selection {
+      background-color: #345bee;
+      color: #FBFAF6;
+    }
+  </style>
+</head>
+<body class="bg-surface-mineral text-on-surface antialiased selection:bg-primary-container selection:text-white">
+<!-- TOP EDITORIAL HEADER (Shared Component: TopNavBar) -->
+<header class="w-full bg-surface-paper border-b border-border-hairline sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-space-lg md:px-margin max-w-[1360px] mx-auto h-16">
+<!-- Brand Cluster with Monogram Crosshair -->
+<div class="flex items-center space-x-4">
+<a class="flex items-center space-x-3 group" href="#">
+<!-- Geometric Crosshair Architectural Icon -->
+<div class="w-7 h-7 border border-on-surface flex items-center justify-center relative bg-surface-paper">
+<span class="absolute w-[1px] h-full bg-on-surface"></span>
+<span class="absolute h-[1px] w-full bg-on-surface"></span>
+<span class="w-2.5 h-2.5 border border-primary-container bg-surface-paper z-10"></span>
+</div>
+<span class="font-display-hero text-headline-sm tracking-tight text-carbon-void uppercase font-semibold">
+            HashX
+          </span>
+</a>
+<div class="hidden lg:flex items-center pl-3 border-l border-border-hairline text-telemetry-micro font-telemetry-micro text-tertiary">
+<span>SPEC: HSP-2025.A</span>
+</div>
+</div>
+<!-- Navigation Links from JSON Blueprint -->
+<nav class="hidden md:flex items-center space-x-8">
+<a class="text-primary border-b border-primary pb-1 font-headline-sm" href="#circuit">
+          Proof Circuit
+        </a>
+<a class="text-on-surface-variant hover:text-carbon-void font-label-caps tracking-wider transition-colors" href="#adversarial">
+          Protocol Specs
+        </a>
+<a class="text-on-surface-variant hover:text-carbon-void font-label-caps tracking-wider transition-colors" href="#mcp">
+          MCP Tools
+        </a>
+<a class="text-on-surface-variant hover:text-carbon-void font-label-caps tracking-wider transition-colors" href="#adversarial">
+          Adversarial Model
+        </a>
+<a class="text-on-surface-variant hover:text-carbon-void font-label-caps tracking-wider transition-colors" href="#inspector">
+          Documentation
+        </a>
+</nav>
+<!-- Right Telemetry & Actions -->
+<div class="flex items-center space-x-3">
+<!-- Live Status Telemetry Pill -->
+<div class="hidden sm:flex items-center space-x-2 px-2.5 py-1 border border-border-hairline bg-surface-mineral text-telemetry-micro font-telemetry-micro">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed-dim animate-pulse"></span>
+<span class="text-tertiary font-medium">HSP-Mainnet Live</span>
+</div>
+<button class="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 text-telemetry-micro font-telemetry-micro border border-border-hairline hover:bg-surface-mineral transition-colors text-on-surface">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+<span>Read Monograph</span>
+</button>
+<button class="px-4 py-2 bg-carbon-void hover:bg-carbon-surface text-surface-paper font-label-caps text-label-caps transition-colors flex items-center space-x-1">
+<span>Connect Protocol</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</header>
+<!-- MAIN EDITORIAL CANVAS -->
+<main class="w-full max-w-[1360px] mx-auto px-space-lg md:px-margin pt-12 pb-24">
+<!-- HERO SECTION: ASYMMETRIC MONOGRAPH -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start pb-16 border-b border-border-hairline">
+<!-- Left Column: Editorial Positioning & Manifesto (7 cols) -->
+<div class="lg:col-span-7 flex flex-col justify-between pr-0 lg:pr-6">
+<!-- Monograph Revision Micro-Tag -->
+<div class="inline-flex items-center space-x-2 border-b border-border-hairline pb-2 mb-8">
+<span class="text-telemetry-micro font-telemetry-micro text-primary-container font-semibold">[ PROTOCOL MONOGRAPH // REV 2.4 ]</span>
+<span class="text-border-hairline font-telemetry-micro">|</span>
+<span class="text-label-caps font-label-caps text-tertiary tracking-widest uppercase">HASHX â€” THE TRUST LAYER FOR AGENT PAYMENTS</span>
+</div>
+<!-- Monumental Typography -->
+<h1 class="font-display-hero text-display-hero text-carbon-void tracking-tight mb-8">
+          Before agents pay,<br class="hidden sm:inline"/>
+<span class="text-primary-container italic font-light">demand</span> proof.
+        </h1>
+<!-- High-density Editorial Copy -->
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl mb-10 leading-relaxed font-normal">
+          A payment request is not proof of a fulfilled agreement. HashX authenticates commercial intent, verifies digital service delivery on-chain, enforces explicit human authorization, and reconciles settlement through HashKey HSP.
+        </p>
+<!-- Structured Action Pair -->
+<div class="flex flex-wrap items-center gap-4 mb-12">
+<button class="px-6 py-3.5 bg-carbon-void hover:bg-carbon-surface text-surface-paper font-label-caps text-label-caps flex items-center space-x-2 transition-colors">
+<span>Explore the Platform</span>
+<span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</button>
+<a class="px-6 py-3.5 bg-surface-paper border border-on-surface hover:bg-carbon-void hover:text-surface-paper text-carbon-void font-label-caps text-label-caps transition-colors flex items-center space-x-2" href="#circuit">
+<span>Inspect Verification Circuit</span>
+<span class="material-symbols-outlined text-[15px]">schema</span>
+</a>
+</div>
+<!-- Architectural Telemetry Register -->
+<div class="grid grid-cols-3 border border-border-hairline bg-surface-paper divide-x divide-border-hairline">
+<div class="p-3">
+<span class="block font-label-caps text-label-caps text-tertiary mb-1">INTENT SPEC</span>
+<span class="font-telemetry-data text-telemetry-data text-carbon-void font-semibold">EIP-712 / V4</span>
+</div>
+<div class="p-3">
+<span class="block font-label-caps text-label-caps text-tertiary mb-1">SETTLEMENT RAIL</span>
+<span class="font-telemetry-data text-telemetry-data text-carbon-void font-semibold">HashKey HSP</span>
+</div>
+<div class="p-3">
+<span class="block font-label-caps text-label-caps text-tertiary mb-1">QUORUM GATE</span>
+<span class="font-telemetry-data text-telemetry-data text-secondary font-semibold">Dual-Key / Sig</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Signature Proof Circuit Schematic Card (5 cols) -->
+<div class="lg:col-span-5 bg-surface-paper border border-border-hairline p-6 relative" id="circuit">
+<!-- Card Header Band -->
+<div class="flex items-center justify-between border-b border-border-hairline pb-3 mb-6">
+<span class="font-label-caps text-label-caps text-carbon-void tracking-widest uppercase">THE HASHX PROOF CIRCUIT</span>
+<span class="px-2 py-0.5 border border-secondary text-secondary font-telemetry-micro text-telemetry-micro flex items-center space-x-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>VERIFIED ENGINE</span>
+</span>
+</div>
+<!-- Abstract Architectural X Dual-Rail Visualization -->
+<div class="relative py-4 space-y-6">
+<!-- Rail A: Commercial Intent -->
+<div class="border border-border-hairline bg-surface-mineral p-3 relative pl-4">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-caps text-label-caps text-primary-container">RAIL A: COMMERCIAL INTENT</span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">STEP 01</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2 font-medium">Domain-bound EIP-712 structured invoice with agent nonce locking.</p>
+<div class="bg-surface-paper border border-border-hairline px-2 py-1 flex items-center justify-between">
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">INVOICE SIGNED:</span>
+<span class="font-telemetry-micro text-telemetry-micro text-carbon-void font-semibold">0x8a9f...41c2</span>
+</div>
+</div>
+<!-- Convergence Vector Rail Connectors -->
+<div class="grid grid-cols-2 text-center relative">
+<div class="h-6 border-r border-dashed border-border-hairline"></div>
+<div class="h-6 border-l border-dashed border-border-hairline"></div>
+</div>
+<!-- Rail B: Chain Evidence Witness -->
+<div class="border border-border-hairline bg-surface-mineral p-3 relative pl-4">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-caps text-label-caps text-secondary">RAIL B: DIGITAL EVIDENCE WITNESS</span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">STEP 02</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2 font-medium">Deterministic service payload hash &amp; execution witness attestation.</p>
+<div class="bg-surface-paper border border-border-hairline px-2 py-1 flex items-center justify-between">
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">DELIVERY VERIFIED:</span>
+<span class="font-telemetry-micro text-telemetry-micro text-carbon-void font-semibold">bafybei...301</span>
+</div>
+</div>
+<!-- Convergence Node: Explicit Human Sign-off -->
+<div class="border-2 border-primary-container bg-surface-paper p-4 relative shadow-none">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 bg-primary-container"></span>
+<span class="font-headline-sm text-headline-sm text-carbon-void text-xs tracking-wider uppercase">CONVERGENCE GATE: HUMAN AUTHORIZATION</span>
+</div>
+<span class="font-telemetry-micro text-telemetry-micro text-primary-container font-semibold">QUORUM 2/2</span>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary mb-3">Policy compliance check. Prevents runaway recursive autonomous agent transactions.</p>
+<div class="grid grid-cols-2 gap-2 text-telemetry-micro font-telemetry-micro">
+<div class="bg-surface-mineral p-2 border border-border-hairline">
+<span class="text-tertiary block">STAGE 1: OPERATOR</span>
+<span class="text-secondary font-semibold">0x742d...SIGN_OK</span>
+</div>
+<div class="bg-surface-mineral p-2 border border-border-hairline">
+<span class="text-tertiary block">STAGE 2: TREASURY</span>
+<span class="text-secondary font-semibold">0x918f...SIGN_OK</span>
+</div>
+</div>
+</div>
+<!-- Output Settlement Rail: HashKey HSP -->
+<div class="bg-carbon-void text-carbon-text p-3 border border-carbon-border flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary-fixed text-[18px]">verified</span>
+<div>
+<span class="font-label-caps text-label-caps text-secondary-fixed block">HSP SETTLED // FINALITY</span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary-fixed-dim">HashKey Execution Rail #918240</span>
+</div>
+</div>
+<span class="font-telemetry-data text-telemetry-data text-surface-paper font-semibold">48,250.00 USDC</span>
+</div>
+</div>
+</div>
+</section>
+<!-- HORIZONTAL PROOF STRIP (4-Column Monograph Rule) -->
+<section class="py-12 border-b border-border-hairline">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 divide-y md:divide-y-0 md:divide-x divide-border-hairline border border-border-hairline bg-surface-paper">
+<!-- Col 01 -->
+<div class="p-6 flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary block mb-3">COL 01 // 04</span>
+<h3 class="font-headline-sm text-headline-sm text-carbon-void mb-2 uppercase">Signed Intent</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Domain-bound EIP-712 structured payloads prevent parameter hijacking, nonce reordering, and arbitrary agent fee tampering.
+            </p>
+</div>
+<div class="mt-6 pt-3 border-t border-border-hairline text-telemetry-micro font-telemetry-micro text-primary-container">
+            RFC-EIP-712-VERIFIED
+          </div>
+</div>
+<!-- Col 02 -->
+<div class="p-6 flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary block mb-3">COL 02 // 04</span>
+<h3 class="font-headline-sm text-headline-sm text-carbon-void mb-2 uppercase">Deterministic Delivery</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Chain-witnessed execution receipts independently verified before liquidity releases. Zero payments for unfulfilled tasks.
+            </p>
+</div>
+<div class="mt-6 pt-3 border-t border-border-hairline text-telemetry-micro font-telemetry-micro text-secondary font-semibold">
+            STATE_ORACLE_CHECK_OK
+          </div>
+</div>
+<!-- Col 03 -->
+<div class="p-6 flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary block mb-3">COL 03 // 04</span>
+<h3 class="font-headline-sm text-headline-sm text-carbon-void mb-2 uppercase">Human Sign-Off Gate</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              No autonomous AI agent executes high-stakes settlement without explicit cryptographically bound human review thresholds.
+            </p>
+</div>
+<div class="mt-6 pt-3 border-t border-border-hairline text-telemetry-micro font-telemetry-micro text-carbon-void">
+            DUAL_KEY_ENFORCED
+          </div>
+</div>
+<!-- Col 04 -->
+<div class="p-6 flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary block mb-3">COL 04 // 04</span>
+<h3 class="font-headline-sm text-headline-sm text-carbon-void mb-2 uppercase">HSP Settlement</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Cryptographic proof of finality settled directly via HashKey HSP settlement engine, providing atomic institutional clearing.
+            </p>
+</div>
+<div class="mt-6 pt-3 border-t border-border-hairline text-telemetry-micro font-telemetry-micro text-primary font-semibold">
+            HSP_FINALITY_CONFIRMED
+          </div>
+</div>
+</div>
+</section>
+<!-- THE ADVERSARIAL COMPARISON: "A request is not an agreement" -->
+<section class="py-16 border-b border-border-hairline" id="adversarial">
+<div class="mb-10">
+<span class="text-telemetry-micro font-telemetry-micro text-primary-container block mb-1">THREAT MATRIX &amp; ADVERSARIAL REASONING</span>
+<h2 class="font-headline-lg text-headline-lg text-carbon-void tracking-tight uppercase">
+          A request is not an agreement.
+        </h2>
+<p class="font-body-md text-body-md text-tertiary max-w-2xl mt-2">
+          Autonomous agents operate with unbounded execution speed. Without an enforced proof circuit, standard multi-agent architectures leak corporate treasury through 4 primary systemic vulnerabilities.
+        </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Left: Vulnerable Unsafe Flow -->
+<div class="border border-status-danger bg-surface-paper p-6 relative">
+<div class="flex items-center justify-between border-b border-border-hairline pb-3 mb-6">
+<div>
+<span class="font-label-caps text-label-caps text-status-danger uppercase block">UNSAFE AGENT PAYMENT FLOW</span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">CONVENTIONAL WEB3 / AGENT STACK</span>
+</div>
+<span class="px-2 py-0.5 bg-error-container text-on-error-container font-telemetry-micro text-telemetry-micro">
+              HIGH ATTACK SURFACE
+            </span>
+</div>
+<div class="space-y-4">
+<!-- Vulnerability 01 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-status-danger text-[18px] shrink-0">crisis_alert</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">01. Invoice Spoofing &amp; Injection</span>
+<p class="font-body-sm text-body-sm text-tertiary">Agent receives unverified markdown payment URI. Compromised sub-agent injects fraudulent destination address without signature binding.</p>
+</div>
+</div>
+<!-- Vulnerability 02 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-status-danger text-[18px] shrink-0">cancel</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">02. Phantom Delivery Releases</span>
+<p class="font-body-sm text-body-sm text-tertiary">Funds are disbursed automatically upon an LLM claim of "Task Complete" without deterministic proof of artifact generation.</p>
+</div>
+</div>
+<!-- Vulnerability 03 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-status-danger text-[18px] shrink-0">replay</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">03. Nonce Desynchronization &amp; Replays</span>
+<p class="font-body-sm text-body-sm text-tertiary">Looping agent retry mechanisms submit repetitive payments for the same single API delivery.</p>
+</div>
+</div>
+<!-- Vulnerability 04 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-status-danger text-[18px] shrink-0">warning</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">04. Blind Autonomous Token Drains</span>
+<p class="font-body-sm text-body-sm text-tertiary">Zero human supervisor quorum exists between model tool execution and raw private key broadcast.</p>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-border-hairline flex items-center justify-between text-telemetry-micro font-telemetry-micro text-status-danger">
+<span>RESIDUAL RISK: CRITICAL</span>
+<span>SETTLEMENT ASSURANCE: 0.0%</span>
+</div>
+</div>
+<!-- Right: HashX Verified Control Flow -->
+<div class="border-2 border-primary-container bg-surface-paper p-6 relative">
+<div class="flex items-center justify-between border-b border-border-hairline pb-3 mb-6">
+<div>
+<span class="font-label-caps text-label-caps text-primary-container uppercase block">HASHX VERIFIED CONTROL FLOW</span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">DETERMINISTIC TRUST ENGINE</span>
+</div>
+<span class="px-2 py-0.5 bg-secondary text-surface-paper font-telemetry-micro text-telemetry-micro">
+              PROOF ENFORCED
+            </span>
+</div>
+<div class="space-y-4">
+<!-- Mitigation 01 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-primary-container text-[18px] shrink-0">check_circle</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">01. Cryptographic EIP-712 Signatures</span>
+<p class="font-body-sm text-body-sm text-tertiary">Payee, chain ID, specific sub-task hash, and strict timestamp deadlines are cryptographically pinned to the sender's origin key.</p>
+</div>
+</div>
+<!-- Mitigation 02 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0">verified</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">02. Chain Delivery Oracle Challenge</span>
+<p class="font-body-sm text-body-sm text-tertiary">Payment escrow only unlocks when the Delivery Witness smart contract accepts the verifiable compute artifact hash.</p>
+</div>
+</div>
+<!-- Mitigation 03 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-primary-container text-[18px] shrink-0">lock</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">03. Dual-Key Human Gate Quorum</span>
+<p class="font-body-sm text-body-sm text-tertiary">Policy limits above configurable thresholds require operational and financial sign-off before escrow release.</p>
+</div>
+</div>
+<!-- Mitigation 04 -->
+<div class="p-3 bg-surface-mineral border border-border-hairline flex items-start space-x-3">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0">account_balance</span>
+<div>
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void">04. Atomic HashKey HSP Settlement</span>
+<p class="font-body-sm text-body-sm text-tertiary">Final settlement executes across HashKey institutional rails, yielding an immutable receipt root with audited finality.</p>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-border-hairline flex items-center justify-between text-telemetry-micro font-telemetry-micro text-secondary">
+<span>RESIDUAL RISK: ZERO-ARBITRARY</span>
+<span class="font-bold">SETTLEMENT ASSURANCE: 100.0% DETERMINISTIC</span>
+</div>
+</div>
+</div>
+</section>
+<!-- INTERACTIVE PROOF SEQUENCE (CARBON DARK CONTRAST BAND) -->
+<section class="my-16 bg-carbon-void text-carbon-text p-8 md:p-12 border border-carbon-border relative">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-carbon-border pb-6 mb-8">
+<div>
+<span class="text-telemetry-micro font-telemetry-micro text-secondary-fixed block mb-1">EXECUTION LIFECYCLE</span>
+<h2 class="font-headline-lg text-headline-lg text-surface-paper tracking-tight uppercase">
+            The 6-Step Verification Pipeline
+          </h2>
+</div>
+<div class="mt-4 md:mt-0 font-telemetry-micro text-telemetry-micro text-tertiary-fixed-dim">
+<span>LATENCY: ~840ms END-TO-END</span>
+</div>
+</div>
+<!-- 6-Step Grid Pipeline with Precision Rules -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+<!-- Step 01 -->
+<div class="bg-carbon-surface border border-carbon-border p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed block mb-2">01 // INTENT</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">Payload Bound</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              Commercial parameters locked into immutable schema.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-secondary-fixed">
+            NONCE: #98021
+          </div>
+</div>
+<!-- Step 02 -->
+<div class="bg-carbon-surface border border-carbon-border p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed block mb-2">02 // INVOICE</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">EIP-712 Signed</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              Key identity binds task scope &amp; token amounts.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-secondary-fixed">
+            SIG: OK_ECDSA
+          </div>
+</div>
+<!-- Step 03 -->
+<div class="bg-carbon-surface border border-carbon-border p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed block mb-2">03 // EVIDENCE</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">Proof Stored</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              Digital deliverables verified against content IPFS hash.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-secondary-fixed">
+            WITNESS: 100%
+          </div>
+</div>
+<!-- Step 04 -->
+<div class="bg-carbon-surface border border-primary-container p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-primary-fixed block mb-2">04 // GATE</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">Dual-Key Quorum</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              Explicit human approval unlocks escrow state.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-primary-fixed">
+            AUTH: 2/2 SIGN
+          </div>
+</div>
+<!-- Step 05 -->
+<div class="bg-carbon-surface border border-carbon-border p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed block mb-2">05 // SETTLE</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">HSP Settlement</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              HashKey engine executes atomic liquidity transfer.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-secondary-fixed">
+            HSP: TX_MINED
+          </div>
+</div>
+<!-- Step 06 -->
+<div class="bg-carbon-surface border border-carbon-border p-4 relative flex flex-col justify-between">
+<div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed block mb-2">06 // RECEIPT</span>
+<h4 class="font-headline-sm text-headline-sm text-xs uppercase text-surface-paper mb-2">Immutable Root</h4>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim leading-snug">
+              Final cryptographic state proof logged to ledger.
+            </p>
+</div>
+<div class="mt-4 pt-2 border-t border-carbon-border font-telemetry-micro text-telemetry-micro text-secondary-fixed">
+            ROOT: FINALIZED
+          </div>
+</div>
+</div>
+</section>
+<!-- TRUST INSPECTOR PRODUCT PREVIEW -->
+<section class="py-16 border-b border-border-hairline" id="inspector">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
+<div>
+<span class="text-telemetry-micro font-telemetry-micro text-primary-container block mb-1">INTERACTIVE AUDIT CONSOLE</span>
+<h2 class="font-headline-lg text-headline-lg text-carbon-void tracking-tight uppercase">
+            The Trust Inspector
+          </h2>
+<p class="font-body-md text-body-md text-tertiary mt-1">
+            Engineers and treasuries inspect live transaction proofs, cryptographic signatures, and artifact roots in real time.
+          </p>
+</div>
+<div class="mt-4 md:mt-0 flex items-center space-x-2">
+<span class="text-telemetry-micro font-telemetry-micro text-tertiary">INSPECTOR ENGINE v2.1.0</span>
+<button class="px-3 py-1.5 border border-border-hairline bg-surface-paper hover:bg-surface-mineral text-telemetry-micro font-telemetry-micro text-carbon-void">
+            Inspect Custom Hash
+          </button>
+</div>
+</div>
+<!-- High-Fidelity Console Preview Container -->
+<div class="border border-border-hairline bg-surface-paper">
+<!-- Inspector Top Header Bar -->
+<div class="border-b border-border-hairline px-6 py-3 flex flex-wrap justify-between items-center bg-surface-mineral">
+<div class="flex items-center space-x-3">
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary">REGISTER:</span>
+<span class="font-telemetry-data text-telemetry-data text-carbon-void font-semibold">0x742d35Cc6634C0532925a3b844Bc454e4438f44e</span>
+</div>
+<div class="flex items-center space-x-4 text-telemetry-micro font-telemetry-micro">
+<span class="text-tertiary">BLOCK: #19,482,901</span>
+<span class="text-secondary font-semibold">â— ORACLE CONSENSUS 100%</span>
+</div>
+</div>
+<!-- Prominent Verdict Banner -->
+<div class="p-6 border-b border-border-hairline bg-surface-paper flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div class="flex items-center space-x-4">
+<div class="w-12 h-12 bg-secondary text-surface-paper flex items-center justify-center">
+<span class="material-symbols-outlined text-[28px]">verified_user</span>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-tertiary block">VERIFICATION VERDICT</span>
+<span class="font-headline-lg text-headline-lg text-carbon-void tracking-tight">SETTLEMENT VERIFIED &amp; ANCHORED</span>
+</div>
+</div>
+<div class="flex flex-col items-start md:items-end">
+<span class="px-3 py-1 bg-secondary text-surface-paper font-telemetry-micro text-telemetry-micro font-semibold uppercase tracking-wider">
+              PROOF PASSED: HSP FINALITY
+            </span>
+<span class="text-telemetry-micro font-telemetry-micro text-tertiary mt-1">TIMESTAMP: 2025-05-14T09:41:22.184Z</span>
+</div>
+</div>
+<!-- 4-Box Telemetry Inspector Matrix -->
+<div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-hairline border-b border-border-hairline">
+<!-- Box 1: Payee Integrity -->
+<div class="p-6">
+<div class="flex justify-between items-center mb-3">
+<span class="font-label-caps text-label-caps text-tertiary uppercase">01 / PAYEE INTEGRITY CHECK</span>
+<span class="text-secondary font-telemetry-micro text-telemetry-micro font-semibold">PASSED</span>
+</div>
+<div class="space-y-2 text-telemetry-data text-telemetry-data">
+<div class="flex justify-between py-1 border-b border-border-hairline">
+<span class="text-tertiary">Agent Registry ID:</span>
+<span class="text-carbon-void font-semibold">AGT-FIN-9941</span>
+</div>
+<div class="flex justify-between py-1 border-b border-border-hairline">
+<span class="text-tertiary">Signer Public Key:</span>
+<span class="text-carbon-void">0x71C...49A (Secp256k1)</span>
+</div>
+<div class="flex justify-between py-1">
+<span class="text-tertiary">Domain Separator:</span>
+<span class="text-primary-container">hashx.protocol.hsp.v1</span>
+</div>
+</div>
+</div>
+<!-- Box 2: Delivery Witness -->
+<div class="p-6">
+<div class="flex justify-between items-center mb-3">
+<span class="font-label-caps text-label-caps text-tertiary uppercase">02 / DELIVERY WITNESS</span>
+<span class="text-secondary font-telemetry-micro text-telemetry-micro font-semibold">CONFIRMED</span>
+</div>
+<div class="space-y-2 text-telemetry-data text-telemetry-data">
+<div class="flex justify-between py-1 border-b border-border-hairline">
+<span class="text-tertiary">Artifact Root IPFS:</span>
+<span class="text-carbon-void font-semibold">bafybeicx4...99a0</span>
+</div>
+<div class="flex justify-between py-1 border-b border-border-hairline">
+<span class="text-tertiary">Compute Consensus:</span>
+<span class="text-secondary">3/3 Nodes Matching</span>
+</div>
+<div class="flex justify-between py-1">
+<span class="text-tertiary">Recomputation Match:</span>
+<span class="text-carbon-void font-semibold">100.0% Deterministic</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Receipt Hash Band -->
+<div class="p-6 bg-surface-mineral flex flex-col md:flex-row justify-between items-center gap-4 text-telemetry-data text-telemetry-data">
+<div class="flex items-center space-x-3 w-full md:w-auto">
+<span class="font-label-caps text-label-caps text-tertiary">RECEIPT ROOT:</span>
+<code class="bg-surface-paper border border-border-hairline px-3 py-1 text-carbon-void font-mono text-xs">
+              0x4f12d8a0c8129e924d55b376c991fbc78921a84f09d841e08a
+            </code>
+</div>
+<button class="px-4 py-2 border border-carbon-void hover:bg-carbon-void hover:text-surface-paper text-carbon-void font-label-caps text-label-caps transition-colors">
+            Download Cryptographic Monograph
+          </button>
+</div>
+</div>
+</section>
+<!-- DEVELOPER MCP INTEGRATION SECTION -->
+<section class="py-16" id="mcp">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Left: Architecture & Explanation (5 cols) -->
+<div class="lg:col-span-5 pr-0 lg:pr-6">
+<span class="text-telemetry-micro font-telemetry-micro text-primary-container block mb-1">DEVELOPER ARCHITECTURE</span>
+<h2 class="font-headline-lg text-headline-lg text-carbon-void tracking-tight uppercase mb-4">
+            Native Model Context Protocol (MCP).
+          </h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">
+            HashX functions as the strict verification middleware between autonomous AI agents and execution chains. We decouple execution verification from raw HashKey HSP settlement rails.
+          </p>
+<div class="space-y-4 mb-8">
+<div class="p-3 border border-border-hairline bg-surface-paper">
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void mb-1">Zero Blind Private Key Access</span>
+<p class="font-body-sm text-body-sm text-tertiary">Agents invoke standardized MCP tools. The private key never enters the LLM context window.</p>
+</div>
+<div class="p-3 border border-border-hairline bg-surface-paper">
+<span class="font-headline-sm text-headline-sm text-xs uppercase block text-carbon-void mb-1">Self-Describing JSON Schemas</span>
+<p class="font-body-sm text-body-sm text-tertiary">Plug-and-play compatibility with Claude Desktop, Cursor, LangChain, and autonomous multi-agent swarms.</p>
+</div>
+</div>
+<!-- Tool Registry Count -->
+<div class="p-4 bg-surface-paper border-l-2 border-primary-container border-y border-r border-border-hairline">
+<span class="font-label-caps text-label-caps text-primary-container uppercase block mb-1">THE 8 NATIVE MCP VERIFICATION TOOLS</span>
+<div class="grid grid-cols-2 gap-2 text-telemetry-micro font-telemetry-micro text-carbon-void mt-2">
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>create_invoice</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>verify_delivery</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>sign_invoice</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>request_payment</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>verify_invoice</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>get_payment_status</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>submit_delivery</code>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="w-1 h-1 bg-primary-container"></span>
+<code>get_receipt</code>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Code Terminal (7 cols) -->
+<div class="lg:col-span-7 bg-carbon-void border border-carbon-border p-6 text-carbon-text">
+<div class="flex items-center justify-between border-b border-carbon-border pb-3 mb-4">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 bg-carbon-border"></span>
+<span class="w-2.5 h-2.5 bg-carbon-border"></span>
+<span class="w-2.5 h-2.5 bg-carbon-border"></span>
+<span class="font-telemetry-micro text-telemetry-micro text-tertiary-fixed-dim pl-2">hashx_mcp_client.py</span>
+</div>
+<span class="font-telemetry-micro text-telemetry-micro text-secondary-fixed">MCP_SPEC_V2025.1</span>
+</div>
+<!-- Code Snippet -->
+<pre class="font-telemetry-data text-telemetry-data text-xs text-carbon-text overflow-x-auto leading-relaxed"><code><span class="text-tertiary-fixed-dim"># 1. Instantiate HashX MCP Verified Client</span>
+<span class="text-secondary-fixed">from</span> hashx <span class="text-secondary-fixed">import</span> HashXTrustLayer, MCPProvider
+
+client = HashXTrustLayer(
+    agent_id=<span class="text-primary-fixed">"agt_9941_autonomous"</span>,
+    settlement_rail=<span class="text-primary-fixed">"hashkey_hsp_mainnet"</span>,
+    human_gate_threshold_usd=<span class="text-secondary-fixed-dim">5000.00</span>
+)
+
+<span class="text-tertiary-fixed-dim"># 2. Register Verifiable Service Delivery</span>
+delivery_witness = client.mcp.submit_delivery(
+    task_id=<span class="text-primary-fixed">"tsk_matrix_computation_81"</span>,
+    artifact_hash=<span class="text-primary-fixed">"bafybeicx43a8820c781"</span>,
+    witness_proof_type=<span class="text-primary-fixed">"deterministic_zk_witness"</span>
+)
+
+<span class="text-tertiary-fixed-dim"># 3. Request Settlement Release with Human Dual-Key Check</span>
+payment_receipt = client.mcp.request_payment(
+    invoice_id=<span class="text-primary-fixed">"inv_eip712_8a9f41c2"</span>,
+    amount_usdc=<span class="text-secondary-fixed-dim">48250.00</span>,
+    recipient=<span class="text-primary-fixed">"0x742d35Cc6634C0532925a3b844Bc454e4438f44e"</span>,
+    evidence_token=delivery_witness.token
+)
+
+<span class="text-secondary-fixed">assert</span> payment_receipt.status == <span class="text-primary-fixed">"HSP_SETTLED"</span>
+<span class="text-tertiary-fixed-dim"># Telemetry Receipt anchored: 0x4f12d8a0c...e08a</span></code></pre>
+<div class="mt-4 pt-3 border-t border-carbon-border flex justify-between items-center text-telemetry-micro font-telemetry-micro">
+<span class="text-tertiary-fixed-dim">SDK COMPATIBILITY: PYTHON 3.11+ / NODE 20+</span>
+<button class="text-secondary-fixed hover:underline flex items-center space-x-1">
+<span>View Full Schema Docs</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- EDITORIAL MONOGRAPH FOOTER (Shared Component: Footer) -->
+<footer class="w-full bg-surface-paper border-t border-border-hairline">
+<div class="w-full px-space-lg md:px-margin py-space-xl max-w-[1360px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-space-lg">
+<!-- Brand & Philosophy -->
+<div class="space-y-2">
+<div class="flex items-center space-x-3">
+<div class="w-5 h-5 border border-on-surface flex items-center justify-center relative bg-surface-paper">
+<span class="absolute w-[1px] h-full bg-on-surface"></span>
+<span class="absolute h-[1px] w-full bg-on-surface"></span>
+</div>
+<span class="font-display-hero text-headline-sm text-carbon-void tracking-tight font-semibold">
+            HashX
+          </span>
+<span class="text-telemetry-micro font-telemetry-micro text-tertiary border-l border-border-hairline pl-2">
+            HSP TRUST PROTOCOL
+          </span>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary max-w-md">
+          Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing. All telemetry immutable.
+        </p>
+</div>
+<!-- Links Cluster from Blueprint -->
+<div class="flex flex-wrap gap-x-6 gap-y-2 text-telemetry-micro font-telemetry-micro">
+<a class="text-tertiary hover:text-carbon-void tracking-tight transition-colors" href="#">
+          Whitepaper v1.4
+        </a>
+<a class="text-carbon-void font-telemetry-micro underline" href="#circuit">
+          Proof Circuit Spec
+        </a>
+<a class="text-tertiary hover:text-carbon-void tracking-tight transition-colors" href="#mcp">
+          MCP Tool Registry
+        </a>
+<a class="text-tertiary hover:text-carbon-void tracking-tight transition-colors" href="#">
+          Audits &amp; Verification
+        </a>
+<a class="text-tertiary hover:text-carbon-void tracking-tight transition-colors" href="#">
+          Incident Disclosure
+        </a>
+<span class="text-secondary font-semibold">
+          Status: HSP-Mainnet Live
+        </span>
+</div>
+</div>
+</footer>
+</body></html>

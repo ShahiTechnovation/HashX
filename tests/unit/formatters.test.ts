@@ -71,3 +71,4 @@ describe("Financial and String Formatters", () => {
     expect(pastRes.secondsRemaining).toBe(0);
   });
 });
+

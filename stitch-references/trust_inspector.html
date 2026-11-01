@@ -1,0 +1,668 @@
+﻿<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HashX â€” Trust Inspector // Obligation HX-8942-VERIFY</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts: Space Grotesk, Space Mono, Inter, Public Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration (Theme-derived tokens) -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-dim": "#0e1416",
+            "surface-tint": "#b8c3ff",
+            "primary-container": "#345bee",
+            "on-tertiary": "#472a00",
+            "on-secondary-fixed-variant": "#005047",
+            "surface-container-high": "#252b2d",
+            "inverse-primary": "#234ee2",
+            "tertiary-fixed": "#ffddb8",
+            "on-primary": "#002387",
+            "on-secondary-container": "#004d44",
+            "inverse-surface": "#dee3e6",
+            "outline": "#8e90a1",
+            "error-container": "#93000a",
+            "on-tertiary-fixed": "#2a1700",
+            "secondary-container": "#03c6b2",
+            "primary-fixed": "#dde1ff",
+            "secondary-fixed-dim": "#3cddc7",
+            "error": "#ffb4ab",
+            "surface-bright": "#343a3c",
+            "surface-container-lowest": "#090f11",
+            "on-primary-fixed": "#001355",
+            "surface-variant": "#303638",
+            "primary": "#b8c3ff",
+            "secondary": "#44e2cd",
+            "on-surface": "#dee3e6",
+            "primary-fixed-dim": "#b8c3ff",
+            "on-secondary": "#003731",
+            "tertiary-fixed-dim": "#ffb95f",
+            "surface-container": "#1a2123",
+            "on-tertiary-fixed-variant": "#653e00",
+            "on-error": "#690005",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-container": "#ffe7d0",
+            "on-primary-fixed-variant": "#0035bd",
+            "surface": "#0e1416",
+            "on-surface-variant": "#c4c5d8",
+            "outline-variant": "#444655",
+            "tertiary-container": "#955e00",
+            "inverse-on-surface": "#2b3134",
+            "background": "#0e1416",
+            "tertiary": "#ffb95f",
+            "secondary-fixed": "#62fae3",
+            "surface-container-highest": "#303638",
+            "on-primary-container": "#e8eaff",
+            "surface-container-low": "#171d1f",
+            "on-secondary-fixed": "#00201c",
+            "on-background": "#dee3e6"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "fontFamily": {
+            "headline": ["Space Grotesk", "sans-serif"],
+            "display": ["Space Grotesk", "sans-serif"],
+            "body": ["Inter", "sans-serif"],
+            "label": ["Public Sans", "sans-serif"],
+            "mono": ["Space Mono", "monospace"]
+          }
+        },
+      }
+    }
+  </script>
+<style>
+    .font-mono-telemetry {
+      font-family: 'Space Mono', monospace;
+      font-feature-settings: "tnum" 1, "zero" 1;
+    }
+    /* Hairline definition */
+    .border-hairline {
+      border-color: rgba(68, 70, 85, 0.4);
+    }
+    .circuit-node-glow {
+      box-shadow: 0 0 10px rgba(68, 226, 205, 0.45);
+    }
+    .pulse-amber {
+      animation: pulseAmber 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    @keyframes pulseAmber {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 2px #ffb95f); }
+      50% { opacity: .6; filter: drop-shadow(0 0 8px #ffb95f); }
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<!-- TOP EDITORIAL / OPERATIONAL NAVBAR (from Shared Components JSON) -->
+<header class="w-full bg-surface-container-lowest border-b border-hairline sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-6 max-w-[1440px] mx-auto h-16">
+<!-- Brand & Status Beacon -->
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-3 group" href="#">
+<div class="w-7 h-7 bg-primary-container flex items-center justify-center rounded-DEFAULT font-mono-telemetry font-bold text-on-primary-container text-sm">
+            HX
+          </div>
+<span class="font-display text-lg tracking-tight text-on-surface font-bold uppercase">HashX</span>
+</a>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-2 text-xs font-mono-telemetry text-on-surface-variant">
+<span class="inline-block w-2 h-2 rounded-full bg-secondary"></span>
+<span>MAINNET RECONCILER</span>
+<span class="text-outline-variant">::</span>
+<span class="text-secondary-fixed">HSP-SYNC: 142ms</span>
+</div>
+</div>
+<!-- JSON Navigation Links -->
+<nav class="hidden md:flex items-center space-x-6 text-xs font-mono-telemetry">
+<a class="text-primary border-b border-primary pb-1 font-semibold tracking-wider" href="#">Proof Circuit</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors" href="#">Protocol Specs</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors" href="#">MCP Tools</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors" href="#">Adversarial Model</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors" href="#">Documentation</a>
+</nav>
+<!-- Action Cluster -->
+<div class="flex items-center gap-3">
+<button class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-DEFAULT text-xs font-mono-telemetry text-on-surface-variant hover:text-on-surface border border-hairline hover:border-outline transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="terminal">terminal</span>
+<span>Read Monograph</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-1.5 rounded-DEFAULT bg-primary-container text-on-primary-container hover:bg-inverse-primary text-xs font-mono-telemetry font-semibold tracking-wide transition-all shadow-sm">
+<span>Connect Protocol</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</header>
+<!-- OPERATIONAL SUBHEADER // BREADCRUMBS & CONTEXT BAR -->
+<section class="w-full bg-surface-container-low border-b border-hairline py-3 px-6">
+<div class="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4 font-mono-telemetry text-xs">
+<!-- Breadcrumbs & Record ID -->
+<div class="flex items-center gap-3 flex-wrap">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span>Console</span>
+<span class="text-outline-variant">/</span>
+<span>Obligations</span>
+<span class="text-outline-variant">/</span>
+<span>HX-8942</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-semibold">Trust Inspector</span>
+</span>
+<div class="h-3 w-[1px] bg-outline-variant"></div>
+<span class="px-2 py-0.5 bg-surface-container-high rounded-DEFAULT text-secondary-fixed border border-hairline font-bold tracking-tight">
+          FORENSIC INSPECTION // RECORD #HX-8942-VERIFY
+        </span>
+</div>
+<!-- Quick Telemetry Chips -->
+<div class="flex items-center gap-4 flex-wrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="text-outline">Counterparty:</span>
+<span class="text-on-surface font-semibold">DeepCompute Agent 09</span>
+<span class="text-[10px] px-1 py-0.2 bg-surface-container-high border border-hairline text-outline">AG-9912 â€¢ L3 Sovereign</span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-1.5">
+<span class="text-outline">Sum:</span>
+<span class="text-on-surface font-semibold tracking-tight text-secondary">$14,200.00 USDC</span>
+<span class="text-[10px] text-outline">(Quote: #HSP-8942-HK)</span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-1.5">
+<span class="text-outline">Quorum:</span>
+<span class="text-tertiary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary pulse-amber inline-block"></span>
+            2-of-2 Required (Awaiting Key 2)
+          </span>
+</div>
+</div>
+</div>
+</section>
+<!-- MAIN FORENSIC CANVAS (1440px wide locked architecture) -->
+<main class="w-full max-w-[1440px] mx-auto px-6 py-5 space-y-5">
+<!-- 1. FULL WIDTH: FORENSIC VERDICT HEADER & SCENARIO TOGGLE -->
+<div class="border border-hairline bg-surface-container rounded-DEFAULT p-4 relative overflow-hidden">
+<!-- Glow ambient stripe on verified border -->
+<div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-secondary-container via-secondary to-primary-container"></div>
+<div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+<!-- Left Verdict Text -->
+<div class="space-y-1">
+<div class="flex items-center gap-2 font-mono-telemetry text-xs text-secondary tracking-widest uppercase">
+<span class="material-symbols-outlined text-base" data-icon="verified_user">verified_user</span>
+<span>Cryptographic State: Deterministic Match</span>
+<span class="text-outline-variant">â€¢</span>
+<span class="text-on-surface-variant font-normal">Block #19,482,914 (2026-11-01 23:45:12 UTC)</span>
+</div>
+<h1 class="font-headline text-xl md:text-2xl font-bold tracking-tight text-on-surface uppercase flex items-center gap-3">
+            VERIFICATION VERDICT: VERIFIED // ALL 7 GATES PASSED
+          </h1>
+<div class="flex items-center gap-4 text-xs font-mono-telemetry text-on-surface-variant pt-1">
+<span>Commitment Root: <span class="text-primary font-mono">0x8a9f24c01e523f4b89ce7d903f56b2c78491...b42c</span></span>
+<span class="text-outline-variant">â€¢</span>
+<span>Independent Witnesses: <span class="text-secondary font-semibold">3/3 Full Node Quorum</span></span>
+</div>
+</div>
+<!-- Right Scenario Switcher (Demonstrating Adversarial Model Detection) -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-surface-container-low p-1.5 rounded-DEFAULT border border-hairline">
+<button class="px-3 py-1.5 bg-surface-container-high text-secondary border border-hairline rounded-DEFAULT text-xs font-mono-telemetry font-medium flex items-center gap-1.5 transition-all" id="scenario-active">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>Active: Verified Invoice #8942</span>
+</button>
+<button class="px-3 py-1.5 hover:bg-surface-container text-on-surface-variant hover:text-error border border-transparent rounded-DEFAULT text-xs font-mono-telemetry transition-all flex items-center gap-1.5" id="scenario-adversarial">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span>Switch: Payee Substitution #8948 (BLOCKED)</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 2. THREE-REGION WORKSPACE ARCHITECTURE -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+<!-- LEFT REGION (54% / 7 cols): STRUCTURED FORENSIC EVIDENCE -->
+<section class="xl:col-span-6 space-y-5">
+<!-- SECTION 1: EIP-712 SIGNED COMMERCIAL INTENT -->
+<div class="border border-hairline bg-surface-container-low rounded-DEFAULT p-4">
+<div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="signature">signature</span>
+<h2 class="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">
+                EIP-712 Signed Commercial Intent
+              </h2>
+</div>
+<span class="px-2 py-0.5 rounded-DEFAULT text-[11px] font-mono-telemetry bg-surface-container text-secondary border border-hairline">
+              ECDSA_secp256k1 VALID
+            </span>
+</div>
+<!-- Structured Attributes Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono-telemetry mb-4">
+<!-- Domain Spec -->
+<div class="p-2.5 bg-surface-container rounded-DEFAULT border border-hairline space-y-1">
+<div class="text-[10px] text-outline uppercase tracking-wider">Domain Separator</div>
+<div class="text-on-surface truncate">name: <span class="text-primary font-semibold">"HashX Protocol"</span></div>
+<div class="text-on-surface">version: "2.4" â€¢ chainId: 1</div>
+<div class="text-on-surface-variant truncate">verifying: <span class="text-on-surface">0x71C0...948A</span></div>
+</div>
+<!-- Payee Wallet & Identity Binding -->
+<div class="p-2.5 bg-surface-container rounded-DEFAULT border border-hairline space-y-1">
+<div class="text-[10px] text-outline uppercase tracking-wider">Payee Identity Binding</div>
+<div class="text-secondary font-semibold truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="check_circle">check_circle</span>
+<span>0x429A...38F1</span>
+</div>
+<div class="text-on-surface-variant truncate">Agent Registry: <span class="text-on-surface">DeepCompute AG-9912</span></div>
+<div class="text-secondary text-[11px]">Binding Status: 100% Cryptographic Match</div>
+</div>
+<!-- Replay & Nonce Defense -->
+<div class="p-2.5 bg-surface-container rounded-DEFAULT border border-hairline space-y-1">
+<div class="text-[10px] text-outline uppercase tracking-wider">Replay Defense Telemetry</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Obligation Nonce:</span>
+<span class="text-on-surface font-bold">491</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Observed On-Chain:</span>
+<span class="text-on-surface">491 (MATCH)</span>
+</div>
+<div class="text-secondary text-[10px]">State: VALID â€¢ Replay: FULLY DEFENDED</div>
+</div>
+<!-- ECDSA Signature Register State -->
+<div class="p-2.5 bg-surface-container rounded-DEFAULT border border-hairline space-y-1">
+<div class="text-[10px] text-outline uppercase tracking-wider">Raw ECDSA Registers</div>
+<div class="text-[11px] text-on-surface-variant truncate">r: <span class="text-on-surface">0x9f88c2...41a9</span></div>
+<div class="text-[11px] text-on-surface-variant truncate">s: <span class="text-on-surface">0x280e77...ff31</span></div>
+<div class="text-[11px] text-on-surface-variant">v: <span class="text-on-surface">27</span> â€¢ pubKey recovered: <span class="text-secondary font-semibold">MATCH</span></div>
+</div>
+</div>
+<!-- Itemized Commercial Terms Table -->
+<div class="border border-hairline rounded-DEFAULT overflow-hidden bg-surface-container">
+<div class="px-3 py-1.5 bg-surface-container-high border-b border-hairline text-[10px] font-mono-telemetry uppercase text-outline flex justify-between">
+<span>Itemized Commercial Terms Specification</span>
+<span>SLA SLA-9912-DC</span>
+</div>
+<div class="p-3 text-xs font-mono-telemetry space-y-2">
+<div class="flex items-center justify-between border-b border-hairline pb-1.5">
+<span class="text-on-surface">LLM Batch Inference: 4,000,000 tokens (Llama-3.3-70B-FP8)</span>
+<span class="text-on-surface font-semibold">$14,200.00 USDC</span>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[11px] text-on-surface-variant pt-1">
+<div>
+<span class="text-outline">Latency Target:</span> <span class="text-on-surface">&lt; 850ms</span>
+</div>
+<div>
+<span class="text-outline">Unit Pricing:</span> <span class="text-on-surface">$0.00355 / 1k</span>
+</div>
+<div>
+<span class="text-outline">Deadline:</span> <span class="text-on-surface">2026-11-01 23:59Z</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 2: INDEPENDENT DIGITAL SERVICE DELIVERY PROOF -->
+<div class="border border-hairline bg-surface-container-low rounded-DEFAULT p-4">
+<div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="deployed_code">deployed_code</span>
+<h2 class="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">
+                Independent Service Delivery Proof
+              </h2>
+</div>
+<span class="px-2 py-0.5 rounded-DEFAULT text-[11px] font-mono-telemetry bg-surface-container text-secondary border border-hairline">
+              RPC WITNESS CONSENSUS 3/3
+            </span>
+</div>
+<!-- IPFS & Digest Telemetry -->
+<div class="p-3 bg-surface-container rounded-DEFAULT border border-hairline font-mono-telemetry text-xs space-y-2 mb-3">
+<div class="flex items-center justify-between flex-wrap gap-2">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="inventory_2">inventory_2</span>
+<span>Delivery Artifact:</span>
+<span class="text-primary underline">ipfs://bafybeicx4z7e9w849q021k28...98ae</span>
+</div>
+<span class="text-[11px] text-outline">Size: 42.8 MB â€¢ SHA-256 Verified</span>
+</div>
+<div class="text-[11px] text-on-surface-variant flex items-center justify-between">
+<span>On-Chain Commitment Tx: <a class="text-secondary font-mono" href="#">0x7c91fa023e...118c</a></span>
+<span class="text-secondary">Merkle Inclusion: Proof Validated</span>
+</div>
+</div>
+<!-- Expected vs Observed Verification Matrix -->
+<div class="overflow-x-auto border border-hairline rounded-DEFAULT">
+<table class="w-full text-left font-mono-telemetry text-xs">
+<thead class="bg-surface-container-high text-outline text-[10px] uppercase border-b border-hairline">
+<tr>
+<th class="p-2.5">Verification Gate</th>
+<th class="p-2.5">Expected Specification</th>
+<th class="p-2.5">Observed Node Output</th>
+<th class="p-2.5 text-right">Verdict</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-hairline bg-surface-container">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 font-medium text-on-surface">Output Merkle Root</td>
+<td class="p-2.5 text-on-surface-variant">0x3d4f...991a</td>
+<td class="p-2.5 text-on-surface">0x3d4f...991a</td>
+<td class="p-2.5 text-right font-semibold text-secondary">MATCH 100%</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 font-medium text-on-surface">Gas Consumed</td>
+<td class="p-2.5 text-on-surface-variant">148,291 Gas</td>
+<td class="p-2.5 text-on-surface">148,291 Gas</td>
+<td class="p-2.5 text-right font-semibold text-secondary">MATCH</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 font-medium text-on-surface">EVM Status Code</td>
+<td class="p-2.5 text-on-surface-variant">0x1 (Success)</td>
+<td class="p-2.5 text-on-surface">0x1 (Success)</td>
+<td class="p-2.5 text-right font-semibold text-secondary">OK</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 font-medium text-on-surface">Batch Latency</td>
+<td class="p-2.5 text-on-surface-variant">&lt; 850ms SLA</td>
+<td class="p-2.5 text-on-surface">612ms Realized</td>
+<td class="p-2.5 text-right font-semibold text-secondary">CONFORMANT</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- CENTER REGION (21% / 3 cols): THE HASHX PROOF CIRCUIT -->
+<section class="xl:col-span-3 border border-hairline bg-surface-container-low rounded-DEFAULT p-4">
+<div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-base" data-icon="schema">schema</span>
+<h2 class="font-headline text-xs font-bold uppercase tracking-wider text-on-surface">
+              The Proof Circuit
+            </h2>
+</div>
+<span class="text-[10px] font-mono-telemetry text-outline">7 STAGE RAIL</span>
+</div>
+<p class="text-[11px] text-on-surface-variant mb-4 font-body leading-relaxed">
+          Intersecting commercial intent with verifiable chain evidence before human quorum dispatch.
+        </p>
+<!-- Vertical Architectural Circuit -->
+<div class="relative pl-6 space-y-4 font-mono-telemetry text-xs">
+<!-- Continuous Circuit Line -->
+<div class="absolute left-2.5 top-2 bottom-2 w-[1px] bg-outline-variant"></div>
+<!-- Dynamic Highlight Line for passed nodes -->
+<div class="absolute left-2.5 top-2 h-[270px] w-[1px] bg-secondary"></div>
+<!-- Rail 1: Intent Ingestion -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface-container-lowest circuit-node-glow"></div>
+<div class="p-2 bg-surface-container rounded-DEFAULT border border-hairline hover:border-secondary transition-colors">
+<div class="flex items-center justify-between">
+<span class="text-on-surface font-bold text-[11px]">01 // Intent Ingest</span>
+<span class="text-[9px] px-1 bg-surface-container-high text-secondary border border-hairline">PASSED</span>
+</div>
+<div class="text-[10px] text-on-surface-variant">Order manifest ingested</div>
+</div>
+</div>
+<!-- Rail 2: EIP-712 Signature -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface-container-lowest circuit-node-glow"></div>
+<div class="p-2 bg-surface-container rounded-DEFAULT border border-hairline hover:border-secondary transition-colors">
+<div class="flex items-center justify-between">
+<span class="text-on-surface font-bold text-[11px]">02 // EIP-712 Sig</span>
+<span class="text-[9px] px-1 bg-surface-container-high text-secondary border border-hairline">PASSED</span>
+</div>
+<div class="text-[10px] text-on-surface-variant">secp256k1 recovery valid</div>
+</div>
+</div>
+<!-- Rail 3: Payee Identity Binding -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface-container-lowest circuit-node-glow"></div>
+<div class="p-2 bg-surface-container rounded-DEFAULT border border-hairline hover:border-secondary transition-colors">
+<div class="flex items-center justify-between">
+<span class="text-on-surface font-bold text-[11px]">03 // Payee Identity</span>
+<span class="text-[9px] px-1 bg-surface-container-high text-secondary border border-hairline">PASSED</span>
+</div>
+<div class="text-[10px] text-on-surface-variant">Registry AG-9912 bound</div>
+</div>
+</div>
+<!-- Rail 4: RPC Delivery Proof Witness -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface-container-lowest circuit-node-glow"></div>
+<div class="p-2 bg-surface-container rounded-DEFAULT border border-hairline hover:border-secondary transition-colors">
+<div class="flex items-center justify-between">
+<span class="text-on-surface font-bold text-[11px]">04 // Delivery Witness</span>
+<span class="text-[9px] px-1 bg-surface-container-high text-secondary border border-hairline">PASSED</span>
+</div>
+<div class="text-[10px] text-on-surface-variant">Artifact Merkle match</div>
+</div>
+</div>
+<!-- Rail 5: Deterministic Consensus -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface-container-lowest circuit-node-glow"></div>
+<div class="p-2 bg-surface-container rounded-DEFAULT border border-hairline hover:border-secondary transition-colors">
+<div class="flex items-center justify-between">
+<span class="text-on-surface font-bold text-[11px]">05 // Determinism</span>
+<span class="text-[9px] px-1 bg-surface-container-high text-secondary border border-hairline">PASSED</span>
+</div>
+<div class="text-[10px] text-on-surface-variant">3/3 Node consensus</div>
+</div>
+</div>
+<!-- INTERSECTING GATE: HUMAN AUTHORIZATION (CRITICAL ACTIVE STAGE) -->
+<div class="relative group">
+<div class="absolute -left-[19px] top-2 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-surface-container-lowest pulse-amber"></div>
+<div class="p-2.5 bg-surface-container rounded-DEFAULT border-2 border-tertiary-container shadow-md">
+<div class="flex items-center justify-between">
+<span class="text-tertiary font-bold text-[11px] flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="key">key</span>
+                  06 // Human Gate
+                </span>
+<span class="text-[9px] px-1.5 py-0.5 bg-tertiary-container text-tertiary font-bold rounded-DEFAULT animate-pulse">
+                  KEY 2 NEEDED
+                </span>
+</div>
+<div class="text-[10px] text-on-surface-variant mt-1 leading-snug">
+                Dual-Key Quorum: 1/2 Signed. Awaiting Treasury Officer sign-off.
+              </div>
+</div>
+</div>
+<!-- Rail 7: HSP Settlement Dispatch -->
+<div class="relative opacity-60">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant border-2 border-surface-container-lowest"></div>
+<div class="p-2 bg-surface-container-lowest rounded-DEFAULT border border-hairline">
+<div class="flex items-center justify-between">
+<span class="text-outline font-bold text-[11px]">07 // HSP Settlement</span>
+<span class="text-[9px] text-outline">WAITING</span>
+</div>
+<div class="text-[10px] text-outline">HashKey Rail trigger</div>
+</div>
+</div>
+<!-- Final Receipt Commitment -->
+<div class="relative opacity-40">
+<div class="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant border-2 border-surface-container-lowest"></div>
+<div class="p-2 bg-surface-container-lowest rounded-DEFAULT border border-hairline">
+<div class="flex items-center justify-between">
+<span class="text-outline font-bold text-[11px]">08 // Final Receipt</span>
+<span class="text-[9px] text-outline">QUEUED</span>
+</div>
+<div class="text-[10px] text-outline">Deterministic mint</div>
+</div>
+</div>
+</div>
+</section>
+<!-- RIGHT REGION (25% / 3 cols): PERSISTENT PAYMENT ELIGIBILITY & DECISION RAIL -->
+<section class="xl:col-span-3 border border-hairline bg-surface-container rounded-DEFAULT p-4 flex flex-col justify-between space-y-4">
+<div>
+<!-- Panel Header -->
+<div class="pb-3 border-b border-hairline">
+<div class="text-[10px] font-mono-telemetry uppercase tracking-wider text-outline">Settlement Evaluation</div>
+<h2 class="font-headline text-sm font-bold uppercase tracking-tight text-on-surface">
+              Eligibility &amp; Decision Rail
+            </h2>
+</div>
+<!-- Verdict Status Box -->
+<div class="mt-4 p-3 bg-surface-container-high rounded-DEFAULT border border-secondary/30 relative">
+<div class="flex items-center justify-between font-mono-telemetry text-xs mb-1">
+<span class="text-outline text-[10px]">CURRENT EVALUATION</span>
+<span class="text-secondary font-semibold">RISK: 0.00 / 100</span>
+</div>
+<div class="text-xs font-headline font-bold text-secondary uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+<span>ELIGIBLE FOR SETTLEMENT</span>
+</div>
+<p class="text-[11px] text-on-surface-variant font-mono-telemetry mt-1">
+              Conditional upon dual-key cryptographic officer authorization.
+            </p>
+</div>
+<!-- Financial Breakdown Table -->
+<div class="mt-4 space-y-2 text-xs font-mono-telemetry">
+<div class="flex justify-between py-1 border-b border-hairline">
+<span class="text-on-surface-variant">Obligation Principal:</span>
+<span class="text-on-surface font-bold">14,200.00 USDC</span>
+</div>
+<div class="flex justify-between py-1 border-b border-hairline">
+<span class="text-on-surface-variant">HSP Gas &amp; Protocol Fee:</span>
+<span class="text-on-surface">2.40 USDC</span>
+</div>
+<div class="flex justify-between py-1 border-b border-hairline">
+<span class="text-on-surface-variant">Total Debit:</span>
+<span class="text-secondary font-bold text-sm">14,202.40 USDC</span>
+</div>
+<div class="pt-1 text-[11px] text-on-surface-variant space-y-1">
+<div class="truncate">
+<span class="text-outline">From:</span> 0x19F2...8b3A (Treasury Alpha)
+              </div>
+<div class="truncate">
+<span class="text-outline">To:</span> 0x429A...38F1 (DeepCompute)
+              </div>
+</div>
+</div>
+<!-- Dual Key Quorum Telemetry -->
+<div class="mt-4 p-3 bg-surface-container-low rounded-DEFAULT border border-hairline space-y-2.5 font-mono-telemetry text-xs">
+<div class="text-[10px] text-outline uppercase tracking-wider flex justify-between">
+<span>Dual-Key Human Quorum</span>
+<span class="text-tertiary">1 OF 2 SIGNED</span>
+</div>
+<!-- Key 1 -->
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="verified">verified</span>
+<span class="text-on-surface">Key 1: Automated Oracle</span>
+</div>
+<span class="text-secondary text-[10px]">[SIGNED 23:44Z]</span>
+</div>
+<div class="text-[10px] text-outline truncate pl-5">
+              Signer: 0x44f1...8a9c (PolicyEngine v2)
+            </div>
+<!-- Key 2 -->
+<div class="flex items-center justify-between text-[11px] pt-1 border-t border-hairline">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary pulse-amber"></span>
+<span class="text-tertiary font-semibold">Key 2: Treasury Officer</span>
+</div>
+<span class="text-tertiary text-[10px] uppercase font-bold">AWAITING</span>
+</div>
+<div class="text-[10px] text-outline truncate pl-5">
+              Allowed: HashKey HSP Multi-Sig Signers
+            </div>
+</div>
+</div>
+<!-- High-Stakes Action Cluster -->
+<div class="pt-4 border-t border-hairline space-y-2.5">
+<!-- Primary Action: Authorize -->
+<button class="w-full py-2.5 px-4 bg-primary-container text-on-primary-container hover:bg-inverse-primary rounded-DEFAULT font-mono-telemetry text-xs font-bold tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2" id="btn-authorize">
+<span class="material-symbols-outlined text-sm" data-icon="lock_open">lock_open</span>
+<span>Authorize &amp; Dispatch to HSP</span>
+</button>
+<!-- Secondary Action: Secondary Review -->
+<button class="w-full py-2 px-3 bg-surface-container-high hover:bg-surface-bright text-on-surface rounded-DEFAULT border border-hairline font-mono-telemetry text-xs transition-colors flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-sm" data-icon="search_insights">search_insights</span>
+<span>Flag for Secondary Audit</span>
+</button>
+<!-- Panic Action: Reject & Quarantine -->
+<button class="w-full py-2 px-3 bg-surface-container-lowest hover:bg-error-container text-error hover:text-on-error rounded-DEFAULT border border-error/30 font-mono-telemetry text-xs transition-colors flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-sm" data-icon="gavel">gavel</span>
+<span>Reject &amp; Quarantine Obligation</span>
+</button>
+<!-- Export Proof -->
+<div class="pt-2 text-center">
+<a class="text-[11px] font-mono-telemetry text-on-surface-variant hover:text-primary underline flex items-center justify-center gap-1" href="#">
+<span class="material-symbols-outlined text-xs" data-icon="download">download</span>
+<span>Export Full Forensic Proof (.json / .pdf)</span>
+</a>
+</div>
+</div>
+</section>
+</div>
+<!-- 3. LIVE CRYPTOGRAPHIC AUDIT LOG (STREAM TERMINAL) -->
+<div class="border border-hairline bg-surface-container-lowest rounded-DEFAULT p-3.5 font-mono-telemetry text-xs">
+<div class="flex items-center justify-between pb-2 border-b border-hairline mb-2 text-outline text-[11px]">
+<div class="flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-secondary"></span>
+<span class="uppercase tracking-wider">HashX Telemetry Stream // HSP-Audit-Bus</span>
+</div>
+<div class="flex items-center gap-3">
+<span>Buffer: 1024 msgs</span>
+<span class="text-secondary">Connected: wss://relay.mainnet.hashx.org</span>
+</div>
+</div>
+<div class="space-y-1 text-[11px] leading-relaxed max-h-24 overflow-y-auto pr-2 text-on-surface-variant">
+<div>[23:45:12.802] <span class="text-secondary">[INGEST]</span> Obligation envelope #HX-8942 received from gateway: AG-9912</div>
+<div>[23:45:12.894] <span class="text-secondary">[SIG_VERIFY]</span> EIP-712 typed signature matched pubkey 0x38F1...902a for domain HashX Protocol v2.4</div>
+<div>[23:45:13.014] <span class="text-secondary">[WITNESS_RPC]</span> 3 independent node consensus verified Merkle root 0x3d4f...991a against IPFS artifact bafybeicx4z7e9w849...</div>
+<div>[23:45:13.120] <span class="text-tertiary font-semibold">[QUORUM_GATE]</span> Automatic Oracle Key 1 signature appended. Obligation suspended in awaiting state for Human Key 2.</div>
+</div>
+</div>
+</main>
+<!-- EDITORIAL FOOTER (from Shared Components JSON) -->
+<footer class="w-full bg-surface-container-lowest border-t border-hairline mt-8 py-6">
+<div class="w-full px-6 max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs font-mono-telemetry text-on-surface-variant">
+<!-- Copyright text from JSON -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+<span class="font-display text-sm tracking-tight text-on-surface font-semibold">HashX</span>
+<span class="hidden sm:inline text-outline-variant">â€¢</span>
+<span>Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing. All telemetry immutable.</span>
+</div>
+<!-- Links from JSON -->
+<div class="flex flex-wrap items-center gap-4 text-xs">
+<a class="hover:text-on-surface transition-colors" href="#">Whitepaper v1.4</a>
+<a class="hover:text-on-surface transition-colors" href="#">Proof Circuit Spec</a>
+<a class="hover:text-on-surface transition-colors" href="#">MCP Tool Registry</a>
+<a class="hover:text-on-surface transition-colors" href="#">Audits &amp; Verification</a>
+<a class="hover:text-on-surface transition-colors" href="#">Incident Disclosure</a>
+<span class="text-secondary font-semibold">Status: HSP-Mainnet Live</span>
+</div>
+</div>
+</footer>
+<!-- LIGHTWEIGHT INTERACTIVITY FOR SCENARIO SWITCHING & AUTHORIZE DEMO -->
+<script>
+    const btnActive = document.getElementById('scenario-active');
+    const btnAdversarial = document.getElementById('scenario-adversarial');
+    const btnAuth = document.getElementById('btn-authorize');
+
+    btnAdversarial.addEventListener('click', () => {
+      alert("ADVERSARIAL SIMULATION LOADED: Payee substitution attempt detected on #8948. Registry binding failed: Payee 0x99A4...12 does NOT match agent AG-9912. Payment gate automatically quarantined.");
+    });
+
+    btnActive.addEventListener('click', () => {
+      // already active
+    });
+
+    btnAuth.addEventListener('click', () => {
+      const confirmed = confirm("CONFIRM DUAL-KEY AUTHORIZATION:\\nSign obligation HX-8942 ($14,200.00 USDC) with Key 2 (Treasury Officer)?");
+      if (confirmed) {
+        btnAuth.innerText = "DISPATCHING TO HASHKEY HSP...";
+        btnAuth.classList.remove('bg-primary-container', 'hover:bg-inverse-primary');
+        btnAuth.classList.add('bg-secondary', 'text-on-secondary');
+        setTimeout(() => {
+          btnAuth.innerText = "FINALIZED // HSP TX: 0x9812...F42A";
+        }, 1200);
+      }
+    });
+  </script>
+</body></html>

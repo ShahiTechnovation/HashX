@@ -190,7 +190,7 @@ class DemoModeClient implements HashXClient {
       invoiceId: inv.id,
       flowId: `hsp-flow-${Math.floor(10000 + Math.random() * 90000)}`,
       paymentRequestId: `hsp-pr-${Math.floor(5000000 + Math.random() * 900000)}`,
-      merchantName: input.merchant_name || "HashX Global",
+      merchantName: input.merchant_name || "HashX",
       attributionVerified: true,
       payer: input.payer,
       payee: inv.payment.payee,
@@ -202,7 +202,7 @@ class DemoModeClient implements HashXClient {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       approvalSummary: {
-        merchantName: "HashX Global",
+        merchantName: "HashX",
         attributionVerified: true,
         payer: input.payer,
         payee: inv.payment.payee,
@@ -309,7 +309,7 @@ class DemoModeClient implements HashXClient {
 }
 
 class ConnectedModeClient implements HashXClient {
-  private baseUrl = process.env.NEXT_PUBLIC_HASHX_API_URL || "https://api.hashx.global/v1";
+  private baseUrl = process.env.NEXT_PUBLIC_HASHX_API_URL || "http://localhost:8080";
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
@@ -383,6 +383,17 @@ class ConnectedModeClient implements HashXClient {
 
   async requestPayment(input: RequestPaymentInput): Promise<PaymentAttempt> {
     return this.request<PaymentAttempt>(`/invoices/${input.invoice_id}/pay`, { method: "POST", body: JSON.stringify(input) });
+  }
+
+  async approveSigning(paymentAttemptId: string): Promise<PaymentAttempt> {
+    return this.request<PaymentAttempt>(`/payments/${paymentAttemptId}/approve-signing`, { method: "POST" });
+  }
+
+  async approveSubmission(paymentAttemptId: string, signature?: string): Promise<PaymentAttempt> {
+    return this.request<PaymentAttempt>(`/payments/${paymentAttemptId}/approve-submission`, {
+      method: "POST",
+      body: JSON.stringify({ signature }),
+    });
   }
 
   async getPaymentStatus(invoiceId: string): Promise<PaymentAttempt> {

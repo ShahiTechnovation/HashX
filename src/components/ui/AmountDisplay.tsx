@@ -25,32 +25,26 @@ export const AmountDisplay: React.FC<AmountDisplayProps> = ({
   const tokenFormatted = tokenRaw ? formatRawTokenUnits(tokenRaw, tokenDecimals, tokenSymbol) : null;
 
   const sizeClasses = {
-    sm: "text-sm",
-    md: "text-base font-medium",
-    lg: "text-xl font-semibold",
-    xl: "text-3xl font-bold tracking-tight",
+    sm: "text-[13px] font-medium",
+    md: "text-[15px] font-medium",
+    lg: "text-xl font-semibold tracking-tight",
+    xl: "text-[32px] font-semibold tracking-[-0.03em] font-display",
   };
 
   return (
     <div className={cn("inline-flex flex-col", className)}>
       <div className="inline-flex items-baseline gap-1.5">
-        <span className={cn("font-mono tabular-nums text-foreground", sizeClasses[size])}>
-          {usdFormatted || tokenFormatted}
-        </span>
-        {usdFormatted && (
-          <span className="text-xs font-mono uppercase text-foreground-muted">USD</span>
-        )}
+        <span className={cn("tabular-nums text-foreground", sizeClasses[size])}>{usdFormatted || tokenFormatted}</span>
+        {usdFormatted && <span className="text-2xs font-medium text-foreground-muted">USD</span>}
       </div>
 
       {tokenFormatted && usdFormatted && (
-        <span className="text-xs font-mono text-foreground-muted">
-          ≈ {tokenFormatted}
-        </span>
+        <span className="text-2xs tabular-nums text-foreground-muted">≈ {tokenFormatted}</span>
       )}
 
       {showRawNotice && tokenRaw && (
-        <span className="text-[11px] font-mono text-foreground-muted/70 mt-0.5">
-          Raw authorized: {tokenRaw} (units)
+        <span className="text-2xs font-mono text-foreground-muted mt-0.5">
+          raw {tokenRaw} units
         </span>
       )}
     </div>

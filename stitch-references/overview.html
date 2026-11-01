@@ -1,0 +1,927 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HashX Console â€” Application Overview</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'carbon-void': '#0A1012',
+            'carbon-nav': '#0D1417',
+            'carbon-panel': '#131C20',
+            'carbon-card': '#162227',
+            'carbon-border': '#273137',
+            'carbon-border-light': '#36444C',
+            'alabaster': '#F0F1ED',
+            'slate-meta': '#91A0A5',
+            'signal-blue': '#345BEE',
+            'controlled-mint': '#2DD4BF',
+            'warm-amber': '#F59E0B',
+            'muted-red': '#EF4444',
+          },
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', '"Space Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0A1012;
+      color: #F0F1ED;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0D1417;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #273137;
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #36444C;
+    }
+    .hairline-b {
+      border-bottom: 1px solid #273137;
+    }
+    .hairline-r {
+      border-right: 1px solid #273137;
+    }
+    .hairline-t {
+      border-top: 1px solid #273137;
+    }
+    .hairline-l {
+      border-left: 1px solid #273137;
+    }
+    .hairline-all {
+      border: 1px solid #273137;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-carbon-void flex flex-col selection:bg-signal-blue selection:text-white">
+
+  <!-- Main Shell Wrapper -->
+  <div class="flex-1 flex w-full min-h-screen">
+
+    <!-- 1. COMPACT LEFT NAVIGATION RAIL (240px wide) -->
+    <aside class="w-[240px] flex-shrink-0 bg-carbon-nav hairline-r flex flex-col justify-between fixed top-0 bottom-0 left-0 z-30">
+      <div class="flex flex-col">
+        <!-- Brand Lockup -->
+        <div class="h-16 px-5 flex items-center gap-3 hairline-b">
+          <div class="w-8 h-8 rounded bg-signal-blue/15 border border-signal-blue/40 flex items-center justify-center text-signal-blue font-mono font-bold text-sm tracking-tighter">
+            HX
+          </div>
+          <div>
+            <div class="font-display font-bold text-alabaster tracking-tight text-sm leading-tight flex items-center gap-1.5">
+              HashX
+              <span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-carbon-panel text-slate-meta border border-carbon-border">v2.4</span>
+            </div>
+            <div class="text-[10px] font-mono uppercase tracking-wider text-slate-meta">Proof System / Console</div>
+          </div>
+        </div>
+
+        <!-- Section Label -->
+        <div class="px-5 pt-5 pb-2 text-[10px] font-mono uppercase tracking-wider text-slate-meta font-semibold">
+          Core Operations
+        </div>
+
+        <!-- Primary Navigation List -->
+        <nav class="space-y-0.5 px-3">
+          <!-- Overview (Active) -->
+          <a href="#" class="relative flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-alabaster bg-carbon-panel/80 border border-carbon-border/70 group transition-colors">
+            <div class="flex items-center gap-2.5">
+              <span class="absolute left-0 top-1 bottom-1 w-1 bg-signal-blue rounded-r"></span>
+              <span class="material-symbols-outlined text-[18px] text-signal-blue">dashboard_customize</span>
+              <span class="font-sans">Overview</span>
+            </div>
+            <span class="text-[9px] font-mono text-slate-meta group-hover:text-alabaster">CTRL+1</span>
+          </a>
+
+          <!-- Trust Inspector -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">policy</span>
+              <span class="font-sans">Trust Inspector</span>
+            </div>
+            <span class="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-muted-red/15 text-muted-red border border-muted-red/30">1 Alert</span>
+          </a>
+
+          <!-- Invoices & Intent -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">receipt_long</span>
+              <span class="font-sans">Invoices &amp; Intent</span>
+            </div>
+            <span class="text-[10px] font-mono text-slate-meta">18</span>
+          </a>
+
+          <!-- Human Authorization -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-warm-amber">verified_user</span>
+              <span class="font-sans">Human Authorization</span>
+            </div>
+            <span class="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-warm-amber/15 text-warm-amber border border-warm-amber/30">3 Pending</span>
+          </a>
+
+          <!-- Settlement Explorer -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">account_balance_wallet</span>
+              <span class="font-sans">Settlement (HSP)</span>
+            </div>
+            <span class="text-[9px] font-mono text-controlled-mint font-semibold">Active</span>
+          </a>
+
+          <!-- Verifiable Receipts -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">fact_check</span>
+              <span class="font-sans">Verifiable Receipts</span>
+            </div>
+          </a>
+
+          <div class="pt-4 pb-2 px-2 text-[10px] font-mono uppercase tracking-wider text-slate-meta font-semibold">
+            Tooling &amp; Protocols
+          </div>
+
+          <!-- Interactive Proof Lab -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">science</span>
+              <span class="font-sans">Proof Lab</span>
+            </div>
+            <span class="text-[9px] font-mono text-slate-meta">CLI</span>
+          </a>
+
+          <!-- Developer / MCP Tools -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-panel/40 transition-colors group">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[18px] text-slate-meta group-hover:text-alabaster">terminal</span>
+              <span class="font-sans">MCP Tools</span>
+            </div>
+            <span class="text-[9px] font-mono text-controlled-mint">8 RPC</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Bottom System Telemetry Block -->
+      <div class="p-3.5 m-3 rounded bg-carbon-void/80 hairline-all space-y-2">
+        <div class="flex items-center justify-between text-[11px] font-mono">
+          <span class="text-slate-meta flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-controlled-mint"></span>
+            HashKey HSP
+          </span>
+          <span class="text-controlled-mint font-semibold">CONNECTED</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] font-mono">
+          <span class="text-slate-meta flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-signal-blue"></span>
+            Dual-Key Signer
+          </span>
+          <span class="text-alabaster">READY</span>
+        </div>
+        <div class="hairline-t pt-2 flex items-center justify-between text-[10px] font-mono text-slate-meta">
+          <span>BLOCK WITNESS</span>
+          <span class="text-alabaster font-mono">#19,482,914</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN OPERATIONAL VIEWPORT (Offset by 240px nav) -->
+    <main class="ml-[240px] flex-1 flex flex-col bg-carbon-void min-w-0">
+
+      <!-- 2. OPERATIONAL TOP HEADER BAR (h-16) -->
+      <header class="h-16 px-6 bg-carbon-void hairline-b flex items-center justify-between sticky top-0 z-20">
+        <!-- Left: Workspace & Environment -->
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 bg-carbon-nav px-3 py-1.5 rounded hairline-all">
+            <span class="material-symbols-outlined text-signal-blue text-[16px]">account_tree</span>
+            <span class="font-display font-semibold text-xs text-alabaster tracking-tight">Autonomous Treasury Alpha</span>
+            <span class="material-symbols-outlined text-slate-meta text-[14px]">expand_more</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-controlled-mint animate-pulse"></span>
+            <span class="font-mono text-[11px] uppercase tracking-wider text-slate-meta">
+              ENV: <span class="text-alabaster font-medium">MAINNET RECONCILER</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Right: Real-time Telemetry -->
+        <div class="flex items-center gap-5 text-xs font-mono">
+          <div class="flex items-center gap-1.5 text-slate-meta">
+            <span>HSP Latency:</span>
+            <span class="text-controlled-mint font-semibold">142ms</span>
+          </div>
+          <div class="h-3 w-px bg-carbon-border"></div>
+          <div class="flex items-center gap-1.5 text-slate-meta">
+            <span class="w-1.5 h-1.5 rounded-full bg-controlled-mint"></span>
+            <span>Agent Registry:</span>
+            <span class="text-alabaster font-medium">100% In Sync</span>
+          </div>
+          <div class="h-3 w-px bg-carbon-border"></div>
+          <div class="flex items-center gap-1.5 text-slate-meta">
+            <span>Payer Treasury:</span>
+            <span class="text-signal-blue bg-signal-blue/10 px-1.5 py-0.5 rounded border border-signal-blue/20">0x19F2...8b3A</span>
+          </div>
+          <div class="h-3 w-px bg-carbon-border"></div>
+          <div class="flex items-center gap-1.5 text-slate-meta">
+            <span>Quorum:</span>
+            <span class="text-warm-amber font-semibold bg-warm-amber/10 px-1.5 py-0.5 rounded border border-warm-amber/20">2-of-2 Required</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEWPORT CONTENT BODY -->
+      <div class="p-6 space-y-6 max-w-[1440px] w-full mx-auto">
+
+        <!-- 3. ARCHITECTURAL METRICS STRIP (Full Width, 5 Columns Divided by Hairlines) -->
+        <section class="grid grid-cols-1 md:grid-cols-5 hairline-all bg-carbon-nav rounded overflow-hidden">
+          <!-- Metric 01 -->
+          <div class="p-4 hairline-r border-b md:border-b-0 border-carbon-border flex flex-col justify-between">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-slate-meta mb-2">
+              <span>01 // ACTIVE OBLIGATIONS</span>
+              <span class="material-symbols-outlined text-[14px]">sync_alt</span>
+            </div>
+            <div>
+              <div class="font-display text-2xl font-bold text-alabaster tracking-tight">18 <span class="text-xs font-mono font-normal text-slate-meta">items</span></div>
+              <div class="font-mono text-xs text-slate-meta mt-0.5">$142,850.00 <span class="text-[10px] text-slate-meta">USDC</span></div>
+            </div>
+            <div class="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-slate-meta">
+              <span class="w-1 h-1 rounded-full bg-slate-meta"></span>
+              <span>In Pipeline</span>
+            </div>
+          </div>
+
+          <!-- Metric 02 (Needs Decision - Amber) -->
+          <div class="p-4 hairline-r border-b md:border-b-0 border-carbon-border flex flex-col justify-between bg-warm-amber/[0.03]">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-warm-amber mb-2">
+              <span class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-warm-amber animate-ping"></span>
+                02 // AWAITING AUTHORIZATION
+              </span>
+              <span class="material-symbols-outlined text-[14px] text-warm-amber">warning</span>
+            </div>
+            <div>
+              <div class="font-display text-2xl font-bold text-warm-amber tracking-tight">3 <span class="text-xs font-mono font-normal text-warm-amber/80">items</span></div>
+              <div class="font-mono text-xs text-warm-amber/90 mt-0.5">$28,400.00 <span class="text-[10px]">USDC</span></div>
+            </div>
+            <div class="mt-3 flex items-center justify-between text-[10px] font-mono">
+              <span class="text-warm-amber font-medium">NEEDS YOUR DECISION</span>
+              <span class="px-1.5 py-0.5 bg-warm-amber/15 text-warm-amber border border-warm-amber/30 rounded text-[9px]">ACTION REQ</span>
+            </div>
+          </div>
+
+          <!-- Metric 03 (HSP Escrow - Signal Blue) -->
+          <div class="p-4 hairline-r border-b md:border-b-0 border-carbon-border flex flex-col justify-between bg-signal-blue/[0.02]">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-signal-blue mb-2">
+              <span>03 // IN SETTLEMENT</span>
+              <span class="material-symbols-outlined text-[14px]">lock_clock</span>
+            </div>
+            <div>
+              <div class="font-display text-2xl font-bold text-alabaster tracking-tight">7 <span class="text-xs font-mono font-normal text-slate-meta">items</span></div>
+              <div class="font-mono text-xs text-signal-blue mt-0.5">$61,200.00 <span class="text-[10px] text-slate-meta">USDC</span></div>
+            </div>
+            <div class="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-slate-meta">
+              <span class="w-1.5 h-1.5 rounded-full bg-signal-blue"></span>
+              <span>HashKey HSP Escrow Locked</span>
+            </div>
+          </div>
+
+          <!-- Metric 04 (Finalized Reconciled - Controlled Mint) -->
+          <div class="p-4 hairline-r border-b md:border-b-0 border-carbon-border flex flex-col justify-between bg-controlled-mint/[0.02]">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-controlled-mint mb-2">
+              <span>04 // FINALIZED (24H)</span>
+              <span class="material-symbols-outlined text-[14px]">check_circle</span>
+            </div>
+            <div>
+              <div class="font-display text-2xl font-bold text-alabaster tracking-tight">42 <span class="text-xs font-mono font-normal text-slate-meta">items</span></div>
+              <div class="font-mono text-xs text-controlled-mint mt-0.5">$319,500.00 <span class="text-[10px] text-slate-meta">USDC</span></div>
+            </div>
+            <div class="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-slate-meta">
+              <span class="w-1.5 h-1.5 rounded-full bg-controlled-mint"></span>
+              <span>Receipts Committed &amp; Validated</span>
+            </div>
+          </div>
+
+          <!-- Metric 05 (Blocked Quarantine - Muted Red) -->
+          <div class="p-4 flex flex-col justify-between bg-muted-red/[0.03]">
+            <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-muted-red mb-2">
+              <span>05 // INTERCEPTED</span>
+              <span class="material-symbols-outlined text-[14px]">gpp_bad</span>
+            </div>
+            <div>
+              <div class="font-display text-2xl font-bold text-muted-red tracking-tight">2 <span class="text-xs font-mono font-normal text-muted-red/80">items</span></div>
+              <div class="font-mono text-xs text-muted-red/90 mt-0.5">$8,150.00 <span class="text-[10px]">USDC</span></div>
+            </div>
+            <div class="mt-3 flex items-center justify-between text-[10px] font-mono">
+              <span class="text-muted-red font-medium">2 Threats Prevented</span>
+              <span class="px-1.5 py-0.5 bg-muted-red/20 text-muted-red border border-muted-red/40 rounded text-[9px]">ISOLATED</span>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- 4. SIGNATURE FEATURE: THE OBLIGATION PIPELINE (Proof Circuit Architecture) -->
+        <section class="hairline-all rounded bg-carbon-nav p-5">
+          <!-- Section Title & Meta -->
+          <div class="flex items-center justify-between pb-4 hairline-b">
+            <div class="flex items-center gap-3">
+              <div class="w-2.5 h-2.5 rounded-sm bg-signal-blue"></div>
+              <div>
+                <h2 class="font-display font-bold text-sm tracking-tight text-alabaster uppercase">
+                  The Obligation Pipeline <span class="text-slate-meta font-mono font-normal text-xs ml-2">// VERIFICATION CIRCUIT &amp; GATES</span>
+                </h2>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] font-mono text-slate-meta">
+              <span>CIRCUIT CLOCK: <span class="text-alabaster">840ms E2E</span></span>
+              <span class="hairline-l pl-4">ESCROW PROTOCOL: <span class="text-signal-blue font-semibold">HSP-CORE v3.1</span></span>
+            </div>
+          </div>
+
+          <!-- Horizontal 5 Gates Diagram -->
+          <div class="pt-5 pb-2">
+            <div class="grid grid-cols-5 gap-3 relative">
+
+              <!-- Gate 01 -->
+              <div class="bg-carbon-panel hairline-all rounded p-3.5 relative flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-slate-meta mb-1.5">
+                    <span class="font-semibold text-alabaster">GATE 01</span>
+                    <span class="px-1.5 py-0.5 bg-carbon-void rounded text-[9px] border border-carbon-border">18 Active</span>
+                  </div>
+                  <div class="font-display font-bold text-xs text-alabaster">Ingested &amp; Signed</div>
+                  <div class="text-[11px] text-slate-meta mt-1">EIP-712 domain validation, agent nonce isolation.</div>
+                </div>
+                <div class="mt-3 pt-2 hairline-t flex items-center justify-between text-[10px] font-mono text-slate-meta">
+                  <span>SPEC: EIP-712</span>
+                  <span class="text-controlled-mint">VALID</span>
+                </div>
+              </div>
+
+              <!-- Gate 02 -->
+              <div class="bg-carbon-panel hairline-all rounded p-3.5 relative flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-slate-meta mb-1.5">
+                    <span class="font-semibold text-alabaster">GATE 02</span>
+                    <span class="px-1.5 py-0.5 bg-carbon-void rounded text-[9px] border border-carbon-border">14 Witnessed</span>
+                  </div>
+                  <div class="font-display font-bold text-xs text-alabaster">Delivery Witnessed</div>
+                  <div class="text-[11px] text-slate-meta mt-1">Chain RPC recomputation &amp; IPFS artifact pinning.</div>
+                </div>
+                <div class="mt-3 pt-2 hairline-t flex items-center justify-between text-[10px] font-mono text-slate-meta">
+                  <span>WITNESS: RPC</span>
+                  <span class="text-controlled-mint">100% MATCH</span>
+                </div>
+              </div>
+
+              <!-- Gate 03 (Human Quorum - Highlighted) -->
+              <div class="bg-carbon-panel border-2 border-warm-amber/60 rounded p-3.5 relative flex flex-col justify-between bg-warm-amber/[0.04]">
+                <div class="absolute -top-2.5 right-3 bg-warm-amber text-carbon-void text-[9px] font-mono font-bold px-2 py-0.5 rounded shadow">
+                  QUORUM REQUIRED
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-warm-amber mb-1.5">
+                    <span class="font-semibold">GATE 03</span>
+                    <span class="px-1.5 py-0.5 bg-warm-amber/20 rounded text-[9px] border border-warm-amber/40 font-bold">3 Pending</span>
+                  </div>
+                  <div class="font-display font-bold text-xs text-alabaster">Dual-Key Authorization</div>
+                  <div class="text-[11px] text-slate-meta mt-1">Cryptographic human gatekeeper approval threshold.</div>
+                </div>
+                <div class="mt-3 pt-2 hairline-t border-warm-amber/30 flex items-center justify-between text-[10px] font-mono">
+                  <span class="text-slate-meta">QUORUM 2/2</span>
+                  <span class="text-warm-amber font-bold">AWAITING 1</span>
+                </div>
+              </div>
+
+              <!-- Gate 04 -->
+              <div class="bg-carbon-panel hairline-all rounded p-3.5 relative flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-slate-meta mb-1.5">
+                    <span class="font-semibold text-alabaster">GATE 04</span>
+                    <span class="px-1.5 py-0.5 bg-carbon-void rounded text-[9px] border border-carbon-border">7 Locked</span>
+                  </div>
+                  <div class="font-display font-bold text-xs text-alabaster">HSP Settlement</div>
+                  <div class="text-[11px] text-slate-meta mt-1">Escrow execution via HashKey HSP settlement engine.</div>
+                </div>
+                <div class="mt-3 pt-2 hairline-t flex items-center justify-between text-[10px] font-mono text-slate-meta">
+                  <span>RAIL: HSP#9182</span>
+                  <span class="text-signal-blue font-semibold">EXECUTING</span>
+                </div>
+              </div>
+
+              <!-- Gate 05 -->
+              <div class="bg-carbon-panel hairline-all rounded p-3.5 relative flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-slate-meta mb-1.5">
+                    <span class="font-semibold text-alabaster">GATE 05</span>
+                    <span class="px-1.5 py-0.5 bg-carbon-void rounded text-[9px] border border-carbon-border">42 Final</span>
+                  </div>
+                  <div class="font-display font-bold text-xs text-alabaster">Finality Reconciled</div>
+                  <div class="text-[11px] text-slate-meta mt-1">Immutable cryptographic receipt committed to ledger.</div>
+                </div>
+                <div class="mt-3 pt-2 hairline-t flex items-center justify-between text-[10px] font-mono text-slate-meta">
+                  <span>PROOF: FINAL</span>
+                  <span class="text-controlled-mint font-semibold">ANCHORED</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Diverter Rail (Quarantine Branch) -->
+            <div class="mt-4 pt-3 hairline-t flex items-center justify-between bg-muted-red/[0.04] p-3 rounded border border-muted-red/30">
+              <div class="flex items-center gap-3">
+                <span class="flex items-center justify-center w-6 h-6 rounded bg-muted-red/20 text-muted-red">
+                  <span class="material-symbols-outlined text-[16px]">security</span>
+                </span>
+                <div>
+                  <span class="text-[10px] font-mono uppercase font-bold text-muted-red tracking-wider">DIVERTER RAIL // BLOCKED QUARANTINE (2 ISOLATED)</span>
+                  <div class="text-xs font-mono text-alabaster mt-0.5">
+                    Sub-agent Payee Substitution Attempt Intercepted: <span class="text-muted-red font-semibold">[0x99A...11B]</span> â€” Diverted to isolation chamber. Funds frozen. Zero treasury exposure.
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono text-slate-meta">REASON: NONCE REPLAY + ADDRESS DRIFT</span>
+                <button class="px-2.5 py-1 text-[10px] font-mono font-medium rounded bg-carbon-panel text-muted-red border border-muted-red/40 hover:bg-muted-red/10 transition-colors">
+                  Inspect Quarantine Dump
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- 5. PRIORITY ACTION AREA: "NEEDS YOUR DECISION" (High-Stakes Approval Queue) -->
+        <section class="hairline-all rounded bg-carbon-panel overflow-hidden border-warm-amber/40">
+          <!-- Banner Header -->
+          <div class="px-5 py-3.5 bg-warm-amber/10 hairline-b border-warm-amber/30 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="flex h-3 w-3 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-warm-amber opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-warm-amber"></span>
+              </span>
+              <div>
+                <h3 class="font-display font-bold text-sm tracking-tight text-alabaster flex items-center gap-2">
+                  NEEDS YOUR DECISION
+                  <span class="text-xs font-mono font-normal text-warm-amber">// DUAL-KEY AUTHORIZATION QUEUE (3 PENDING)</span>
+                </h3>
+              </div>
+            </div>
+            <div class="text-xs font-mono text-slate-meta flex items-center gap-2">
+              <span>Required Quorum: Operator 0x742D... (Signed) + <span class="text-warm-amber font-semibold">Treasury Key 0x918F... (Awaiting You)</span></span>
+            </div>
+          </div>
+
+          <!-- Pending Rows Container -->
+          <div class="divide-y divide-carbon-border">
+
+            <!-- Decision Row 1 -->
+            <div class="p-4 bg-carbon-nav/60 hover:bg-carbon-nav transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <!-- Left: Meta & Counterparty -->
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded bg-carbon-card hairline-all flex flex-col items-center justify-center font-mono text-[10px] text-slate-meta flex-shrink-0">
+                  <span class="text-warm-amber font-bold">#HX</span>
+                  <span>8942</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans font-semibold text-xs text-alabaster">DeepCompute Agent 09</span>
+                    <span class="text-[10px] font-mono text-slate-meta bg-carbon-void px-1.5 py-0.5 rounded border border-carbon-border">0x38F1...902a</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-medium bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30 flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-controlled-mint"></span> VERIFIED
+                    </span>
+                  </div>
+                  <div class="text-xs text-slate-meta mt-1">
+                    Deliverable: <span class="text-alabaster font-medium">Model Inference Batch #9182</span>
+                    <span class="font-mono text-[11px] text-slate-meta ml-1">(IPFS: bafybei...849c)</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-slate-meta">
+                    <span class="text-warm-amber flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px]">schedule</span> 18m remaining on escrow lock
+                    </span>
+                    <span>â€¢</span>
+                    <span>Witnessed: 3/3 Nodes Matching</span>
+                    <span>â€¢</span>
+                    <span>Gas Surcharge: $0.00 (HSP Sponsored)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Amount & Actions -->
+              <div class="flex items-center justify-between lg:justify-end gap-6 flex-shrink-0">
+                <div class="text-right">
+                  <div class="font-display text-lg font-bold text-alabaster">$14,200.00 <span class="text-xs font-mono font-normal text-slate-meta">USDC</span></div>
+                  <div class="text-[10px] font-mono text-slate-meta">Policy Rule: Tier 2 (&gt;$10k)</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="px-3 py-1.5 rounded text-xs font-mono text-slate-meta hover:text-alabaster bg-carbon-card hover:bg-carbon-panel hairline-all transition-colors">
+                    Inspect Witness
+                  </button>
+                  <button class="px-4 py-1.5 rounded text-xs font-mono font-semibold text-white bg-signal-blue hover:bg-signal-blue/90 shadow-sm transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">key</span> Review &amp; Authorize
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Decision Row 2 -->
+            <div class="p-4 bg-carbon-nav/60 hover:bg-carbon-nav transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <!-- Left: Meta & Counterparty -->
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded bg-carbon-card hairline-all flex flex-col items-center justify-center font-mono text-[10px] text-slate-meta flex-shrink-0">
+                  <span class="text-warm-amber font-bold">#HX</span>
+                  <span>8945</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans font-semibold text-xs text-alabaster">Synthetix Oracle Agent</span>
+                    <span class="text-[10px] font-mono text-slate-meta bg-carbon-void px-1.5 py-0.5 rounded border border-carbon-border">0x88D2...11Cb</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-medium bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30 flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-controlled-mint"></span> VERIFIED
+                    </span>
+                  </div>
+                  <div class="text-xs text-slate-meta mt-1">
+                    Deliverable: <span class="text-alabaster font-medium">Sub-second Market Feed Witness</span>
+                    <span class="font-mono text-[11px] text-slate-meta ml-1">(Block #19,482,880)</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-slate-meta">
+                    <span class="text-warm-amber flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px]">schedule</span> 32m remaining on escrow lock
+                    </span>
+                    <span>â€¢</span>
+                    <span>State Recomputation: Verified 100%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Amount & Actions -->
+              <div class="flex items-center justify-between lg:justify-end gap-6 flex-shrink-0">
+                <div class="text-right">
+                  <div class="font-display text-lg font-bold text-alabaster">$9,500.00 <span class="text-xs font-mono font-normal text-slate-meta">USDC</span></div>
+                  <div class="text-[10px] font-mono text-slate-meta">Policy Rule: High-Frequency Settlement</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="px-3 py-1.5 rounded text-xs font-mono text-slate-meta hover:text-alabaster bg-carbon-card hover:bg-carbon-panel hairline-all transition-colors">
+                    Inspect Witness
+                  </button>
+                  <button class="px-4 py-1.5 rounded text-xs font-mono font-semibold text-white bg-signal-blue hover:bg-signal-blue/90 shadow-sm transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">key</span> Review &amp; Authorize
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Decision Row 3 -->
+            <div class="p-4 bg-carbon-nav/60 hover:bg-carbon-nav transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <!-- Left: Meta & Counterparty -->
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded bg-carbon-card hairline-all flex flex-col items-center justify-center font-mono text-[10px] text-slate-meta flex-shrink-0">
+                  <span class="text-warm-amber font-bold">#HX</span>
+                  <span>8949</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-sans font-semibold text-xs text-alabaster">CloudCluster GPU-4</span>
+                    <span class="text-[10px] font-mono text-slate-meta bg-carbon-void px-1.5 py-0.5 rounded border border-carbon-border">0x22F4...79e1</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-medium bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30 flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-controlled-mint"></span> VERIFIED
+                    </span>
+                  </div>
+                  <div class="text-xs text-slate-meta mt-1">
+                    Deliverable: <span class="text-alabaster font-medium">ZK Proof Generation Task</span>
+                    <span class="font-mono text-[11px] text-slate-meta ml-1">(SNARK Witness Root: 0x902...b41)</span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-slate-meta">
+                    <span class="text-warm-amber flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px]">schedule</span> 44m remaining on escrow lock
+                    </span>
+                    <span>â€¢</span>
+                    <span>Zero-Knowledge Verification: Success</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Amount & Actions -->
+              <div class="flex items-center justify-between lg:justify-end gap-6 flex-shrink-0">
+                <div class="text-right">
+                  <div class="font-display text-lg font-bold text-alabaster">$4,700.00 <span class="text-xs font-mono font-normal text-slate-meta">USDC</span></div>
+                  <div class="text-[10px] font-mono text-slate-meta">Policy Rule: Autonomous Task Run</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="px-3 py-1.5 rounded text-xs font-mono text-slate-meta hover:text-alabaster bg-carbon-card hover:bg-carbon-panel hairline-all transition-colors">
+                    Inspect Witness
+                  </button>
+                  <button class="px-4 py-1.5 rounded text-xs font-mono font-semibold text-white bg-signal-blue hover:bg-signal-blue/90 shadow-sm transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">key</span> Review &amp; Authorize
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- 6. COMPACT OBLIGATION LEDGER & ACTIVITY STREAM -->
+        <section class="hairline-all rounded bg-carbon-nav overflow-hidden">
+          <!-- Filter Tabs & Table Controls Bar -->
+          <div class="p-3.5 hairline-b flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-carbon-panel/60">
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1 overflow-x-auto custom-scrollbar w-full md:w-auto">
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium bg-carbon-card text-alabaster border border-carbon-border-light flex items-center gap-1.5">
+                <span>All Obligations</span>
+                <span class="px-1.5 py-0.2 rounded-full bg-carbon-void text-[10px] text-slate-meta">18</span>
+              </button>
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-card/50 transition-colors flex items-center gap-1.5">
+                <span>Verifying</span>
+                <span class="px-1.5 py-0.2 rounded-full bg-carbon-void text-[10px] text-slate-meta">4</span>
+              </button>
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium text-warm-amber hover:bg-carbon-card/50 transition-colors flex items-center gap-1.5">
+                <span>Authorized</span>
+                <span class="px-1.5 py-0.2 rounded-full bg-warm-amber/15 text-[10px] text-warm-amber border border-warm-amber/30">3</span>
+              </button>
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium text-signal-blue hover:bg-carbon-card/50 transition-colors flex items-center gap-1.5">
+                <span>HSP Escrow</span>
+                <span class="px-1.5 py-0.2 rounded-full bg-signal-blue/15 text-[10px] text-signal-blue">7</span>
+              </button>
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium text-muted-red hover:bg-carbon-card/50 transition-colors flex items-center gap-1.5">
+                <span>Blocked</span>
+                <span class="px-1.5 py-0.2 rounded-full bg-muted-red/20 text-[10px] text-muted-red font-bold">2</span>
+              </button>
+              <button class="px-3 py-1.5 rounded text-xs font-mono font-medium text-slate-meta hover:text-alabaster hover:bg-carbon-card/50 transition-colors">
+                Finalized Archive
+              </button>
+            </div>
+
+            <!-- Search & Actions -->
+            <div class="flex items-center gap-2.5 w-full md:w-auto justify-end">
+              <div class="relative w-full md:w-64">
+                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-slate-meta">search</span>
+                <input type="text" placeholder="Search by Hash / Agent ID..." class="w-full bg-carbon-void pl-8 pr-3 py-1.5 rounded text-xs font-mono text-alabaster border border-carbon-border focus:border-signal-blue focus:outline-none placeholder:text-slate-meta/60">
+              </div>
+              <button class="px-3 py-1.5 rounded text-xs font-mono text-slate-meta hover:text-alabaster bg-carbon-void hairline-all hover:bg-carbon-panel flex items-center gap-1.5 flex-shrink-0 transition-colors">
+                <span class="material-symbols-outlined text-[14px]">file_download</span> Export Audit
+              </button>
+            </div>
+          </div>
+
+          <!-- High-Density Data Table -->
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-carbon-void/80 text-[10px] font-mono uppercase tracking-wider text-slate-meta hairline-b">
+                  <th class="py-3 px-4 font-semibold">Obligation ID</th>
+                  <th class="py-3 px-4 font-semibold">Counterparty Agent</th>
+                  <th class="py-3 px-4 font-semibold">Service Deliverable</th>
+                  <th class="py-3 px-4 font-semibold text-right">Amount</th>
+                  <th class="py-3 px-4 font-semibold">Verification Proof</th>
+                  <th class="py-3 px-4 font-semibold">Authorization</th>
+                  <th class="py-3 px-4 font-semibold">Settlement Status</th>
+                  <th class="py-3 px-4 font-semibold text-right">Inspect</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-carbon-border text-xs font-mono">
+
+                <!-- Table Row 1 (Blocked Intercepted Alert Row) -->
+                <tr class="bg-muted-red/[0.04] hover:bg-muted-red/[0.08] transition-colors">
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="font-bold text-muted-red flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[14px]">dangerous</span> #HX-8940
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-sans font-medium text-alabaster">Rogue Scraper 0x99A</div>
+                    <div class="text-[10px] text-muted-red font-mono">PAYEE MISMATCH INTERCEPTED</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-alabaster font-sans">Arbitrary Scraping Invoice</div>
+                    <div class="text-[10px] text-muted-red">Substituted address: 0x99A...11B (Spoofed)</div>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-muted-red font-display">$8,150.00</div>
+                    <div class="text-[10px] text-slate-meta">USDC</div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-muted-red/20 text-muted-red border border-muted-red/40 font-semibold">
+                      FAILED (EIP-712 DRIFT)
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="text-muted-red font-semibold">INTERCEPTED</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-carbon-void text-muted-red border border-muted-red/30">
+                      BLOCKED &amp; FROZEN
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <a href="#" class="text-muted-red underline text-[11px] font-sans hover:text-white">Audit Incident</a>
+                  </td>
+                </tr>
+
+                <!-- Table Row 2 (Pending Decision HX-8942) -->
+                <tr class="hover:bg-carbon-panel/60 transition-colors">
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="font-bold text-warm-amber">#HX-8942</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-sans font-medium text-alabaster">DeepCompute Agent 09</div>
+                    <div class="text-[10px] text-slate-meta">0x38F1...902a</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-alabaster font-sans">Model Inference Batch #9182</div>
+                    <div class="text-[10px] text-slate-meta">bafybeicx4...849c</div>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-alabaster font-display">$14,200.00</div>
+                    <div class="text-[10px] text-slate-meta">USDC</div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30">
+                      VERIFIED (3/3 RPC)
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="text-warm-amber font-semibold flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 rounded-full bg-warm-amber animate-pulse"></span> Awaiting Quorum
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-carbon-void text-warm-amber border border-warm-amber/30">
+                      GATE 03 ESCROW HOLD
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <a href="#" class="text-signal-blue hover:underline text-[11px] font-sans">Inspect Proof</a>
+                  </td>
+                </tr>
+
+                <!-- Table Row 3 (In HSP Escrow) -->
+                <tr class="hover:bg-carbon-panel/60 transition-colors">
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="font-bold text-signal-blue">#HX-8939</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-sans font-medium text-alabaster">LangChain Swarm Worker 2</div>
+                    <div class="text-[10px] text-slate-meta">0x49E1...55A2</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-alabaster font-sans">Web Crawl &amp; Vector Embeddings</div>
+                    <div class="text-[10px] text-slate-meta">sha256:d8a94...12c</div>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-alabaster font-display">$22,500.00</div>
+                    <div class="text-[10px] text-slate-meta">USDC</div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30">
+                      VERIFIED (ZK-SNARK)
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="text-controlled-mint font-semibold">2/2 DUAL-KEY SIGNED</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-signal-blue/15 text-signal-blue border border-signal-blue/30 flex items-center gap-1 w-fit">
+                      <span class="w-1 h-1 rounded-full bg-signal-blue animate-ping"></span> HSP ESCROW LOCKED
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <a href="#" class="text-signal-blue hover:underline text-[11px] font-sans">Inspect Proof</a>
+                  </td>
+                </tr>
+
+                <!-- Table Row 4 (In HSP Escrow) -->
+                <tr class="hover:bg-carbon-panel/60 transition-colors">
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="font-bold text-signal-blue">#HX-8938</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-sans font-medium text-alabaster">Autonome Inference Daemon</div>
+                    <div class="text-[10px] text-slate-meta">0x981C...CC42</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-alabaster font-sans">Fine-Tuned Llama Weight Checkpoint</div>
+                    <div class="text-[10px] text-slate-meta">bafybei99...77a</div>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-alabaster font-display">$18,400.00</div>
+                    <div class="text-[10px] text-slate-meta">USDC</div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30">
+                      VERIFIED (IPFS PIN)
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="text-controlled-mint font-semibold">2/2 DUAL-KEY SIGNED</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-signal-blue/15 text-signal-blue border border-signal-blue/30">
+                      HSP ESCROW LOCKED
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <a href="#" class="text-signal-blue hover:underline text-[11px] font-sans">Inspect Proof</a>
+                  </td>
+                </tr>
+
+                <!-- Table Row 5 (Finalized Reconciled) -->
+                <tr class="hover:bg-carbon-panel/60 transition-colors opacity-85">
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="font-bold text-controlled-mint">#HX-8935</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <div class="font-sans font-medium text-alabaster">Cursor Background Indexer</div>
+                    <div class="text-[10px] text-slate-meta">0x12A4...88EE</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-alabaster font-sans">Repository Semantic AST Tree</div>
+                    <div class="text-[10px] text-slate-meta">git:tree#c8849</div>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-alabaster font-display">$3,200.00</div>
+                    <div class="text-[10px] text-slate-meta">USDC</div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-controlled-mint/15 text-controlled-mint border border-controlled-mint/30">
+                      WITNESSED 100%
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="text-controlled-mint font-semibold">FINALIZED</span>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-controlled-mint/10 text-controlled-mint border border-controlled-mint/30">
+                      TX MINED (BLK #19,482,901)
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <a href="#" class="text-controlled-mint hover:underline text-[11px] font-sans">View Receipt</a>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Pagination & Count Footer -->
+          <div class="px-4 py-3 bg-carbon-panel/80 hairline-t flex items-center justify-between text-xs font-mono text-slate-meta">
+            <div>Showing 5 of 18 active obligations (42 archived)</div>
+            <div class="flex items-center gap-2">
+              <button class="px-2.5 py-1 bg-carbon-void rounded hairline-all hover:bg-carbon-panel disabled:opacity-40" disabled>Previous</button>
+              <span class="px-2 text-alabaster">Page 1 of 4</span>
+              <button class="px-2.5 py-1 bg-carbon-void rounded hairline-all hover:bg-carbon-panel text-alabaster">Next</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 7. INSTITUTIONAL TELEMETRY FOOTER -->
+      <footer class="mt-auto px-6 py-4 bg-carbon-nav hairline-t flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs font-mono text-slate-meta">
+        <div class="flex items-center gap-4 flex-wrap">
+          <div class="flex items-center gap-1.5 text-alabaster">
+            <span class="w-2 h-2 rounded-full bg-controlled-mint"></span>
+            <span class="font-semibold">Node Status: Operational</span>
+          </div>
+          <span class="hidden md:inline">â€¢</span>
+          <div>HashKey HSP Settlement Finality Engine v3.1</div>
+          <span class="hidden md:inline">â€¢</span>
+          <div>RPC Block Witness <span class="text-alabaster font-semibold">#19,482,914</span></div>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="text-[11px]">Audit Consensus: <span class="text-controlled-mint font-semibold">100.0% Deterministic</span></span>
+          <span class="px-2 py-0.5 rounded bg-carbon-void hairline-all text-[11px] text-alabaster">Zero-Arbitrary Risk</span>
+        </div>
+      </footer>
+
+    </main>
+
+  </div>
+
+</body>
+</html>

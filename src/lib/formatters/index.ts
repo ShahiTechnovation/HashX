@@ -251,3 +251,21 @@ export function getHSPStatusMeta(status: HSPStatus): {
       };
   }
 }
+
+/**
+ * Returns canonical HashKey Chain Testnet block explorer transaction URL.
+ */
+export function getExplorerTxUrl(txHash: string): string {
+  if (!txHash) return "https://testnet-explorer.hskchain.net";
+  return `https://testnet-explorer.hskchain.net/tx/${txHash}`;
+}
+
+/**
+ * Returns canonical HashKey Chain Testnet block explorer address URL.
+ */
+export function getExplorerAddressUrl(address: string): string {
+  if (!address) return "https://testnet-explorer.hskchain.net";
+  return `https://testnet-explorer.hskchain.net/address/${address}`;
+}
+
+

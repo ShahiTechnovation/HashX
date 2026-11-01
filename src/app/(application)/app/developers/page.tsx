@@ -3,365 +3,415 @@
 import React, { useState } from "react";
 import {
   Terminal,
-  Code,
+  Code2,
+  Lock,
   Copy,
   Check,
-  Radio,
+  Play,
+  Share2,
   ExternalLink,
   ShieldCheck,
-  Server,
+  CheckCircle2,
   Layers,
+  Sparkles,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
-import { Button } from "@/components/ui/Button";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { cn } from "@/lib/utils";
+import { HASHX_TOOLS, HSP_TOOLS, HSP_MCP_ENDPOINT, type MCPToolDef } from "@/components/developers/toolCatalog";
 
-interface MCPToolDef {
-  name: string;
-  mutates: boolean;
-  authorization: string;
-  idempotencyKey: string;
-  description: string;
-  requestSchema: object;
-  responseSchema: object;
-}
+const HASHX_API_URL = process.env.NEXT_PUBLIC_HASHX_API_URL || "http://localhost:8080";
 
-const HASHX_TOOLS: MCPToolDef[] = [
-  {
-    name: "create_invoice",
-    mutates: true,
-    authorization: "Seller / Integrator",
-    idempotencyKey: "client_request_id",
-    description: "Creates an unsigned structured commercial invoice bound to a service definition.",
-    requestSchema: {
-      client_request_id: "uuid",
-      seller_counterparty_id: "uuid",
-      buyer_ref: "string",
-      service: {
-        type: "hsk_address_analytics_v1",
-        parameters: {
-          address: "0x...",
-          start_block: "uint64-string",
-          end_block: "uint64-string",
-        },
-        acceptance_policy: "analytics_v1",
-      },
-      payment: {
-        currency: "USD",
-        amount_minor: "100",
-        payee: "0x...",
-        preferred_chain_id: 133,
-      },
-      expires_at: "RFC3339",
-    },
-    responseSchema: {
-      invoice_id: "uuid",
-      invoice_version: 1,
-      status: "DRAFT",
-      typed_data: {},
-      invoice_digest: "0x...",
-      created_at: "RFC3339",
-    },
-  },
-  {
-    name: "sign_invoice",
-    mutates: true,
-    authorization: "Seller Wallet (EOA)",
-    idempotencyKey: "invoice_id + version",
-    description: "Attaches a validated EIP-712 signature from the seller wallet to the invoice.",
-    requestSchema: {
-      invoice_id: "uuid",
-      signature: "0x65-byte-signature",
-      signer: "0x...",
-    },
-    responseSchema: {
-      invoice_id: "uuid",
-      status: "SIGNED",
-      signature_valid: true,
-      signer: "0x...",
-      signed_digest: "0x...",
-    },
-  },
-  {
-    name: "verify_invoice",
-    mutates: false,
-    authorization: "Buyer / Integrator",
-    idempotencyKey: "N/A",
-    description: "Validates schema, EIP-712 signature, seller identity binding, expiry, and replay nonce.",
-    requestSchema: {
-      invoice_id: "uuid",
-      expected_seller_id: "uuid",
-      expected_buyer_ref: "string",
-    },
-    responseSchema: {
-      decision: "PASS",
-      checks: {
-        schema: "PASS",
-        signature: "PASS",
-        identity_binding: "PASS",
-        expiry: "PASS",
-        nonce_unused: "PASS",
-        terms_consistent: "PASS",
-      },
-      invoice_digest: "0x...",
-      reason_codes: [],
-    },
-  },
-  {
-    name: "submit_delivery",
-    mutates: true,
-    authorization: "Seller Agent",
-    idempotencyKey: "invoice_id + delivery_version",
-    description: "Submits a digital artifact reference and signed manifest binding delivery to the invoice.",
-    requestSchema: {
-      invoice_id: "uuid",
-      artifact_uri: "s3://...",
-      artifact_sha256: "hex",
-      manifest: {
-        schema: "hashx.delivery.analytics.v1",
-        seller: "0x...",
-        generated_at: "RFC3339",
-        service_parameters_hash: "0x...",
-        artifact_sha256: "hex",
-      },
-      manifest_signature: "0x...",
-    },
-    responseSchema: {
-      delivery_id: "uuid",
-      status: "PENDING_VERIFICATION",
-      submitted_at: "RFC3339",
-    },
-  },
-  {
-    name: "verify_delivery",
-    mutates: false,
-    authorization: "Buyer / System Verifier",
-    idempotencyKey: "N/A",
-    description: "Recomputes deterministic analytics facts against HashKey Chain RPC.",
-    requestSchema: {
-      invoice_id: "uuid",
-      delivery_id: "uuid",
-    },
-    responseSchema: {
-      decision: "PASS",
-      verifier: "analytics_v1.0.0",
-      checks: {
-        manifest_signature: "PASS",
-        artifact_hash: "PASS",
-        schema: "PASS",
-        requested_address: "PASS",
-        block_range: "PASS",
-        transaction_count: "PASS",
-        sample_transaction_proofs: "PASS",
-        freshness: "PASS",
-      },
-      evidence_digest: "0x...",
-      reason_codes: [],
-    },
-  },
-  {
-    name: "request_payment",
-    mutates: true,
-    authorization: "Buyer Agent",
-    idempotencyKey: "invoice_id",
-    description: "Enforces payment eligibility and prepares the HSP payment order idempotently.",
-    requestSchema: {
-      invoice_id: "uuid",
-      payer: "0x...",
-      merchant_name: "HashX Global",
-    },
-    responseSchema: {
-      payment_attempt_id: "uuid",
-      state: "AWAITING_SIGNATURE_APPROVAL",
-      flow_id: "...",
-      payment_request_id: "...",
-      pay_to: "0x...",
-      payer: "0x...",
-      token_total_raw: "...",
-      quote_expires_at: "RFC3339",
-      eip712: {},
-      approval_summary: {},
-    },
-  },
-  {
-    name: "get_payment_status",
-    mutates: false,
-    authorization: "Buyer / Seller",
-    idempotencyKey: "HSP IDs",
-    description: "Polls HSP reconciler for authoritative payment progression and HashKey Chain tx hash.",
-    requestSchema: {
-      invoice_id: "uuid",
-    },
-    responseSchema: {
-      payment_attempt_id: "uuid",
-      hsp_status: "payment-processing",
-      flow_id: "...",
-      payment_request_id: "...",
-      attribution_verified: true,
-      tx_hash: null,
-      last_queried_at: "RFC3339",
-    },
-  },
-  {
-    name: "get_receipt",
-    mutates: false,
-    authorization: "Authorized Participant",
-    idempotencyKey: "invoice_id",
-    description: "Retrieves verifiable proof linking commercial intent, fulfillment, and HSP settlement.",
-    requestSchema: {
-      invoice_id: "uuid",
-    },
-    responseSchema: {
-      receipt_version: "1",
-      invoice_digest: "0x...",
-      seller: "0x...",
-      buyer_ref: "...",
-      delivery_evidence_digest: "0x...",
-      payment: {
-        hspStatus: "payment-finalized",
-        flow_id: "...",
-        payment_request_id: "...",
-        tx_hash: "0x...",
-        payer: "0x...",
-        payee: "0x...",
-        token_total_raw: "...",
-      },
-      evidence_registry_tx: "0x...",
-    },
-  },
-];
+type ExampleTab = "arguments" | "envelope" | "response" | "python" | "typescript";
 
 export default function DevelopersWorkspacePage() {
   const { mode } = useApp();
   const [selectedTool, setSelectedTool] = useState<MCPToolDef>(HASHX_TOOLS[0]);
+  const [exampleTab, setExampleTab] = useState<ExampleTab>("arguments");
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+
+  const getPythonSnippet = (tool: MCPToolDef) => {
+    return `# HashX Python SDK (MCP Client)
+from hashx import HashXClient
+
+client = HashXClient(base_url="${HASHX_API_URL}")
+
+# Call ${tool.name}
+result = client.call_tool(
+    name="${tool.name}",
+    arguments=${JSON.stringify(tool.requestSchema, null, 4)}
+)
+print("Result:", result)
+`;
+  };
+
+  const getTypescriptSnippet = (tool: MCPToolDef) => {
+    return `// HashX TypeScript SDK (MCP Client)
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+
+const transport = new SSEClientTransport(new URL("${HASHX_API_URL}/mcp"));
+const client = new Client({ name: "agent-runner", version: "1.0.0" }, { capabilities: {} });
+await client.connect(transport);
+
+// Execute ${tool.name}
+const response = await client.callTool({
+  name: "${tool.name}",
+  arguments: ${JSON.stringify(tool.requestSchema, null, 2)}
+});
+console.log(response);
+`;
+  };
+
+  const exampleData =
+    exampleTab === "arguments"
+      ? selectedTool.requestSchema
+      : exampleTab === "envelope"
+      ? { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: selectedTool.name, arguments: selectedTool.requestSchema } }
+      : selectedTool.responseSchema;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground tracking-tight flex items-center gap-2.5">
-            <Terminal className="w-6 h-6 text-primary-light" />
-            <span>Developer & MCP Integration</span>
-          </h1>
-          <p className="text-xs text-foreground-secondary mt-1">
-            Standardized Model Context Protocol (MCP) tool catalog for autonomous AI agents transacting on HashKey Chain.
-          </p>
+      {/* 1. Header & Reconciler Context Bar */}
+      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
+              <span>Console</span>
+              <span className="text-carbon-border">/</span>
+              <span>Developer</span>
+              <span className="text-carbon-border">/</span>
+              <span className="text-primary font-semibold">Model Context Protocol (MCP) Tool Registry v2.4</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase flex items-center gap-2.5">
+              <span>HashX MCP Protocol Suite</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/40 font-mono font-normal">
+                SPEC: 2024-11-05
+              </span>
+            </h1>
+            <p className="text-xs text-carbon-muted font-mono mt-0.5">
+              Standardized agent runtime for cryptographic commercial invoicing, RPC delivery witnessing, and HSP settlement.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-mono text-carbon-muted">
+            <div className="flex items-center gap-1.5 bg-carbon-panel px-2.5 py-1 rounded border border-carbon-border">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+              <span className="text-carbon-text">MCP Streamable HTTP: Ready</span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-surface-2 border border-border text-xs font-mono flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                mode === "demo" ? "bg-primary animate-pulse" : "bg-warning"
-              }`}
-            />
-            <span className="text-foreground">
-              {mode === "demo"
-                ? "Environment: Demo MCP Stubs"
-                : "Environment: Live Backend (Requires Allowlisted IP)"}
+        {/* Middleware Guarantee Banner */}
+        <div className="mt-4 pt-3 border-t border-carbon-border/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <span className="text-primary font-bold">MIDDLEWARE GUARANTEE:</span>
+            <span className="text-carbon-muted">
+              HashX provides the verification, intent binding, and delivery evidence middleware. Financial clearing is executed through HashKey HSP rails. HashX never takes custody of agent funds.
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+            <span className="px-2 py-0.5 rounded bg-carbon-void text-success border border-carbon-border">
+              ✓ Non-Custodial
+            </span>
+            <span className="px-2 py-0.5 rounded bg-carbon-void text-primary border border-carbon-border">
+              EIP-712 Schemas
+            </span>
+            <span className="px-2 py-0.5 rounded bg-carbon-void text-warning border border-carbon-border">
+              HashKey HSP Rails
             </span>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Architecture Notice (PRD Section 16 Mandate) */}
-      <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 text-xs text-foreground-secondary space-y-1.5">
-        <div className="flex items-center gap-2 text-primary-light font-semibold font-mono">
-          <Layers className="w-4 h-4" />
-          <span>Architectural Distinction: HashX Tools vs HSP Tools</span>
-        </div>
-        <p className="leading-relaxed">
-          The 8 tools below are <strong>HashX-owned commercial contracts</strong>. They govern intent, EIP-712 invoice authentication, delivery verification, and human authorization. They integrate with HSP's separate 8 tools (<code>get_chain_config</code>, <code>create_order</code>, <code>get_order</code>, <code>prepare_payment</code>, <code>finalize_payment</code>, <code>estimate_fee</code>, <code>submit_payment</code>, <code>query_payment</code>) on the backend via Streamable HTTP.
-        </p>
-      </div>
-
-      {/* Main Grid: Tool List on Left, Schemas on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Tool Selector */}
-        <div className="space-y-2">
-          <span className="text-xs font-mono uppercase tracking-wider text-foreground-muted block px-1">
-            HashX MCP Tools (8)
-          </span>
-
-          <div className="space-y-1.5">
-            {HASHX_TOOLS.map((tool) => {
-              const isSelected = selectedTool.name === tool.name;
-              return (
-                <button
-                  key={tool.name}
-                  type="button"
-                  onClick={() => setSelectedTool(tool)}
-                  className={`w-full text-left p-3 rounded-xl border text-xs transition-all ${
-                    isSelected
-                      ? "bg-surface-2 border-primary shadow-sm ring-1 ring-primary"
-                      : "bg-surface-1 border-border hover:bg-surface-hover"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono font-bold text-foreground">
-                      {tool.name}
-                    </span>
-                    <span
-                      className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${
-                        tool.mutates
-                          ? "bg-warning/10 text-warning border-warning/30"
-                          : "bg-surface-3 text-foreground-muted border-border"
-                      }`}
-                    >
-                      {tool.mutates ? "MUTATES" : "READ-ONLY"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-foreground-secondary line-clamp-1">
-                    {tool.description}
-                  </p>
-                </button>
-              );
-            })}
+      {/* 2. Main 2-Column Workspace: Left Nav Rail + Right Inspector */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT NAV RAIL (4 cols / 280px-340px) */}
+        <aside className="lg:col-span-4 bg-carbon-nav border border-carbon-border rounded p-4 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-carbon-border text-[11px] font-mono">
+            <span className="font-bold text-carbon-muted uppercase tracking-wider">
+              REGISTERED MCP TOOLS ({HASHX_TOOLS.length})
+            </span>
+            <span className="px-1.5 py-0.2 rounded bg-carbon-void text-success border border-carbon-border text-[10px]">
+              JSON-RPC 2.0
+            </span>
           </div>
-        </div>
 
-        {/* Right 2 Columns: Selected Tool Inspector */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="p-5 rounded-xl border border-border bg-surface-1 shadow-sm space-y-4">
-            <div className="flex items-start justify-between pb-3 border-b border-border">
+          <div className="space-y-4 font-mono">
+            {/* Group: Commercial Intent */}
+            <div>
+              <div className="text-[10px] text-carbon-muted uppercase tracking-wider px-2 py-1 flex justify-between">
+                <span>Rail 1: Commercial Intent</span>
+                <span className="text-primary font-semibold">EIP-712</span>
+              </div>
+              <div className="space-y-1 mt-1">
+                {HASHX_TOOLS.slice(0, 3).map((tool) => {
+                  const isSelected = selectedTool.name === tool.name;
+                  return (
+                    <button
+                      key={tool.name}
+                      onClick={() => setSelectedTool(tool)}
+                      className={cn(
+                        "w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex flex-col group border",
+                        isSelected
+                          ? "bg-carbon-panel text-carbon-text border-primary shadow-sm"
+                          : "border-transparent text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-carbon-text group-hover:text-primary">
+                          {tool.name}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] px-1 py-0.2 rounded",
+                            tool.mutates
+                              ? "bg-warning/15 text-warning border border-warning/30"
+                              : "bg-success/15 text-success border border-success/30"
+                          )}
+                        >
+                          {tool.mutates ? "MUTATION" : "READ-ONLY"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-carbon-muted truncate mt-0.5">
+                        {tool.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Group: Delivery Evidence */}
+            <div>
+              <div className="text-[10px] text-carbon-muted uppercase tracking-wider px-2 py-1 flex justify-between">
+                <span>Rail 2: Independent Evidence</span>
+                <span className="text-success font-semibold">RPC Witness</span>
+              </div>
+              <div className="space-y-1 mt-1">
+                {HASHX_TOOLS.slice(3, 5).map((tool) => {
+                  const isSelected = selectedTool.name === tool.name;
+                  return (
+                    <button
+                      key={tool.name}
+                      onClick={() => setSelectedTool(tool)}
+                      className={cn(
+                        "w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex flex-col group border",
+                        isSelected
+                          ? "bg-carbon-panel text-carbon-text border-primary shadow-sm"
+                          : "border-transparent text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-carbon-text group-hover:text-primary">
+                          {tool.name}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] px-1 py-0.2 rounded",
+                            tool.mutates
+                              ? "bg-warning/15 text-warning border border-warning/30"
+                              : "bg-success/15 text-success border border-success/30"
+                          )}
+                        >
+                          {tool.mutates ? "MUTATION" : "READ-ONLY"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-carbon-muted truncate mt-0.5">
+                        {tool.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Group: Settlement & Receipts */}
+            <div>
+              <div className="text-[10px] text-carbon-muted uppercase tracking-wider px-2 py-1 flex justify-between">
+                <span>Rail 3: Settlement &amp; Receipts</span>
+                <span className="text-primary font-semibold">HSP Rail</span>
+              </div>
+              <div className="space-y-1 mt-1">
+                {HASHX_TOOLS.slice(5).map((tool) => {
+                  const isSelected = selectedTool.name === tool.name;
+                  return (
+                    <button
+                      key={tool.name}
+                      onClick={() => setSelectedTool(tool)}
+                      className={cn(
+                        "w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex flex-col group border",
+                        isSelected
+                          ? "bg-carbon-panel text-carbon-text border-primary shadow-sm"
+                          : "border-transparent text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-carbon-text group-hover:text-primary">
+                          {tool.name}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] px-1 py-0.2 rounded",
+                            tool.mutates
+                              ? "bg-warning/15 text-warning border border-warning/30"
+                              : "bg-success/15 text-success border border-success/30"
+                          )}
+                        >
+                          {tool.mutates ? "MUTATION" : "READ-ONLY"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-carbon-muted truncate mt-0.5">
+                        {tool.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* RIGHT TOOL EXPLORER & TERMINAL (8 cols) */}
+        <div className="lg:col-span-8 space-y-5">
+          {/* Active Tool Header Card */}
+          <div className="bg-carbon-nav border border-carbon-border rounded p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-carbon-border">
               <div>
-                <h3 className="text-lg font-mono font-bold text-foreground">
-                  {selectedTool.name}
-                </h3>
-                <p className="text-xs text-foreground-secondary mt-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-mono font-bold text-carbon-text">
+                    {selectedTool.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] font-mono px-2 py-0.5 rounded border",
+                      selectedTool.mutates
+                        ? "bg-warning/15 text-warning border-warning/40 font-bold"
+                        : "bg-success/15 text-success border-success/40 font-bold"
+                    )}
+                  >
+                    {selectedTool.mutates ? "MUTATION (State Change)" : "IDEMPOTENT QUERY"}
+                  </span>
+                </div>
+                <p className="text-xs text-carbon-muted font-mono mt-1">
                   {selectedTool.description}
                 </p>
               </div>
 
-              <div className="text-right text-[11px] font-mono text-foreground-muted space-y-0.5">
-                <div>Auth: <span className="text-foreground">{selectedTool.authorization}</span></div>
-                <div>Idempotency: <span className="text-primary-light">{selectedTool.idempotencyKey}</span></div>
+              <div className="font-mono text-xs text-carbon-muted">
+                Authorization:{" "}
+                <span className="text-carbon-text font-semibold">{selectedTool.authorization}</span>
               </div>
             </div>
 
-            {/* Request Schema */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-mono uppercase text-foreground-muted font-semibold block">
-                Request Schema
-              </span>
-              <CodeViewer
-                title={`${selectedTool.name} Request Payload`}
-                data={selectedTool.requestSchema}
-                maxHeight="max-h-60"
-              />
+            {/* HTTP REST equivalent */}
+            {selectedTool.httpBinding && (
+              <div className="bg-carbon-panel p-2.5 rounded border border-carbon-border flex items-center justify-between text-xs font-mono">
+                <span className="text-carbon-muted">HTTP Equivalent:</span>
+                <span className="text-primary font-bold">{selectedTool.httpBinding}</span>
+              </div>
+            )}
+
+            {/* Parameter Specification Table */}
+            <div>
+              <h3 className="font-mono text-xs font-bold text-carbon-muted uppercase tracking-wider mb-2">
+                Schema Parameters ({selectedTool.params.length})
+              </h3>
+              <div className="border border-carbon-border rounded overflow-hidden">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="bg-carbon-void text-[10px] uppercase text-carbon-muted border-b border-carbon-border">
+                    <tr>
+                      <th className="py-2 px-3">Field</th>
+                      <th className="py-2 px-3">Type</th>
+                      <th className="py-2 px-3">Required</th>
+                      <th className="py-2 px-3">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-carbon-border bg-carbon-panel text-[11px]">
+                    {selectedTool.params.map((param) => (
+                      <tr key={param.name} className="hover:bg-carbon-void transition-colors">
+                        <td className="py-2 px-3 font-semibold text-carbon-text">{param.name}</td>
+                        <td className="py-2 px-3 text-primary">{param.type}</td>
+                        <td className="py-2 px-3">
+                          {param.required ? (
+                            <span className="text-warning font-bold">REQUIRED</span>
+                          ) : (
+                            <span className="text-carbon-muted">Optional</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-carbon-muted">{param.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Request / Code Inspector */}
+          <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-carbon-border pb-3">
+              <div className="flex items-center gap-1 overflow-x-auto text-xs font-mono">
+                {[
+                  { id: "arguments" as ExampleTab, label: "Arguments JSON" },
+                  { id: "envelope" as ExampleTab, label: "JSON-RPC 2.0" },
+                  { id: "response" as ExampleTab, label: "Response Schema" },
+                  { id: "python" as ExampleTab, label: "Python SDK" },
+                  { id: "typescript" as ExampleTab, label: "TypeScript SDK" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setExampleTab(tab.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded font-medium transition-colors shrink-0",
+                      exampleTab === tab.id
+                        ? "bg-carbon-panel text-carbon-text border border-carbon-border font-bold shadow-sm"
+                        : "text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={async () => {
+                  const text =
+                    exampleTab === "python"
+                      ? getPythonSnippet(selectedTool)
+                      : exampleTab === "typescript"
+                      ? getTypescriptSnippet(selectedTool)
+                      : JSON.stringify(exampleData, null, 2);
+                  await navigator.clipboard.writeText(text);
+                  setCopiedSnippet(true);
+                  setTimeout(() => setCopiedSnippet(false), 2000);
+                }}
+                className="px-2.5 py-1 rounded bg-carbon-panel hover:bg-carbon-void border border-carbon-border text-[11px] font-mono text-carbon-muted hover:text-carbon-text transition-colors flex items-center gap-1.5 self-end sm:self-auto"
+              >
+                {copiedSnippet ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedSnippet ? "Copied" : "Copy"}</span>
+              </button>
             </div>
 
-            {/* Response Schema */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-mono uppercase text-foreground-muted font-semibold block">
-                Response Schema
-              </span>
-              <CodeViewer
-                title={`${selectedTool.name} Response Payload`}
-                data={selectedTool.responseSchema}
-                maxHeight="max-h-60"
-              />
+            {/* Code Output Viewer */}
+            <div>
+              {exampleTab === "python" ? (
+                <pre className="p-4 rounded bg-carbon-void text-carbon-text font-mono text-xs overflow-x-auto border border-carbon-border">
+                  <code>{getPythonSnippet(selectedTool)}</code>
+                </pre>
+              ) : exampleTab === "typescript" ? (
+                <pre className="p-4 rounded bg-carbon-void text-carbon-text font-mono text-xs overflow-x-auto border border-carbon-border">
+                  <code>{getTypescriptSnippet(selectedTool)}</code>
+                </pre>
+              ) : (
+                <CodeViewer
+                  title={`${selectedTool.name} · ${exampleTab}.json`}
+                  data={exampleData}
+                  maxHeight="max-h-[380px]"
+                />
+              )}
             </div>
           </div>
         </div>

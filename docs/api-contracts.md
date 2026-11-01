@@ -1,4 +1,4 @@
-# HashX Global V1 — API & MCP Tool Contracts
+# HashXV1 — API & MCP Tool Contracts
 
 This document formalizes the eight HashX-owned tool interfaces and their typed schemas, as well as their integration boundary with HSP tools.
 
@@ -93,3 +93,4 @@ This document formalizes the eight HashX-owned tool interfaces and their typed s
 ### 2.8 `get_receipt`
 - **Mutates State**: No
 - **Returns**: Complete cryptographic evidence bundle linking invoice digest, fulfillment digest, human authorization hash, and finalized HSP settlement tx.
+

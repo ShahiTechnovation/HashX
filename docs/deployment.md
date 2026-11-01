@@ -1,4 +1,4 @@
-# HashX Global V1 — Deployment Guide
+# HashXV1 — Deployment Guide
 
 ## 1. Prerequisites
 - Node.js `v20+` (or `v24+`)
@@ -70,3 +70,4 @@ When transitioning from `demo` mode to `connected` mode:
 1. **Public Outbound IP Allowlist**: HashKey HSP QA requires the caller's public egress IP to be registered with HSP Operations.
 2. **HSP Centralized Credentials**: Merchant App Key and App Secret are configured on the backend server and never exposed in `NEXT_PUBLIC_*` frontend variables.
 3. **Database Uniqueness**: PostgreSQL with partial unique indices on active payment attempts enforces the single-payable-attempt invariant at the database layer.
+

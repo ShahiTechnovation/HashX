@@ -1,6 +1,6 @@
-# HashX Global V1 — Demo Guide & Judge Walkthrough
+# HashXV1 — Demo Guide & Judge Walkthrough
 
-This guide details how to reproduce and inspect the four core demonstration journeys in HashX Global.
+This guide details how to reproduce and inspect the four core demonstration journeys in HashX.
 
 All scenarios can be directly accessed and verified interactively in the web application at `/app/demo`.
 
@@ -56,3 +56,4 @@ All scenarios can be directly accessed and verified interactively in the web app
   3. Click **Inspect Golden Receipt** (or visit `/app/receipts/rcpt-golden-001`).
   4. View the cryptographic proof linking the original invoice digest, fulfillment digest, human authorization hash, and finalized HashKey Chain transaction.
   5. Test **Download JSON** or **Print Document** to inspect the verifiable proof artifact.
+

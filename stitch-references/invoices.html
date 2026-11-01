@@ -1,0 +1,817 @@
+﻿<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HashX â€” Invoice Workspace &amp; Commercial Agreement Registry</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary-container": "#955e00",
+            "on-secondary-fixed": "#00201c",
+            "on-primary-container": "#e8eaff",
+            "on-primary-fixed-variant": "#0035bd",
+            "on-secondary": "#003731",
+            "on-primary": "#002387",
+            "outline": "#8e90a1",
+            "on-tertiary-fixed-variant": "#653e00",
+            "outline-variant": "#444655",
+            "surface-container-low": "#171d1f",
+            "on-surface": "#dee3e6",
+            "on-tertiary": "#472a00",
+            "on-primary-fixed": "#001355",
+            "primary-fixed": "#dde1ff",
+            "inverse-surface": "#dee3e6",
+            "background": "#0e1416",
+            "surface-container": "#1a2123",
+            "surface-variant": "#303638",
+            "tertiary-fixed": "#ffddb8",
+            "on-error-container": "#ffdad6",
+            "on-surface-variant": "#c4c5d8",
+            "surface-container-high": "#252b2d",
+            "secondary-fixed": "#62fae3",
+            "on-secondary-container": "#004d44",
+            "secondary-container": "#03c6b2",
+            "surface-container-lowest": "#090f11",
+            "surface-container-highest": "#303638",
+            "error": "#ffb4ab",
+            "on-tertiary-container": "#ffe7d0",
+            "on-secondary-fixed-variant": "#005047",
+            "error-container": "#93000a",
+            "on-tertiary-fixed": "#2a1700",
+            "on-error": "#690005",
+            "secondary-fixed-dim": "#3cddc7",
+            "secondary": "#44e2cd",
+            "inverse-primary": "#234ee2",
+            "primary": "#b8c3ff",
+            "inverse-on-surface": "#2b3134",
+            "surface-dim": "#0e1416",
+            "tertiary-fixed-dim": "#ffb95f",
+            "on-background": "#dee3e6",
+            "surface-bright": "#343a3c",
+            "primary-container": "#345bee",
+            "tertiary": "#ffb95f",
+            "primary-fixed-dim": "#b8c3ff",
+            "surface-tint": "#b8c3ff",
+            "surface": "#0e1416"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "fontFamily": {
+            "headline": ["Space Grotesk", "sans-serif"],
+            "display": ["Space Grotesk", "sans-serif"],
+            "body": ["Inter", "sans-serif"],
+            "label": ["Public Sans", "sans-serif"],
+            "mono": ["Space Mono", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    /* Monospace telemetry styles */
+    .telemetry-tag {
+      font-family: 'Space Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+    /* Custom scrollbars for dense telemetry ledger */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090f11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #252b2d;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444655;
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<!-- ==================== TOP NAVIGATION BAR ==================== -->
+<header class="w-full bg-surface-container-lowest border-b border-surface-variant sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-6 max-w-[1560px] mx-auto h-16">
+<!-- Left: Protocol Brand + Active Status Pill -->
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-2.5">
+<div class="w-6 h-6 bg-primary-container flex items-center justify-center rounded-DEFAULT text-on-primary-container font-mono text-xs font-bold shadow-sm">
+            HX
+          </div>
+<span class="font-display text-lg tracking-tight text-on-surface uppercase font-bold">
+            HashX
+          </span>
+<span class="text-xs uppercase tracking-widest text-outline-variant font-mono pl-1 border-l border-surface-variant">
+            v2.4
+          </span>
+</div>
+<!-- Network Heartbeat Pill -->
+<div class="hidden lg:flex items-center space-x-2 px-2.5 py-1 bg-surface-container-low border border-surface-variant rounded-DEFAULT text-xs font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-secondary font-medium tracking-tight">HSP-Mainnet Connected</span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">Block #18,941,202</span>
+</div>
+</div>
+<!-- Center: Navigation Links from Shared Components JSON with Contextual Extension -->
+<nav class="hidden md:flex items-center space-x-8 text-xs font-label">
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors uppercase" href="#proof-circuit">
+          Proof Circuit
+        </a>
+<a class="text-secondary-fixed border-b-2 border-secondary-fixed pb-4 pt-4 font-semibold tracking-wider uppercase" href="#invoices">
+          Invoices &amp; Agreements
+        </a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors uppercase" href="#protocol-specs">
+          Protocol Specs
+        </a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors uppercase" href="#mcp-tools">
+          MCP Tools
+        </a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors uppercase" href="#adversarial-model">
+          Adversarial Model
+        </a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors uppercase" href="#documentation">
+          Documentation
+        </a>
+</nav>
+<!-- Right: Trailing Actions -->
+<div class="flex items-center space-x-3">
+<button class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-surface-container border border-surface-variant hover:border-outline text-on-surface-variant hover:text-on-surface text-xs font-mono rounded-DEFAULT transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">terminal</span>
+<span>Read Monograph</span>
+</button>
+<button class="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-primary-container text-on-primary-container hover:bg-inverse-primary text-xs font-mono font-medium rounded-DEFAULT transition-colors shadow-sm" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
+<span>Connect Protocol</span>
+</button>
+</div>
+</div>
+</header>
+<!-- ==================== SUB-HEADER / TELEMETRY & ACTION STRIP ==================== -->
+<section class="border-b border-surface-variant bg-surface-container-low">
+<div class="max-w-[1560px] mx-auto px-6 py-4">
+<!-- Breadcrumbs & Status Flag -->
+<div class="flex items-center justify-between text-xs font-mono mb-2">
+<div class="flex items-center space-x-2 text-outline">
+<span>Console</span>
+<span>/</span>
+<span>Invoices &amp; Agreements</span>
+<span>/</span>
+<span class="text-secondary-fixed font-medium">Commercial Registry v2.4</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-outline-variant font-mono text-xs">Mempool Nonce:</span>
+<span class="text-tertiary-fixed font-mono font-semibold text-xs bg-surface-container px-2 py-0.5 border border-surface-variant rounded-DEFAULT">#491</span>
+</div>
+</div>
+<!-- Main Operational Title & Primary Buttons -->
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 py-1">
+<div>
+<h1 class="text-xl sm:text-2xl font-headline font-bold text-on-surface tracking-tight uppercase">
+            Commercial Invoice Workspace &amp; EIP-712 Registry
+          </h1>
+<p class="text-xs text-outline font-body mt-0.5">
+            Deterministic cryptographic commitment &amp; independent chain witness settlement orchestrator.
+          </p>
+</div>
+<!-- Action Bar -->
+<div class="flex flex-wrap items-center gap-2">
+<button class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-surface-container border border-surface-variant hover:border-outline text-on-surface-variant hover:text-on-surface text-xs font-mono rounded-DEFAULT transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">fact_check</span>
+<span>Batch Verify Deliveries</span>
+</button>
+<button class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-surface-container border border-surface-variant hover:border-outline text-on-surface-variant hover:text-on-surface text-xs font-mono rounded-DEFAULT transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">download</span>
+<span>Export Audit Ledger (.csv)</span>
+</button>
+<button class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-primary-container hover:bg-inverse-primary text-on-primary-container text-xs font-mono font-semibold rounded-DEFAULT transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>+ Create EIP-712 Invoice</span>
+</button>
+</div>
+</div>
+<!-- Telemetry Strip -->
+<div class="mt-4 pt-3 border-t border-surface-variant/80 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs font-mono">
+<div class="flex items-center space-x-2">
+<span class="text-outline">Total Active Invoices:</span>
+<span class="text-on-surface font-semibold">24</span>
+</div>
+<span class="text-surface-variant">â€¢</span>
+<div class="flex items-center space-x-2">
+<span class="text-outline">Pending Settlement:</span>
+<span class="text-secondary-fixed font-semibold">$118,050.00 USDC</span>
+</div>
+<span class="text-surface-variant">â€¢</span>
+<div class="flex items-center space-x-2">
+<span class="text-outline">Signer Standard:</span>
+<span class="text-on-surface-variant font-mono">EIP-712 Typed Data v2</span>
+</div>
+<span class="text-surface-variant">â€¢</span>
+<div class="flex items-center space-x-2">
+<span class="text-outline">HSP Link:</span>
+<span class="text-secondary flex items-center gap-1 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            100% Synchronized
+          </span>
+</div>
+<span class="text-surface-variant">â€¢</span>
+<div class="flex items-center space-x-2">
+<span class="text-outline">Verification Engine:</span>
+<span class="text-on-surface">Dual-Rail Proof Circuit</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SPLIT-PANE OPERATIONS WORKSPACE ==================== -->
+<main class="max-w-[1560px] mx-auto px-6 py-6">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- ================= LEFT PANE (60% WIDTH): HIGH-DENSITY LEDGER ================= -->
+<div class="lg:col-span-7 flex flex-col space-y-4">
+<!-- Filter Tabs / Operational State Chips -->
+<div class="flex items-center overflow-x-auto pb-1 gap-1.5 text-xs font-mono border-b border-surface-variant">
+<button class="px-3 py-1.5 bg-surface-container-high text-secondary-fixed border-b-2 border-secondary-fixed font-semibold whitespace-nowrap">
+            All Invoices (24)
+          </button>
+<button class="px-3 py-1.5 text-outline hover:text-on-surface whitespace-nowrap hover:bg-surface-container transition-colors">
+            Awaiting Delivery (6)
+          </button>
+<button class="px-3 py-1.5 text-outline hover:text-on-surface whitespace-nowrap hover:bg-surface-container transition-colors">
+            Delivery Witnessed (5)
+          </button>
+<button class="px-3 py-1.5 text-tertiary-fixed hover:text-tertiary-fixed whitespace-nowrap hover:bg-surface-container transition-colors">
+            Awaiting Authorization (3)
+          </button>
+<button class="px-3 py-1.5 text-outline hover:text-on-surface whitespace-nowrap hover:bg-surface-container transition-colors">
+            In HSP Escrow (7)
+          </button>
+<button class="px-3 py-1.5 text-error hover:text-on-error whitespace-nowrap hover:bg-surface-container transition-colors">
+            Quarantined (2)
+          </button>
+</div>
+<!-- Search Bar & Filters -->
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-low p-2.5 border border-surface-variant rounded-DEFAULT">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-sm">search</span>
+<input class="w-full bg-surface-container-lowest border border-surface-variant text-on-surface text-xs font-mono pl-9 pr-3 py-1.5 rounded-DEFAULT focus:outline-none focus:border-primary-container transition-colors placeholder:text-outline-variant" placeholder="Search by Invoice ID, Agent Counterparty, Token or Digest..." type="text" value="#HX-8942"/>
+</div>
+<div class="flex items-center space-x-2">
+<div class="flex items-center bg-surface-container-lowest border border-surface-variant px-2.5 py-1.5 rounded-DEFAULT text-xs font-mono text-outline">
+<span class="material-symbols-outlined text-sm mr-1.5">calendar_today</span>
+<span>Past 30 Days</span>
+</div>
+<button class="p-1.5 bg-surface-container-lowest border border-surface-variant text-outline hover:text-on-surface rounded-DEFAULT transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+</button>
+</div>
+</div>
+<!-- High-Density Operations Ledger Table -->
+<div class="bg-surface-container-low border border-surface-variant rounded-DEFAULT overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-surface-variant text-outline font-mono text-[11px] uppercase tracking-wider">
+<th class="py-2.5 px-3">INVOICE ID</th>
+<th class="py-2.5 px-3">COUNTERPARTY (SELLER â†’ BUYER)</th>
+<th class="py-2.5 px-3">SCOPE &amp; SLA</th>
+<th class="py-2.5 px-3 text-right">AMOUNT (USDC)</th>
+<th class="py-2.5 px-3 text-center">SIGNED</th>
+<th class="py-2.5 px-3 text-center">DELIVERY</th>
+<th class="py-2.5 px-3 text-center">STATE</th>
+<th class="py-2.5 px-3 text-right">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-variant font-mono text-[11.5px]">
+<!-- ROW 1: ACTIVE / SELECTED (#HX-8942) -->
+<tr class="bg-surface-container-high/90 border-l-4 border-l-primary-container hover:bg-surface-container-high cursor-pointer transition-colors">
+<td class="py-3 px-3">
+<div class="flex items-center space-x-1.5">
+<span class="font-bold text-secondary-fixed">#HX-8942</span>
+<span class="material-symbols-outlined text-primary-container text-xs">verified</span>
+</div>
+<span class="text-[10px] text-outline block">12m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">DeepCompute 09</div>
+<div class="text-[10px] text-outline flex items-center space-x-1">
+<span>â†’ Autonomous Treasury Alpha</span>
+</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">LLM Batch Inference (4M tokens)</div>
+<div class="text-[10px] text-secondary">Latency SLA: 612ms</div>
+</td>
+<td class="py-3 px-3 text-right font-bold text-on-surface">
+                    $14,200.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40 font-medium">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40 font-medium">
+                      Witnessed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-tertiary-container/30 text-tertiary-fixed border border-tertiary/40 font-medium">
+                      Awaiting Quorum
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center px-2 py-1 bg-primary-container text-on-primary-container text-[11px] font-semibold rounded-DEFAULT">
+                      Review
+                    </span>
+</td>
+</tr>
+<!-- ROW 2: #HX-8945 -->
+<tr class="hover:bg-surface-container cursor-pointer transition-colors">
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">#HX-8945</div>
+<span class="text-[10px] text-outline block">48m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">Synthetix Oracle</div>
+<div class="text-[10px] text-outline">â†’ Autonomous Treasury Alpha</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">Market Witness Feed</div>
+<div class="text-[10px] text-outline">Tick freq: 100ms</div>
+</td>
+<td class="py-3 px-3 text-right font-medium text-on-surface">
+                    $9,500.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Witnessed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-tertiary-container/30 text-tertiary-fixed border border-tertiary/40">
+                      Awaiting Quorum
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-outline hover:text-on-surface underline text-[11px]">
+                      Review
+                    </button>
+</td>
+</tr>
+<!-- ROW 3: #HX-8948 (QUARANTINED / FAILED) -->
+<tr class="hover:bg-surface-container cursor-pointer transition-colors bg-error-container/10">
+<td class="py-3 px-3">
+<div class="font-medium text-error">#HX-8948</div>
+<span class="text-[10px] text-outline block">1h 14m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">Rogue Scraper</div>
+<div class="text-[10px] text-outline">â†’ Autonomous Treasury Alpha</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">Web Scraping Task</div>
+<div class="text-[10px] text-error">Hash mismatch: Merkle fail</div>
+</td>
+<td class="py-3 px-3 text-right font-medium text-on-surface">
+                    $8,150.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-error-container/40 text-error border border-error/50">
+                      FAILED
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-error-container text-error border border-error/60 font-semibold uppercase">
+                      QUARANTINED
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-error hover:underline text-[11px] font-medium">
+                      Inspect
+                    </button>
+</td>
+</tr>
+<!-- ROW 4: #HX-8939 (IN ESCROW) -->
+<tr class="hover:bg-surface-container cursor-pointer transition-colors">
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">#HX-8939</div>
+<span class="text-[10px] text-outline block">2h 40m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">LangChain Swarm</div>
+<div class="text-[10px] text-outline">â†’ Autonomous Treasury Alpha</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">Multi-Agent Orchestration</div>
+<div class="text-[10px] text-outline">Task Nodes: 64 instances</div>
+</td>
+<td class="py-3 px-3 text-right font-medium text-on-surface">
+                    $22,500.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Witnessed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-primary-container/20 text-primary border border-primary/30">
+                      In Escrow
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-outline hover:text-on-surface underline text-[11px]">
+                      Track
+                    </button>
+</td>
+</tr>
+<!-- ROW 5: #HX-8935 (FINALIZED) -->
+<tr class="hover:bg-surface-container cursor-pointer transition-colors">
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">#HX-8935</div>
+<span class="text-[10px] text-outline block">4h 12m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">GPU Cluster 4</div>
+<div class="text-[10px] text-outline">â†’ Autonomous Treasury Alpha</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">ZK Proof Prover</div>
+<div class="text-[10px] text-secondary">Verified Halo2 circuit</div>
+</td>
+<td class="py-3 px-3 text-right font-medium text-on-surface">
+                    $4,700.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Witnessed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/30 text-secondary-fixed border border-secondary/40">
+                      Finalized
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-secondary hover:underline text-[11px]">
+                      Receipt
+                    </button>
+</td>
+</tr>
+<!-- ROW 6: #HX-8932 (IN DELIVERY) -->
+<tr class="hover:bg-surface-container cursor-pointer transition-colors">
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">#HX-8932</div>
+<span class="text-[10px] text-outline block">5h 50m ago</span>
+</td>
+<td class="py-3 px-3">
+<div class="font-medium text-on-surface">Autonome Daemon</div>
+<div class="text-[10px] text-outline">â†’ Autonomous Treasury Alpha</div>
+</td>
+<td class="py-3 px-3">
+<div class="text-on-surface truncate max-w-[150px]">Vector Embedding Sync</div>
+<div class="text-[10px] text-outline">Qdrant stream: 120k docs</div>
+</td>
+<td class="py-3 px-3 text-right font-medium text-on-surface">
+                    $12,400.00
+                  </td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-secondary-container/20 text-secondary border border-secondary/40">
+                      Signed
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-DEFAULT text-[10px] bg-tertiary-container/30 text-tertiary-fixed border border-tertiary/40">
+                      Awaiting RPC
+                    </span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] bg-surface-container text-outline border border-surface-variant">
+                      In Delivery
+                    </span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-outline hover:text-on-surface underline text-[11px]">
+                      Details
+                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer & Pagination -->
+<div class="bg-surface-container border-t border-surface-variant px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-outline">
+<div class="flex items-center space-x-3">
+<span>Showing 6 of 24 Active Invoices</span>
+<span class="text-surface-variant">|</span>
+<div class="flex items-center space-x-1.5">
+<span>Rows:</span>
+<select class="bg-surface-container-lowest border border-surface-variant text-on-surface text-xs rounded-DEFAULT px-2 py-0.5 focus:outline-none">
+<option>10</option>
+<option selected="">25</option>
+<option>50</option>
+</select>
+</div>
+</div>
+<div class="flex items-center space-x-2">
+<span class="inline-flex items-center text-[11px] text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1.5"></span>
+                Mempool Synced
+              </span>
+<div class="inline-flex rounded-DEFAULT border border-surface-variant overflow-hidden">
+<button class="px-2.5 py-1 bg-surface-container-lowest text-outline hover:text-on-surface border-r border-surface-variant">
+                  â† Prev
+                </button>
+<button class="px-2.5 py-1 bg-surface-container text-on-surface font-semibold border-r border-surface-variant">
+                  1
+                </button>
+<button class="px-2.5 py-1 bg-surface-container-lowest text-outline hover:text-on-surface border-r border-surface-variant">
+                  2
+                </button>
+<button class="px-2.5 py-1 bg-surface-container-lowest text-outline hover:text-on-surface">
+                  Next â†’
+                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Telemetry Notice -->
+<div class="p-3 bg-surface-container-lowest border border-surface-variant rounded-DEFAULT flex items-start space-x-3 text-xs font-mono">
+<span class="material-symbols-outlined text-secondary text-base mt-0.5">policy</span>
+<div>
+<div class="text-on-surface font-semibold">Dual-Rail Settlement Protocol Active</div>
+<div class="text-outline text-[11px] leading-relaxed mt-0.5">
+              HashX monitors both Commercial Intent (EIP-712 seller signature) and Chain Evidence (RPC independent delivery witness). Final funds release requires matching Merkle state roots.
+            </div>
+</div>
+</div>
+</div>
+<!-- ================= RIGHT PANE (40% WIDTH): ACTIVE COMMERCIAL AGREEMENT DETAIL ================= -->
+<div class="lg:col-span-5 flex flex-col space-y-4">
+<div class="bg-surface-container-low border border-surface-variant rounded-DEFAULT shadow-lg flex flex-col h-full">
+<!-- Detail Header & Status Banner -->
+<div class="p-4 border-b border-surface-variant bg-surface-container">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[10px] font-mono uppercase tracking-widest text-outline">
+                  COMMERCIAL SPECIFICATION
+                </span>
+<h2 class="text-base font-headline font-bold text-on-surface tracking-tight mt-0.5">
+                  INVOICE RECORD #HX-8942 // EIP-712 AUTHENTICATED
+                </h2>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[10px] font-mono uppercase bg-secondary-container/20 text-secondary border border-secondary/50 font-semibold tracking-wide">
+                VERIFIED COMMERCIAL AGREEMENT
+              </span>
+</div>
+</div>
+<!-- Document & Financial Specification Section -->
+<div class="p-4 space-y-3 border-b border-surface-variant text-xs">
+<div class="text-[10px] font-mono uppercase tracking-wider text-outline font-semibold">
+              01 // FINANCIAL SETTLEMENT SPEC
+            </div>
+<div class="grid grid-cols-2 gap-3 bg-surface-container-lowest p-3 border border-surface-variant rounded-DEFAULT font-mono text-xs">
+<div>
+<span class="text-outline block text-[10px]">TOTAL VALUE</span>
+<span class="text-lg font-bold text-secondary-fixed">$14,200.00</span>
+<span class="text-[10px] text-outline block">14,200,000,000 uUSDC (6 dec)</span>
+</div>
+<div>
+<span class="text-outline block text-[10px]">ESCROW NETWORK</span>
+<span class="text-on-surface font-semibold block mt-0.5">HashKey HSP Core</span>
+<span class="text-[10px] text-secondary">Contract: 0x981A...31FA</span>
+</div>
+<div class="col-span-2 pt-2 border-t border-surface-variant flex flex-col space-y-1">
+<div class="flex justify-between">
+<span class="text-outline">Created UTC:</span>
+<span class="text-on-surface">2026-11-01 23:40:19 UTC</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Seller Agent:</span>
+<span class="text-on-surface font-mono">DeepCompute 09 (0x429A...38F1)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Target Debitor:</span>
+<span class="text-on-surface font-mono">Autonomous Treasury Alpha (0x19F2...8b3A)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Cryptographic EIP-712 Intent Signature Summary -->
+<div class="p-4 space-y-3 border-b border-surface-variant text-xs">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono uppercase tracking-wider text-outline font-semibold">
+                02 // CRYPTOGRAPHIC EIP-712 INTENT SIGNATURE
+              </span>
+<span class="text-[10px] font-mono text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                secp256k1 VALID
+              </span>
+</div>
+<div class="bg-surface-container-lowest p-3 border border-surface-variant rounded-DEFAULT space-y-2 font-mono text-[11px]">
+<div>
+<div class="text-outline text-[10px]">DOMAIN SPECIFICATION</div>
+<div class="text-on-surface flex justify-between">
+<span>Name: "HashX Protocol v2.4"</span>
+<span class="text-outline">ChainID: 13371</span>
+</div>
+<div class="text-outline text-[10px]">Contract: 0x71C04B991F29b9F3948A</div>
+</div>
+<div class="pt-2 border-t border-surface-variant">
+<div class="text-outline text-[10px]">EIP-712 DIGEST HASH</div>
+<div class="text-secondary-fixed break-all font-mono text-[10.5px]">
+                  0x8a9f24c01e523f4ba9820f18839cb8a192803b9f842cb1a828941bb42c
+                </div>
+</div>
+<div class="pt-2 border-t border-surface-variant">
+<div class="text-outline text-[10px]">SIGNER PUBLIC KEY &amp; IDENTITY</div>
+<div class="flex items-center justify-between text-on-surface">
+<span class="text-[10.5px]">0x38F1a82910...902a</span>
+<span class="text-[10px] bg-secondary-container/20 text-secondary px-1.5 py-0.5 rounded-DEFAULT">
+                    Identity Matched
+                  </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Commercial Scope & SLA Terms -->
+<div class="p-4 space-y-2 border-b border-surface-variant text-xs">
+<span class="text-[10px] font-mono uppercase tracking-wider text-outline font-semibold block">
+              03 // COMMERCIAL SCOPE &amp; SLA TERMS
+            </span>
+<div class="space-y-1.5 font-mono text-[11px] bg-surface-container-lowest p-3 border border-surface-variant rounded-DEFAULT">
+<div class="flex justify-between">
+<span class="text-outline">Service Deliverable:</span>
+<span class="text-on-surface text-right font-medium">4,000,000 FP8 Tokens Llama-3.3-70B</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">SLA Latency Bound:</span>
+<span class="text-secondary text-right">&lt;850ms per batch (Actual: 612ms)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Reorg Defense &amp; Penalties:</span>
+<span class="text-on-surface text-right">100% Escrow refund on missing proof</span>
+</div>
+</div>
+</div>
+<!-- Chain Evidence Rail: Delivery Proof & Consensus -->
+<div class="p-4 space-y-2 border-b border-surface-variant text-xs">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono uppercase tracking-wider text-outline font-semibold">
+                04 // DELIVERY EVIDENCE &amp; RPC CONSENSUS
+              </span>
+<span class="text-[10px] font-mono text-secondary">3/3 Nodes Verified</span>
+</div>
+<div class="bg-surface-container-lowest p-3 border border-surface-variant rounded-DEFAULT space-y-2 font-mono text-[11px]">
+<div>
+<span class="text-outline text-[10px] block">DELIVERABLE IPFS URI</span>
+<div class="text-on-surface break-all text-[10.5px]">
+                  ipfs://bafybeicx4z7e9w849qm018a99k4z0029bca71092e01f01
+                </div>
+<span class="text-[10px] text-outline block mt-0.5">Payload Size: 42.8 MB â€¢ MIME: application/x-parquet-inference</span>
+</div>
+<div class="pt-2 border-t border-surface-variant flex justify-between items-center">
+<div>
+<span class="text-outline text-[10px] block">OUTPUT MERKLE ROOT</span>
+<span class="text-on-surface text-[10.5px]">0x3d4f88c2e99810fba014c291881a991a</span>
+</div>
+<span class="px-2 py-0.5 bg-secondary-container/20 text-secondary text-[10px] rounded-DEFAULT">
+                  Consensus 100.0%
+                </span>
+</div>
+</div>
+</div>
+<!-- Dual-Rail Verification Gate Checklist -->
+<div class="p-4 space-y-2 text-xs">
+<span class="text-[10px] font-mono uppercase tracking-wider text-outline font-semibold block">
+              05 // PROTOCOL VERIFICATION CHECKLIST
+            </span>
+<div class="space-y-1.5 font-mono text-xs">
+<div class="flex items-center justify-between p-2 bg-surface-container-lowest border border-surface-variant rounded-DEFAULT">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary text-sm">check_circle</span>
+<span class="text-on-surface">Gate 1: EIP-712 Signature Valid</span>
+</div>
+<span class="text-secondary text-[10px] uppercase font-bold">Pass</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-surface-container-lowest border border-surface-variant rounded-DEFAULT">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary text-sm">check_circle</span>
+<span class="text-on-surface">Gate 2: Counterparty Identity Bound</span>
+</div>
+<span class="text-secondary text-[10px] uppercase font-bold">Pass</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-surface-container-lowest border border-surface-variant rounded-DEFAULT">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary text-sm">check_circle</span>
+<span class="text-on-surface">Gate 3: Deliverable IPFS Witnessed</span>
+</div>
+<span class="text-secondary text-[10px] uppercase font-bold">Pass</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-surface-container-lowest border border-tertiary-container rounded-DEFAULT">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-tertiary-fixed text-sm">pending</span>
+<span class="text-tertiary-fixed font-medium">Gate 4: Dual-Key Human Quorum</span>
+</div>
+<span class="text-tertiary-fixed text-[10px] uppercase font-bold">Awaiting Key 2</span>
+</div>
+</div>
+</div>
+<!-- Bottom Action Execution Bar -->
+<div class="p-4 bg-surface-container border-t border-surface-variant mt-auto space-y-2">
+<div class="grid grid-cols-2 gap-2">
+<button class="w-full py-2 px-3 bg-primary-container hover:bg-inverse-primary text-on-primary-container text-xs font-mono font-bold rounded-DEFAULT transition-colors flex items-center justify-center space-x-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-sm">troubleshoot</span>
+<span>Inspect in Trust Inspector</span>
+</button>
+<button class="w-full py-2 px-3 bg-tertiary-container/30 hover:bg-tertiary-container/50 border border-tertiary/60 text-tertiary-fixed text-xs font-mono font-bold rounded-DEFAULT transition-colors flex items-center justify-center space-x-1.5" type="button">
+<span class="material-symbols-outlined text-sm">key</span>
+<span>Authorize &amp; Sign Quorum</span>
+</button>
+</div>
+<button class="w-full py-1.5 px-3 bg-surface-container-lowest hover:bg-surface-container-high border border-surface-variant text-outline hover:text-on-surface text-xs font-mono rounded-DEFAULT transition-colors flex items-center justify-center space-x-1.5" type="button">
+<span class="material-symbols-outlined text-sm">code</span>
+<span>Download Signed EIP-712 JSON Schema</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- ==================== INSTITUTIONAL FOOTER ==================== -->
+<footer class="w-full bg-surface-container-lowest border-t border-surface-variant mt-16">
+<div class="w-full px-6 py-8 max-w-[1560px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<!-- Brand & Monograph Telemetry Text -->
+<div class="space-y-1">
+<div class="flex items-center space-x-2">
+<span class="font-display text-sm tracking-tight text-on-surface uppercase font-bold">
+            HashX Protocol
+          </span>
+<span class="text-xs text-outline font-mono">| Deterministic Settlement &amp; Intent Proofing</span>
+</div>
+<p class="text-xs text-outline font-mono">
+          Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing. All telemetry immutable.
+        </p>
+</div>
+<!-- Links from Shared Components JSON Footer -->
+<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono">
+<a class="text-outline hover:text-secondary-fixed transition-colors" href="#whitepaper">
+          Whitepaper v1.4
+        </a>
+<a class="text-outline hover:text-secondary-fixed transition-colors" href="#proof-spec">
+          Proof Circuit Spec
+        </a>
+<a class="text-outline hover:text-secondary-fixed transition-colors" href="#registry">
+          MCP Tool Registry
+        </a>
+<a class="text-outline hover:text-secondary-fixed transition-colors" href="#audits">
+          Audits &amp; Verification
+        </a>
+<a class="text-outline hover:text-secondary-fixed transition-colors" href="#incidents">
+          Incident Disclosure
+        </a>
+<span class="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-[11px] bg-secondary-container/20 text-secondary border border-secondary/40 font-medium">
+          Status: HSP-Mainnet Live
+        </span>
+</div>
+</div>
+</footer>
+</body></html>

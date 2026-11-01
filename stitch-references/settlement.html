@@ -1,0 +1,737 @@
+﻿<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HashX â€” Settlement Reconciler &amp; Finality Track</title>
+<!-- Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Script -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-tertiary-fixed-variant": "#653e00",
+            "on-secondary": "#003731",
+            "background": "#0e1416",
+            "primary-container": "#345bee",
+            "primary": "#b8c3ff",
+            "outline": "#8e90a1",
+            "on-background": "#dee3e6",
+            "on-secondary-fixed": "#00201c",
+            "on-tertiary-fixed": "#2a1700",
+            "surface-container-highest": "#303638",
+            "primary-fixed": "#dde1ff",
+            "on-surface-variant": "#c4c5d8",
+            "inverse-on-surface": "#2b3134",
+            "error-container": "#93000a",
+            "secondary-container": "#03c6b2",
+            "surface-container-lowest": "#090f11",
+            "on-surface": "#dee3e6",
+            "on-primary-container": "#e8eaff",
+            "on-tertiary": "#472a00",
+            "secondary-fixed": "#62fae3",
+            "on-error": "#690005",
+            "surface-variant": "#303638",
+            "primary-fixed-dim": "#b8c3ff",
+            "surface-container": "#1a2123",
+            "surface-container-low": "#171d1f",
+            "on-secondary-container": "#004d44",
+            "surface": "#0e1416",
+            "outline-variant": "#444655",
+            "secondary": "#44e2cd",
+            "tertiary-fixed-dim": "#ffb95f",
+            "tertiary-fixed": "#ffddb8",
+            "on-tertiary-container": "#ffe7d0",
+            "on-primary-fixed": "#001355",
+            "inverse-surface": "#dee3e6",
+            "surface-container-high": "#252b2d",
+            "on-primary": "#002387",
+            "on-error-container": "#ffdad6",
+            "error": "#ffb4ab",
+            "tertiary-container": "#955e00",
+            "inverse-primary": "#234ee2",
+            "tertiary": "#ffb95f",
+            "surface-tint": "#b8c3ff",
+            "secondary-fixed-dim": "#3cddc7",
+            "surface-dim": "#0e1416",
+            "surface-bright": "#343a3c",
+            "on-secondary-fixed-variant": "#005047",
+            "on-primary-fixed-variant": "#0035bd"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {},
+          "fontFamily": {
+            "headline": ["Space Grotesk"],
+            "display": ["Space Grotesk"],
+            "body": ["Inter"],
+            "label": ["Public Sans"],
+            "mono": ["Space Mono", "monospace"]
+          },
+          "fontSize": {}
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 1.15rem;
+      line-height: 1;
+      display: inline-flex;
+      vertical-align: middle;
+    }
+    /* Architectural Custom Grid lines */
+    .bg-grid-carbon {
+      background-image: linear-gradient(to right, rgba(39, 49, 55, 0.25) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(39, 49, 55, 0.25) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    /* Custom Scrollbar for High-density ledgers */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090f11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #252b2d;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444655;
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body antialiased selection:bg-primary selection:text-on-primary-fixed">
+<!-- TOP APP BAR (Shared Components JSON faithful execution) -->
+<header class="w-full bg-surface-container-lowest border-b border-outline-variant/30 sticky top-0 z-50 backdrop-blur-md">
+<div class="flex justify-between items-center w-full px-6 md:px-10 max-w-[1440px] mx-auto h-16">
+<!-- Left: Brand Anchor & Telemetry Badges -->
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2 group" href="#">
+<div class="w-7 h-7 bg-primary-container flex items-center justify-center rounded">
+<span class="text-on-primary-container font-mono font-bold text-sm tracking-tighter">Hx</span>
+</div>
+<span class="font-display text-lg tracking-tight text-on-surface font-semibold uppercase">HashX</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-primary border border-outline-variant/40 tracking-wider">v2.4 CORE</span>
+</a>
+<!-- System Telemetry Ticker -->
+<div class="hidden xl:flex items-center gap-4 text-xs font-mono text-outline border-l border-outline-variant/30 pl-6">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed animate-pulse"></span>
+<span class="text-on-surface-variant">Mainnet Reconciler:</span>
+<span class="text-secondary-fixed font-semibold">142ms latency</span>
+</div>
+<span class="text-outline-variant">/</span>
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant">Block:</span>
+<span class="text-on-surface">#19,482,918</span>
+</div>
+<span class="text-outline-variant">/</span>
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant">Epoch:</span>
+<span class="text-on-surface">#608,841</span>
+</div>
+</div>
+</div>
+<!-- Center: Navigation Links with Exact Active State Mapping -->
+<nav class="hidden md:flex items-center gap-6 font-mono text-xs">
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors duration-150" href="#">Proof Circuit</a>
+<!-- Active destination: Settlement -->
+<a class="text-secondary-fixed border-b-2 border-secondary-fixed pb-1 font-semibold flex items-center gap-1 tracking-wide" href="#">
+<span>Settlement</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
+</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors duration-150" href="#">Protocol Specs</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors duration-150" href="#">MCP Tools</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors duration-150" href="#">Adversarial Model</a>
+<a class="text-on-surface-variant hover:text-on-surface tracking-wider transition-colors duration-150" href="#">Documentation</a>
+</nav>
+<!-- Right: Action Anchors & Terminal Launch -->
+<div class="flex items-center gap-3">
+<button class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-on-surface-variant hover:text-on-surface border border-outline-variant/50 hover:bg-surface-container transition-colors">
+<span>Read Monograph</span>
+<span data-icon="menu_book"><span class="material-symbols-outlined text-sm">menu_book</span></span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono font-semibold bg-primary-container text-on-primary-container hover:bg-primary-container/90 transition-all rounded shadow-sm">
+<span data-icon="terminal"><span class="material-symbols-outlined text-sm">terminal</span></span>
+<span>Connect Protocol</span>
+</button>
+</div>
+</div>
+</header>
+<!-- MAIN VIEWPORT CONTAINER -->
+<main class="w-full max-w-[1440px] mx-auto px-6 md:px-10 py-6 space-y-6">
+<!-- SECTION 1: Operational Header & Breadcrumbs & Realtime KPI Ribbon -->
+<div class="flex flex-col gap-4 border-b border-outline-variant/30 pb-6">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div>
+<!-- Technical Breadcrumb -->
+<div class="flex items-center gap-2 text-xs font-mono text-outline mb-1.5">
+<span>Console</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant">Settlement Explorer</span>
+<span class="text-outline-variant">/</span>
+<span class="text-secondary-fixed">HashKey HSP Reconciler</span>
+</div>
+<!-- Title & Active Badge -->
+<div class="flex items-center gap-3">
+<h1 class="font-headline text-2xl font-bold tracking-tight text-on-surface uppercase">
+              Settlement Reconciler &amp; Finality Monitor
+            </h1>
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-container text-secondary border border-secondary/40 tracking-wider">
+              RECONCILER ENGINE ACTIVE // EPOCH 608,841
+            </span>
+</div>
+</div>
+<!-- Utility Switchers -->
+<div class="flex items-center gap-2">
+<div class="flex items-center rounded bg-surface-container-low border border-outline-variant/30 p-0.5 font-mono text-xs">
+<button class="px-2.5 py-1 rounded bg-surface-container text-secondary font-semibold border border-outline-variant/50">L1 Mainnet</button>
+<button class="px-2.5 py-1 text-outline hover:text-on-surface">Arbitrum HSP</button>
+<button class="px-2.5 py-1 text-outline hover:text-on-surface">Base Sepolia</button>
+</div>
+<button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-xs font-mono text-on-surface-variant hover:text-on-surface border border-outline-variant/40">
+<span data-icon="refresh"><span class="material-symbols-outlined text-sm">refresh</span></span>
+<span>Sync</span>
+</button>
+</div>
+</div>
+<!-- Telemetry Metric Strip -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+<div class="bg-surface-container-low border border-outline-variant/30 p-3.5 rounded flex flex-col justify-between">
+<span class="text-[11px] font-mono text-outline uppercase tracking-wider">Active Settlements in Flight</span>
+<div class="flex items-baseline justify-between mt-2">
+<span class="font-headline text-2xl font-bold text-tertiary-fixed-dim">7</span>
+<span class="text-[10px] font-mono text-tertiary px-1.5 py-0.5 bg-tertiary-container/30 border border-tertiary/20 rounded">Awaiting Epoch</span>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 p-3.5 rounded flex flex-col justify-between">
+<span class="text-[11px] font-mono text-outline uppercase tracking-wider">24H Finalized Volume</span>
+<div class="flex items-baseline justify-between mt-2">
+<span class="font-headline text-2xl font-bold text-on-surface">$319,500.00 <span class="text-xs text-outline font-normal">USDC</span></span>
+<span class="text-[10px] font-mono text-secondary-fixed px-1.5 py-0.5 bg-on-secondary/30 border border-secondary-fixed/20 rounded">100% Attested</span>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 p-3.5 rounded flex flex-col justify-between">
+<span class="text-[11px] font-mono text-outline uppercase tracking-wider">HSP Routing Engine</span>
+<div class="flex items-baseline justify-between mt-2">
+<span class="font-headline text-xl font-bold text-primary">v3.1.2</span>
+<span class="text-[11px] font-mono text-outline">0x71c0...948a</span>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 p-3.5 rounded flex flex-col justify-between">
+<span class="text-[11px] font-mono text-outline uppercase tracking-wider">L1 Epoch Consensus</span>
+<div class="flex items-baseline justify-between mt-2">
+<span class="font-headline text-2xl font-bold text-secondary-fixed">100.0%</span>
+<div class="flex items-center gap-1 text-[10px] font-mono text-secondary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
+<span>Healthy</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 2: SIGNATURE COMPONENT â€” THE FINALITY TRACK -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded p-6 shadow-2xl relative overflow-hidden">
+<!-- Background subtle technical crosshairs -->
+<div class="absolute top-0 right-0 p-3 font-mono text-[9px] text-outline/30 uppercase tracking-widest select-none pointer-events-none">
+        PROTOCOL PROOF CIRCUIT // CASPER ATTESTATION GAUNTLET
+      </div>
+<!-- Focused Tx Meta Row -->
+<div class="flex flex-wrap items-center justify-between pb-6 border-b border-outline-variant/30 gap-4">
+<div class="flex items-center gap-4">
+<div class="px-2.5 py-1 bg-surface-container-high border border-outline-variant/60 rounded font-mono text-xs font-bold text-secondary-fixed">
+            #HSP-8942-HK
+          </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline text-lg font-bold text-on-surface">Batch Settlement Intent: DeepCompute 09</span>
+<span class="text-xs font-mono text-outline-variant">|</span>
+<span class="text-xs font-mono text-outline">Agent ID: 0x429A...38F1</span>
+</div>
+<p class="text-xs text-on-surface-variant font-mono mt-0.5">Dual-Witness cryptographic seal signed at 23:46:00.104 UTC</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<span class="text-[11px] font-mono text-outline uppercase block">Gross Obligation</span>
+<span class="font-headline text-xl font-bold text-on-surface">$14,200.00 <span class="text-xs text-outline font-normal">USDC</span></span>
+</div>
+<!-- Distinct SAFE Stage Badge in Header -->
+<div class="px-3 py-1.5 rounded bg-surface-container border border-outline-variant flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-500/20 animate-pulse"></span>
+<div class="text-left font-mono">
+<span class="text-[9px] text-sky-300 block leading-tight font-bold tracking-wider">CURRENT STAGE</span>
+<span class="text-xs text-sky-200 font-bold uppercase tracking-wider">L1 SAFE (38/64)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Architectural 5-Stage Horizontal Finality Timeline -->
+<div class="py-8">
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+<!-- STAGE 01: SUBMITTED (COMPLETED) -->
+<div class="relative bg-surface-container p-4 rounded border border-outline-variant/40 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-mono text-outline font-bold">STAGE 01</span>
+<!-- Completed Mint Checkmark -->
+<span class="flex items-center gap-1 text-[11px] font-mono text-secondary-fixed font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span> PASSED
+                </span>
+</div>
+<h3 class="font-headline text-sm font-bold text-on-surface uppercase tracking-tight">SUBMITTED</h3>
+<p class="text-[11px] font-mono text-outline mt-1 leading-snug">
+                HSP Ingested &amp; Verified.<br/>
+                Tx: <span class="text-on-surface-variant font-mono">0x7c91...48b1</span>
+</p>
+</div>
+<div class="pt-3 border-t border-outline-variant/20 mt-3 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>Timestamp</span>
+<span class="text-on-surface-variant">23:46:00 UTC</span>
+</div>
+</div>
+<!-- STAGE 02: PROCESSING (COMPLETED) -->
+<div class="relative bg-surface-container p-4 rounded border border-outline-variant/40 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-mono text-outline font-bold">STAGE 02</span>
+<span class="flex items-center gap-1 text-[11px] font-mono text-secondary-fixed font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span> PASSED
+                </span>
+</div>
+<h3 class="font-headline text-sm font-bold text-on-surface uppercase tracking-tight">PROCESSING</h3>
+<p class="text-[11px] font-mono text-outline mt-1 leading-snug">
+                Batch Mempool Validated.<br/>
+                Sequence Nonce: <span class="text-on-surface-variant">#491 Locked</span>
+</p>
+</div>
+<div class="pt-3 border-t border-outline-variant/20 mt-3 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>Relay Gas</span>
+<span class="text-on-surface-variant">2.40 USDC</span>
+</div>
+</div>
+<!-- STAGE 03: INCLUDED (COMPLETED) -->
+<div class="relative bg-surface-container p-4 rounded border border-outline-variant/40 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-mono text-outline font-bold">STAGE 03</span>
+<span class="flex items-center gap-1 text-[11px] font-mono text-secondary-fixed font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span> PASSED
+                </span>
+</div>
+<h3 class="font-headline text-sm font-bold text-on-surface uppercase tracking-tight">INCLUDED</h3>
+<p class="text-[11px] font-mono text-outline mt-1 leading-snug">
+                Mined into L1 Block.<br/>
+                Height: <span class="text-on-surface">#19,482,918</span>
+</p>
+</div>
+<div class="pt-3 border-t border-outline-variant/20 mt-3 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>Depth</span>
+<span class="text-on-surface-variant">12 Blocks</span>
+</div>
+</div>
+<!-- STAGE 04: SAFE (CURRENTLY ACTIVE - HIGH CONTRAST CYAN/SLATE DESIGN) -->
+<div class="relative bg-surface-container-high p-4 rounded border-2 border-sky-400/80 shadow-lg shadow-sky-950/40 flex flex-col justify-between">
+<div class="absolute -top-3 left-4 bg-sky-500 text-surface-container-lowest text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+              ACTIVE STAGE // 38/64 CONFIRMS
+            </div>
+<div>
+<div class="flex items-center justify-between mb-2 mt-1">
+<span class="text-[10px] font-mono text-sky-300 font-bold">STAGE 04</span>
+<span class="flex items-center gap-1 text-[11px] font-mono text-sky-200 font-bold">
+<span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span> CURRENTLY SAFE
+                </span>
+</div>
+<h3 class="font-headline text-sm font-bold text-sky-100 uppercase tracking-tight">L1 JUSTIFIED (SAFE)</h3>
+<p class="text-[11px] font-mono text-sky-200/80 mt-1 leading-snug">
+                L1 Epoch Justified.<br/>
+                Reorg Risk: <span class="text-sky-300 font-semibold">&lt; 0.001% (Minimal)</span>
+</p>
+</div>
+<div class="pt-3 border-t border-sky-800/40 mt-3 flex items-center justify-between text-[10px] font-mono">
+<span class="text-sky-300">Casper Witness</span>
+<span class="text-sky-100 font-bold">Epoch #608,841</span>
+</div>
+</div>
+<!-- STAGE 05: FINALIZED (AWAITING FINALITY - STRICTLY DISTINCT FROM SAFE) -->
+<div class="relative bg-surface-container-lowest p-4 rounded border border-dashed border-outline-variant/50 flex flex-col justify-between opacity-85">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-mono text-outline font-bold">STAGE 05</span>
+<span class="flex items-center gap-1 text-[10px] font-mono text-tertiary-fixed-dim">
+<span data-icon="hourglass_top"><span class="material-symbols-outlined text-[13px]">hourglass_top</span></span> PENDING
+                </span>
+</div>
+<h3 class="font-headline text-sm font-bold text-outline uppercase tracking-tight flex items-center justify-between">
+<span>FINALIZED</span>
+<span data-icon="lock"><span class="material-symbols-outlined text-sm text-outline">lock</span></span>
+</h3>
+<p class="text-[11px] font-mono text-outline mt-1 leading-snug">
+                L1 Casper Finality Gadget.<br/>
+                64 Epochs Root Attestation.
+              </p>
+</div>
+<div class="pt-3 border-t border-outline-variant/20 mt-3 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>ETA Casper Final</span>
+<span class="text-tertiary-fixed-dim font-bold">00:04:18 (26 Blocks)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CRITICAL ARCHITECTURAL WARNING BANNER: "SAFE IS NOT FINALIZED" -->
+<div class="mt-2 bg-surface-container border-l-4 border-tertiary p-3.5 rounded flex items-start gap-3">
+<span class="text-tertiary mt-0.5" data-icon="warning"><span class="material-symbols-outlined">warning</span></span>
+<div class="text-xs font-mono">
+<span class="text-tertiary-fixed font-bold uppercase tracking-wide">PROTOCOL INVARIANT ENFORCED: SAFE IS NOT FINALIZED.</span>
+<p class="text-on-surface-variant mt-0.5 leading-relaxed">
+            Funds release into non-custodial agent balances remains conditional until block #19,482,982 attestation is cast by 2/3 of validator stake. Reorg defense circuit active. Do not release hardware-locked compute credentials prior to Stage 05 Casper confirmation.
+          </p>
+</div>
+</div>
+</div>
+<!-- SECTION 3: BENTO GRID (Settlement Ledger Table & Event Chronology Panel) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+<!-- LEFT 8 COLUMNS: HIGH-DENSITY SETTLEMENT LEDGER -->
+<div class="xl:col-span-8 bg-surface-container-low border border-outline-variant/30 rounded flex flex-col justify-between">
+<!-- Table Toolbar & Filters -->
+<div class="p-4 border-b border-outline-variant/30 space-y-3">
+<!-- Filter Tabs -->
+<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-1 font-mono text-xs">
+<button class="px-3 py-1.5 rounded bg-surface-container-high text-on-surface font-semibold border border-outline-variant/60">
+                All (49)
+              </button>
+<button class="px-3 py-1.5 text-outline hover:text-on-surface hover:bg-surface-container transition-colors">
+                In Flight (7)
+              </button>
+<button class="px-3 py-1.5 text-outline hover:text-on-surface hover:bg-surface-container transition-colors">
+                Included (3)
+              </button>
+<button class="px-3 py-1.5 text-sky-400 hover:text-sky-300 hover:bg-surface-container transition-colors">
+                Safe (2)
+              </button>
+<button class="px-3 py-1.5 text-secondary hover:text-secondary-fixed hover:bg-surface-container transition-colors">
+                Finalized (38)
+              </button>
+<button class="px-3 py-1.5 text-error hover:text-error hover:bg-surface-container transition-colors">
+                Exceptions (0)
+              </button>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono text-outline hover:text-on-surface border border-outline-variant/40 rounded">
+<span data-icon="file_download"><span class="material-symbols-outlined text-xs">file_download</span></span>
+<span>Export (.csv / .json)</span>
+</button>
+</div>
+</div>
+<!-- Search Input & Range Selector -->
+<div class="flex items-center gap-2">
+<div class="relative flex-1">
+<span class="absolute left-3 top-2 text-outline" data-icon="search"><span class="material-symbols-outlined text-sm">search</span></span>
+<input class="w-full bg-surface-container text-xs font-mono text-on-surface pl-8 pr-3 py-1.5 rounded border border-outline-variant/40 focus:border-primary focus:outline-none placeholder:text-outline/60" placeholder="Filter by HSP ID, Tx Hash, Counterparty Agent, or Payload Root..." type="text"/>
+</div>
+<div class="px-3 py-1.5 bg-surface-container border border-outline-variant/40 rounded text-xs font-mono text-outline flex items-center gap-2 whitespace-nowrap">
+<span data-icon="calendar_today"><span class="material-symbols-outlined text-xs">calendar_today</span></span>
+<span>Last 24 Hours</span>
+</div>
+</div>
+</div>
+<!-- Density Ledger Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left font-mono text-xs">
+<thead class="bg-surface-container border-b border-outline-variant/30 text-[10px] text-outline uppercase tracking-wider">
+<tr>
+<th class="py-2.5 px-3">HSP ID</th>
+<th class="py-2.5 px-3">Counterparty Agent</th>
+<th class="py-2.5 px-3 text-right">Settlement</th>
+<th class="py-2.5 px-3">Routing Engine</th>
+<th class="py-2.5 px-3">Finality Status</th>
+<th class="py-2.5 px-3 text-center">Confirms</th>
+<th class="py-2.5 px-3">Tx Hash</th>
+<th class="py-2.5 px-3 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/20 text-[11px]">
+<!-- ROW 1: Focus TX (SAFE - Cyan/Slate) -->
+<tr class="bg-surface-container/40 hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-bold text-secondary-fixed">#HSP-8942-HK</td>
+<td class="py-3 px-3">
+<div class="text-on-surface font-semibold">DeepCompute Agent 09</div>
+<div class="text-[9px] text-outline">0x429A...38F1</div>
+</td>
+<td class="py-3 px-3 text-right font-bold text-on-surface">$14,200.00</td>
+<td class="py-3 px-3 text-outline">HSP Fast Relay</td>
+<td class="py-3 px-3">
+<!-- SAFE Badge: Distinct Slate/Cyan NOT Mint Green -->
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/80 text-sky-300 border border-sky-500/50">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> SAFE
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-sky-300 font-bold">38/64</td>
+<td class="py-3 px-3 text-outline hover:text-primary cursor-pointer flex items-center gap-1 mt-2">
+<span>0x7c91...48b1</span>
+<span data-icon="content_copy"><span class="material-symbols-outlined text-[11px]">content_copy</span></span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-primary hover:underline text-[10px]">Inspect</button>
+</td>
+</tr>
+<!-- ROW 2: INCLUDED (Amber) -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface">#HSP-8941-HK</td>
+<td class="py-3 px-3">
+<div class="text-on-surface">Synthetix Oracle Agent</div>
+<div class="text-[9px] text-outline">0x81FB...a029</div>
+</td>
+<td class="py-3 px-3 text-right font-semibold text-on-surface">$9,500.00</td>
+<td class="py-3 px-3 text-outline">HSP Non-Custodial</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container/30 text-tertiary-fixed border border-tertiary/40">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> INCLUDED
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-tertiary font-semibold">12/64</td>
+<td class="py-3 px-3 text-outline hover:text-primary cursor-pointer flex items-center gap-1 mt-2">
+<span>0x3d02...a981</span>
+<span data-icon="content_copy"><span class="material-symbols-outlined text-[11px]">content_copy</span></span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-primary hover:underline text-[10px]">Inspect</button>
+</td>
+</tr>
+<!-- ROW 3: PROCESSING (Blue) -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface">#HSP-8940-HK</td>
+<td class="py-3 px-3">
+<div class="text-on-surface">LangChain Swarm Worker 2</div>
+<div class="text-[9px] text-outline">0x6201...99bb</div>
+</td>
+<td class="py-3 px-3 text-right font-semibold text-on-surface">$8,150.00</td>
+<td class="py-3 px-3 text-outline">HSP Fast Relay</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary-container/20 text-primary-fixed border border-primary/40">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span> PROCESSING
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-outline">0/64</td>
+<td class="py-3 px-3 text-outline hover:text-primary cursor-pointer flex items-center gap-1 mt-2">
+<span>0x81fa...0011</span>
+<span data-icon="content_copy"><span class="material-symbols-outlined text-[11px]">content_copy</span></span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-primary hover:underline text-[10px]">Inspect</button>
+</td>
+</tr>
+<!-- ROW 4: FINALIZED (Controlled Mint ONLY) -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface">#HSP-8939-HK</td>
+<td class="py-3 px-3">
+<div class="text-on-surface">Autonome Inference Daemon</div>
+<div class="text-[9px] text-outline">0x9183...3c0a</div>
+</td>
+<td class="py-3 px-3 text-right font-semibold text-on-surface">$22,500.00</td>
+<td class="py-3 px-3 text-outline">HSP Non-Custodial</td>
+<td class="py-3 px-3">
+<!-- FINALIZED Badge: Strictly Mint Green with permanent seal -->
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-on-secondary/50 text-secondary-fixed border border-secondary-fixed/50">
+<span data-icon="verified"><span class="material-symbols-outlined text-[10px]">verified</span></span> FINALIZED
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-secondary-fixed font-bold">64/64 FULL</td>
+<td class="py-3 px-3 text-outline hover:text-primary cursor-pointer flex items-center gap-1 mt-2">
+<span>0xaa09...e271</span>
+<span data-icon="content_copy"><span class="material-symbols-outlined text-[11px]">content_copy</span></span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-secondary-fixed hover:underline text-[10px]">Receipt</button>
+</td>
+</tr>
+<!-- ROW 5: FINALIZED (Controlled Mint ONLY) -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface">#HSP-8938-HK</td>
+<td class="py-3 px-3">
+<div class="text-on-surface">DeepCompute Agent 04</div>
+<div class="text-[9px] text-outline">0x5501...df10</div>
+</td>
+<td class="py-3 px-3 text-right font-semibold text-on-surface">$18,400.00</td>
+<td class="py-3 px-3 text-outline">HSP Non-Custodial</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-on-secondary/50 text-secondary-fixed border border-secondary-fixed/50">
+<span data-icon="verified"><span class="material-symbols-outlined text-[10px]">verified</span></span> FINALIZED
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-secondary-fixed font-bold">64/64 FULL</td>
+<td class="py-3 px-3 text-outline hover:text-primary cursor-pointer flex items-center gap-1 mt-2">
+<span>0x992c...cc54</span>
+<span data-icon="content_copy"><span class="material-symbols-outlined text-[11px]">content_copy</span></span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-secondary-fixed hover:underline text-[10px]">Receipt</button>
+</td>
+</tr>
+<!-- ROW 6: INTERCEPTED (Red - Exception handling) -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-3 px-3 font-semibold text-error">#HSP-8935-HK</td>
+<td class="py-3 px-3">
+<div class="text-error font-semibold">Rogue Scraper [QUARANTINED]</div>
+<div class="text-[9px] text-error/70">0x00A1...DEAD</div>
+</td>
+<td class="py-3 px-3 text-right font-semibold text-error line-through">$3,200.00</td>
+<td class="py-3 px-3 text-outline">Circuit Intercept</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-error-container/40 text-error border border-error/50">
+<span data-icon="block"><span class="material-symbols-outlined text-[10px]">block</span></span> INTERCEPTED
+                  </span>
+</td>
+<td class="py-3 px-3 text-center text-error">ABORTED</td>
+<td class="py-3 px-3 text-outline flex items-center gap-1 mt-2">
+<span>0xREVOKED</span>
+</td>
+<td class="py-3 px-3 text-right">
+<button class="text-error hover:underline text-[10px]">Audit Log</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Ledger Footer Pagination -->
+<div class="p-3 border-t border-outline-variant/30 flex items-center justify-between text-xs font-mono text-outline">
+<span>Showing 6 of 49 Active Protocol Reconciliations</span>
+<div class="flex items-center gap-2">
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high text-on-surface-variant">Prev</button>
+<span class="text-on-surface">Page 1 of 9</span>
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high text-on-surface-variant">Next</button>
+</div>
+</div>
+</div>
+<!-- RIGHT 4 COLUMNS: EVENT CHRONOLOGY & TELEMETRY DRAWER -->
+<div class="xl:col-span-4 space-y-6">
+<!-- Live Microsecond Event Chronology Panel -->
+<div class="bg-surface-container-low border border-outline-variant/30 rounded p-4">
+<div class="flex items-center justify-between pb-3 border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed"></span>
+<h3 class="font-headline text-sm font-bold text-on-surface uppercase tracking-tight">
+                Event Chronology Log
+              </h3>
+</div>
+<span class="text-[10px] font-mono text-outline">#HSP-8942-HK</span>
+</div>
+<!-- Microsecond Log Feed -->
+<div class="mt-4 space-y-3 font-mono text-[11px]">
+<div class="flex items-start gap-2.5 pb-2.5 border-b border-outline-variant/20">
+<span class="text-outline text-[10px] whitespace-nowrap mt-0.5">23:46:00.104</span>
+<div>
+<p class="text-on-surface leading-tight font-semibold">HSP Dispatch initiated by Dual-Key Quorum</p>
+<p class="text-[10px] text-outline mt-0.5">Digest: EIP-712 Intent verified via MPC enclave</p>
+</div>
+</div>
+<div class="flex items-start gap-2.5 pb-2.5 border-b border-outline-variant/20">
+<span class="text-outline text-[10px] whitespace-nowrap mt-0.5">23:46:01.892</span>
+<div>
+<p class="text-on-surface leading-tight font-semibold">Gas quote locked at 2.40 USDC</p>
+<p class="text-[10px] text-outline mt-0.5">Max Priority Fee: 1.5 Gwei // Hedged</p>
+</div>
+</div>
+<div class="flex items-start gap-2.5 pb-2.5 border-b border-outline-variant/20">
+<span class="text-outline text-[10px] whitespace-nowrap mt-0.5">23:46:14.220</span>
+<div>
+<p class="text-on-surface leading-tight font-semibold">Broadcast to mainnet validator set</p>
+<p class="text-[10px] text-outline mt-0.5">Mempool peers: 128 nodes acknowledged</p>
+</div>
+</div>
+<div class="flex items-start gap-2.5 pb-2.5 border-b border-outline-variant/20">
+<span class="text-outline text-[10px] whitespace-nowrap mt-0.5">23:46:26.501</span>
+<div>
+<p class="text-on-surface leading-tight font-semibold">Included in Block #19,482,918</p>
+<p class="text-[10px] text-outline mt-0.5">Builder: Titan Builder 0x11 // Gas: 148,290</p>
+</div>
+</div>
+<!-- Current Stage Event -->
+<div class="flex items-start gap-2.5 bg-sky-950/40 p-2 rounded border border-sky-500/40">
+<span class="text-sky-300 text-[10px] whitespace-nowrap font-bold mt-0.5">23:48:02.110</span>
+<div>
+<p class="text-sky-200 leading-tight font-bold">Epoch #608,841 justified (Safe threshold met)</p>
+<p class="text-[10px] text-sky-300/80 mt-0.5">38 Confirmations accumulated // Reorg threshold passed</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Recovery & Diagnostic Specifications Panel -->
+<div class="bg-surface-container-low border border-outline-variant/30 rounded p-4 space-y-3 font-mono text-xs">
+<div class="flex items-center justify-between pb-2 border-b border-outline-variant/30">
+<h3 class="font-headline text-xs font-bold text-on-surface uppercase tracking-tight">
+              Reconciler Diagnostic Spec
+            </h3>
+<span class="text-[10px] text-secondary font-semibold">LIVE RPC</span>
+</div>
+<div class="space-y-2.5 text-[11px]">
+<div>
+<span class="text-outline text-[10px] block">Zero-Slippage Guarantee:</span>
+<span class="text-on-surface font-semibold">Hardware Escrow Locked (TEE Intel SGX)</span>
+</div>
+<div>
+<span class="text-outline text-[10px] block">Rollback Chamber Address:</span>
+<span class="text-primary font-mono select-all">0x19F2...8b3A (Autonomous Treasury Alpha)</span>
+</div>
+<div>
+<span class="text-outline text-[10px] block">HSP Diagnostic RPC Endpoint:</span>
+<div class="mt-1 p-2 bg-surface-container rounded border border-outline-variant/30 text-[10px] text-secondary-fixed break-all select-all">
+                wss://hsp-reconciler.mainnet.hashx.org/v3
+              </div>
+</div>
+<div class="pt-2 flex items-center justify-between text-[10px] text-outline border-t border-outline-variant/20">
+<span>Cryptographic Receipt Commitment:</span>
+<span class="text-on-surface">SHA-256 Validated</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- EDITORIAL MONOGRAPH FOOTER (Shared Components JSON faithful execution) -->
+<footer class="w-full bg-surface-container-lowest border-t border-outline-variant/30 mt-12">
+<div class="w-full px-6 md:px-10 py-8 max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<!-- Brand & Monograph Copy -->
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<span class="font-display text-sm tracking-tight text-on-surface uppercase font-semibold">HashX</span>
+<span class="text-xs text-outline font-mono">/ Proof System</span>
+</div>
+<p class="text-xs font-mono text-outline">
+          Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing. All telemetry immutable.
+        </p>
+</div>
+<!-- Footer Anchor Links -->
+<div class="flex flex-wrap items-center gap-4 text-xs font-mono">
+<a class="text-outline hover:text-on-surface tracking-tight transition-colors" href="#">Whitepaper v1.4</a>
+<a class="text-outline hover:text-on-surface tracking-tight transition-colors" href="#">Proof Circuit Spec</a>
+<a class="text-outline hover:text-on-surface tracking-tight transition-colors" href="#">MCP Tool Registry</a>
+<a class="text-outline hover:text-on-surface tracking-tight transition-colors" href="#">Audits &amp; Verification</a>
+<a class="text-outline hover:text-on-surface tracking-tight transition-colors" href="#">Incident Disclosure</a>
+<span class="text-outline-variant">|</span>
+<span class="text-secondary-fixed font-bold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
+          Status: HSP-Mainnet Live
+        </span>
+</div>
+</div>
+</footer>
+</body></html>

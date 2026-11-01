@@ -1,32 +1,61 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ShieldCheck,
-  Sparkles,
-  Info,
-  AlertCircle,
-  FileText,
-  Lock,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, PenLine, FileSignature } from "lucide-react";
+import { keccak256, toBytes } from "viem";
 import { useApp } from "@/providers/AppContext";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { MOCK_COUNTERPARTIES } from "@/mocks/fixtures";
-import { Button } from "@/components/ui/Button";
-import { AmountDisplay } from "@/components/ui/AmountDisplay";
-import { CopyableValue } from "@/components/ui/CopyableValue";
+import { Button, buttonStyles } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel, PanelHeader, PanelFooter } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { Field, Input, Select } from "@/components/ui/Field";
+import { Callout } from "@/components/ui/Callout";
 import { CodeViewer } from "@/components/ui/CodeViewer";
-import { formatAddress, parseUsdToMinor } from "@/lib/formatters";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { InvoiceStepper, type StepDef } from "@/components/invoices/InvoiceStepper";
+import { blockSpan, chainLabel } from "@/components/invoices/utils";
+import { cn } from "@/lib/utils";
+import { formatAddress, formatMinorToUsd, parseUsdToMinor } from "@/lib/formatters";
 import { computeServiceTermsHash, stringToBytes32 } from "@/lib/crypto/eip712";
+
+const STEPS: Array<StepDef & { title: string; description: string }> = [
+  {
+    num: 1,
+    label: "Counterparties",
+    hint: "Seller & buyer",
+    title: "Counterparty identity binding",
+    description: "The seller wallet is bound to a registered counterparty record so the signature can be attributed.",
+  },
+  {
+    num: 2,
+    label: "Service",
+    hint: "Objective deliverable",
+    title: "Locked service definition",
+    description: "Define an objective, machine-verifiable deliverable. These parameters are hashed into the signed terms.",
+  },
+  {
+    num: 3,
+    label: "Terms",
+    hint: "Amount & payee",
+    title: "Commercial and payment terms",
+    description: "Amounts are serialized as integer minor units. The payee is committed under the seller signature.",
+  },
+  {
+    num: 4,
+    label: "Review & sign",
+    hint: "EIP-712",
+    title: "Review and sign",
+    description: "Once signed, the invoice terms are immutable. Any change produces a different digest.",
+  },
+];
 
 export default function CreateInvoicePage() {
   const router = useRouter();
-  const { mode, chainId, triggerRefresh } = useApp();
+  const { mode, triggerRefresh } = useApp();
   const client = mode === "connected" ? connectedClient : demoClient;
 
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -58,6 +87,7 @@ export default function CreateInvoicePage() {
   };
 
   const amountMinor = parseUsdToMinor(dollarInput);
+  const span = blockSpan(startBlock, endBlock);
 
   // Validation
   const validateStep = (step: number): boolean => {
@@ -106,7 +136,15 @@ export default function CreateInvoicePage() {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
+  /** Jump back to an already-completed step (no validation needed when moving backwards). */
+  const goToStep = (step: number) => {
+    if (step >= currentStep || isSubmitting) return;
+    setErrorMessage(null);
+    setCurrentStep(step);
+  };
+
   const handleCreateAndSign = async (simulate: boolean) => {
+    void simulate;
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -149,365 +187,447 @@ export default function CreateInvoicePage() {
     }
   };
 
+  // Live EIP-712 message preview. Hashing helpers throw on malformed input,
+  // so each derived field degrades to a placeholder rather than breaking render.
+  const typedMessage = useMemo(() => {
+    const safe = <T,>(fn: () => T, fallback: string): T | string => {
+      try {
+        return fn();
+      } catch {
+        return fallback;
+      }
+    };
+    return {
+      seller: selectedSeller.walletAddress,
+      buyerRefHash: buyerRef.trim() ? safe(() => keccak256(toBytes(buyerRef)), "<invalid>") : "<required>",
+      serviceType: stringToBytes32("hsk_address_analytics_v1"),
+      serviceTermsHash: safe(
+        () => computeServiceTermsHash(targetAddress as `0x${string}`, startBlock, endBlock),
+        "<invalid subject address>"
+      ),
+      amountMinor: amountMinor,
+      currency: stringToBytes32("USD"),
+      payee: payeeAddress,
+      paymentChainId: preferredChainId,
+      nonce: "<assigned at creation>",
+    };
+  }, [selectedSeller.walletAddress, buyerRef, targetAddress, startBlock, endBlock, amountMinor, payeeAddress, preferredChainId]);
+
+  const step = STEPS[currentStep - 1];
+  const payeeIsSeller = payeeAddress.toLowerCase() === selectedSeller.walletAddress.toLowerCase();
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <Link href="/app/invoices">
-            <Button variant="ghost" size="icon" aria-label="Back to Invoices">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-display font-bold text-foreground">
-              Compose Commercial Invoice
-            </h1>
-            <p className="text-xs text-foreground-secondary">
-              Step-by-step EIP-712 structured agreement for HashKey Chain.
-            </p>
+    <div className="space-y-6">
+      <PageHeader
+        back={{ href: "/app/invoices", label: "Invoices" }}
+        eyebrow="New invoice"
+        title="Compose invoice"
+        description="Bind seller identity, an objective service definition, and payment terms into one EIP-712 structured agreement on HashKey Chain."
+        className="pb-0"
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* ── Composer ─────────────────────────────────────────────── */}
+        <Panel className="xl:col-span-7 min-w-0">
+          <div className="px-4 sm:px-5 py-4 border-b border-border overflow-x-auto">
+            <InvoiceStepper steps={STEPS} current={currentStep} onSelect={goToStep} className="min-w-[520px]" />
           </div>
-        </div>
-      </div>
 
-      {/* Stepper Progress */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { num: 1, label: "Counterparties" },
-          { num: 2, label: "Service Params" },
-          { num: 3, label: "Commercial Terms" },
-          { num: 4, label: "Review & Sign" },
-        ].map((s) => (
-          <div
-            key={s.num}
-            className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 transition-all ${
-              currentStep === s.num
-                ? "border-primary bg-primary-subtle/30 text-white"
-                : currentStep > s.num
-                ? "border-success/40 bg-success/10 text-success"
-                : "border-border bg-surface-1 text-foreground-muted"
-            }`}
-          >
-            <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center font-mono text-[11px] font-bold ${
-                currentStep > s.num
-                  ? "bg-success text-black"
-                  : currentStep === s.num
-                  ? "bg-primary text-white"
-                  : "bg-surface-3 text-foreground-muted"
-              }`}
-            >
-              {currentStep > s.num ? <Check className="w-3 h-3" /> : s.num}
-            </span>
-            <span className="font-medium truncate">{s.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Error alert */}
-      {errorMessage && (
-        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs flex items-center gap-2 animate-fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Step Container */}
-      <div className="p-6 rounded-xl border border-border bg-surface-1 shadow-sm space-y-5">
-        {/* Step 1: Counterparties */}
-        {currentStep === 1 && (
-          <div className="space-y-4 animate-fade-in">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-primary-light" />
-              <span>Step 1 — Counterparty Identity Binding</span>
-            </h3>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Registered Seller Counterparty
-              </label>
-              <select
-                value={selectedSellerId}
-                onChange={(e) => handleSellerChange(e.target.value)}
-                className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-              >
-                {MOCK_COUNTERPARTIES.filter((c) => c.status === "ACTIVE").map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.displayName} ({formatAddress(c.walletAddress)})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-foreground-muted">
-                Seller wallet identity is bound to a registered counterparty record to prevent unauthorized seller impersonation.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Seller Wallet (Authorized EOA)
-              </label>
-              <input
-                type="text"
-                disabled
-                value={selectedSeller.walletAddress}
-                className="w-full p-2.5 rounded-lg bg-surface-3/50 border border-border text-foreground-secondary text-xs font-mono cursor-not-allowed"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Buyer Reference Identifier
-              </label>
-              <input
-                type="text"
-                value={buyerRef}
-                onChange={(e) => setBuyerRef(e.target.value)}
-                placeholder="e.g. buyer-job-ref-12345"
-                className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-              />
-              <p className="text-[11px] text-foreground-muted">
-                Will be hashed into <code>buyerRefHash</code> on the canonical EIP-712 structured agreement.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Service */}
-        {currentStep === 2 && (
-          <div className="space-y-4 animate-fade-in">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary-light" />
-              <span>Step 2 — Locked Service Definition</span>
-            </h3>
-
-            <div className="p-3 rounded-lg bg-surface-2 border border-border text-xs text-foreground-secondary space-y-1">
-              <div className="font-mono text-primary-light font-semibold">
-                Service Type: hsk_address_analytics_v1
+          <div className="px-4 sm:px-5 pt-5 pb-6">
+            <div className="mb-5">
+              <div className="text-2xs text-foreground-muted tabular-nums">
+                Step {currentStep} of {STEPS.length}
               </div>
-              <p className="text-[11px] text-foreground-muted">
-                Objective digital deliverable: The seller produces on-chain transaction metrics on HashKey Chain for a target address across a declared block range. Acceptance policy: <code>analytics_v1</code>.
-              </p>
+              <h2 className="mt-1 text-[15px] font-semibold text-foreground tracking-[-0.01em]">{step.title}</h2>
+              <p className="mt-1 text-xs text-foreground-muted leading-relaxed max-w-xl">{step.description}</p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Target Address on HashKey Chain
-              </label>
-              <input
-                type="text"
-                value={targetAddress}
-                onChange={(e) => setTargetAddress(e.target.value)}
-                placeholder="0x..."
-                className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-              />
-            </div>
+            {errorMessage && (
+              <Callout tone="danger" className="mb-5 animate-fade-in">
+                {errorMessage}
+              </Callout>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Start Block Number
-                </label>
-                <input
-                  type="text"
-                  value={startBlock}
-                  onChange={(e) => setStartBlock(e.target.value)}
-                  placeholder="1205000"
-                  className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-                />
+            {/* Step 1: Counterparties */}
+            {currentStep === 1 && (
+              <div className="space-y-5 animate-fade-in">
+                <Field
+                  label="Seller counterparty"
+                  htmlFor="seller"
+                  hint="Only active, registered counterparties can issue invoices. This prevents seller impersonation."
+                >
+                  <Select id="seller" value={selectedSellerId} onChange={(e) => handleSellerChange(e.target.value)} className="w-full">
+                    {MOCK_COUNTERPARTIES.filter((c) => c.status === "ACTIVE").map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.displayName} ({formatAddress(c.walletAddress)})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <Field label="Seller wallet" htmlFor="seller-wallet" hint="Authorized EOA. The EIP-712 signature must recover to this address.">
+                  <Input
+                    id="seller-wallet"
+                    type="text"
+                    disabled
+                    value={selectedSeller.walletAddress}
+                    className="font-mono text-xs text-foreground-secondary bg-surface-3/40 cursor-not-allowed hover:border-border"
+                  />
+                </Field>
+
+                <Field
+                  label="Buyer reference"
+                  htmlFor="buyer-ref"
+                  hint={
+                    <>
+                      Hashed into <code className="font-mono">buyerRefHash</code> on the signed structured agreement.
+                    </>
+                  }
+                >
+                  <Input
+                    id="buyer-ref"
+                    type="text"
+                    value={buyerRef}
+                    onChange={(e) => setBuyerRef(e.target.value)}
+                    placeholder="buyer-job-ref-12345"
+                    className="font-mono text-xs"
+                  />
+                </Field>
               </div>
+            )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  End Block Number
-                </label>
-                <input
-                  type="text"
-                  value={endBlock}
-                  onChange={(e) => setEndBlock(e.target.value)}
-                  placeholder="1205250"
-                  className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-                />
+            {/* Step 2: Service */}
+            {currentStep === 2 && (
+              <div className="space-y-5 animate-fade-in">
+                <div className="panel-inset px-3.5 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-foreground-muted">Service type</span>
+                    <span className="inline-flex items-center gap-1 text-2xs text-foreground-muted">
+                      <Lock className="w-3 h-3" aria-hidden="true" />
+                      Fixed
+                    </span>
+                  </div>
+                  <div className="mt-1 font-mono text-xs text-foreground">hsk_address_analytics_v1</div>
+                  <p className="mt-2 text-xs text-foreground-muted leading-relaxed">
+                    The seller produces on-chain transaction metrics for a subject address across a declared block range. Accepted under policy{" "}
+                    <code className="font-mono text-foreground-secondary">analytics_v1</code>.
+                  </p>
+                </div>
+
+                <Field label="Subject address on HashKey Chain" htmlFor="target-address" hint="42-character EVM address. Recomputed by the verifier against RPC.">
+                  <Input
+                    id="target-address"
+                    type="text"
+                    value={targetAddress}
+                    onChange={(e) => setTargetAddress(e.target.value)}
+                    placeholder="0x…"
+                    className="font-mono text-xs"
+                  />
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Start block" htmlFor="start-block">
+                    <Input
+                      id="start-block"
+                      type="text"
+                      inputMode="numeric"
+                      value={startBlock}
+                      onChange={(e) => setStartBlock(e.target.value)}
+                      placeholder="1205000"
+                      className="font-mono text-xs tabular-nums"
+                    />
+                  </Field>
+                  <Field
+                    label="End block"
+                    htmlFor="end-block"
+                    hint={span !== null && span > 0 ? <span className="tabular-nums">{span.toLocaleString("en-US")} blocks in range</span> : undefined}
+                  >
+                    <Input
+                      id="end-block"
+                      type="text"
+                      inputMode="numeric"
+                      value={endBlock}
+                      onChange={(e) => setEndBlock(e.target.value)}
+                      placeholder="1205250"
+                      className="font-mono text-xs tabular-nums"
+                    />
+                  </Field>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Step 3: Commercial Terms */}
-        {currentStep === 3 && (
-          <div className="space-y-4 animate-fade-in">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Lock className="w-4 h-4 text-primary-light" />
-              <span>Step 3 — Commercial & Payment Terms</span>
-            </h3>
+            {/* Step 3: Commercial Terms */}
+            {currentStep === 3 && (
+              <div className="space-y-5 animate-fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field
+                    label="Amount (USD)"
+                    htmlFor="amount"
+                    hint={
+                      <>
+                        Serialized as <span className="font-mono text-foreground-secondary tabular-nums">{amountMinor}</span> minor units (cents)
+                      </>
+                    }
+                  >
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-foreground-muted pointer-events-none">$</span>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        min="0.10"
+                        value={dollarInput}
+                        onChange={(e) => setDollarInput(e.target.value)}
+                        className="pl-6 tabular-nums"
+                      />
+                    </div>
+                  </Field>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Amount (USD)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted font-mono text-sm">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.10"
-                    value={dollarInput}
-                    onChange={(e) => setDollarInput(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-sm font-mono focus:outline-none focus:border-primary"
+                  <Field label="Settlement network" htmlFor="chain">
+                    <Select
+                      id="chain"
+                      value={preferredChainId}
+                      onChange={(e) => setPreferredChainId(parseInt(e.target.value, 10))}
+                      className="w-full"
+                    >
+                      <option value={133}>HashKey Chain Testnet (133)</option>
+                      <option value={177}>HashKey Chain Mainnet (177)</option>
+                    </Select>
+                  </Field>
+                </div>
+
+                <Field
+                  label="Payee wallet"
+                  htmlFor="payee"
+                  hint={
+                    <>
+                      Recipient of HSP settlement. Changing this after signing produces{" "}
+                      <code className="font-mono text-foreground-secondary">SIGNATURE_INVALID</code>.
+                    </>
+                  }
+                >
+                  <Input
+                    id="payee"
+                    type="text"
+                    value={payeeAddress}
+                    onChange={(e) => setPayeeAddress(e.target.value as `0x${string}`)}
+                    placeholder="0x…"
+                    className="font-mono text-xs"
+                  />
+                </Field>
+
+                <Field label="Validity window" htmlFor="validity" hint="The invoice cannot be verified or paid after it expires.">
+                  <Select
+                    id="validity"
+                    value={expiresInDays}
+                    onChange={(e) => setExpiresInDays(parseInt(e.target.value, 10))}
+                    className="w-full sm:w-56"
+                  >
+                    <option value={1}>1 day</option>
+                    <option value={3}>3 days</option>
+                    <option value={7}>7 days</option>
+                    <option value={14}>14 days</option>
+                  </Select>
+                </Field>
+              </div>
+            )}
+
+            {/* Step 4: Review and Sign */}
+            {currentStep === 4 && (
+              <div className="space-y-5 animate-fade-in">
+                <div className="panel-inset px-4 py-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-xs text-foreground-muted">Seller requests</div>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="font-display text-[28px] leading-none font-semibold tracking-[-0.03em] tabular-nums text-foreground">
+                        {formatMinorToUsd(amountMinor)}
+                      </span>
+                      <span className="text-2xs font-medium text-foreground-muted">USD</span>
+                    </div>
+                    <div className="mt-1.5 font-mono text-2xs text-foreground-muted tabular-nums">amount_minor {amountMinor}</div>
+                  </div>
+                  <div className="text-xs text-foreground-secondary sm:text-right">
+                    <div>{selectedSeller.displayName}</div>
+                    <div className="font-mono text-2xs text-foreground-muted mt-0.5">pays to {formatAddress(payeeAddress)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-border divide-y divide-border/60">
+                  <ReviewRow
+                    label="Counterparties"
+                    onEdit={() => goToStep(1)}
+                    summary={
+                      <>
+                        {selectedSeller.displayName}
+                        <span className="text-foreground-muted"> → </span>
+                        <span className="font-mono text-xs">{buyerRef}</span>
+                      </>
+                    }
+                  />
+                  <ReviewRow
+                    label="Service"
+                    onEdit={() => goToStep(2)}
+                    summary={
+                      <>
+                        <span className="font-mono text-xs">{formatAddress(targetAddress)}</span>
+                        <span className="text-foreground-muted"> · blocks </span>
+                        <span className="font-mono text-xs tabular-nums">
+                          {startBlock}–{endBlock}
+                        </span>
+                        {span !== null && <span className="text-foreground-muted tabular-nums"> ({span.toLocaleString("en-US")})</span>}
+                      </>
+                    }
+                  />
+                  <ReviewRow
+                    label="Terms"
+                    onEdit={() => goToStep(3)}
+                    summary={
+                      <>
+                        <span className="tabular-nums">{formatMinorToUsd(amountMinor)}</span>
+                        <span className="text-foreground-muted"> · {chainLabel(preferredChainId)} · valid {expiresInDays}d</span>
+                      </>
+                    }
                   />
                 </div>
-                <p className="text-[11px] font-mono text-foreground-muted">
-                  Serialized minor units: <code>{amountMinor}</code> (cents)
-                </p>
+
+                <Callout tone="neutral" icon={FileSignature} title="Signature">
+                  {mode === "demo"
+                    ? "In demo mode, a simulated EIP-712 signature from the registered seller wallet is recorded. Once signed, the invoice terms become immutable."
+                    : "The connected backend records the seller wallet's EIP-712 signature. Once signed, the invoice terms become immutable."}
+                </Callout>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">
-                  Settlement Network
-                </label>
-                <select
-                  value={preferredChainId}
-                  onChange={(e) => setPreferredChainId(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-                >
-                  <option value={133}>HashKey Chain Testnet (133)</option>
-                  <option value={177}>HashKey Chain Mainnet (177)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Payee Wallet Address (Recipient of HSP Settlement)
-              </label>
-              <input
-                type="text"
-                value={payeeAddress}
-                onChange={(e) => setPayeeAddress(e.target.value as `0x${string}`)}
-                placeholder="0x..."
-                className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-              />
-              <p className="text-[11px] text-foreground-muted">
-                Must match the signed EIP-712 payee parameter. Changing this post-signature produces <code>SIGNATURE_INVALID</code>.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Validity Window (Days)
-              </label>
-              <select
-                value={expiresInDays}
-                onChange={(e) => setExpiresInDays(parseInt(e.target.value, 10))}
-                className="w-full p-2.5 rounded-lg bg-surface-2 border border-border text-foreground text-xs font-mono focus:outline-none focus:border-primary"
-              >
-                <option value={1}>1 Day</option>
-                <option value={3}>3 Days</option>
-                <option value={7}>7 Days</option>
-                <option value={14}>14 Days</option>
-              </select>
-            </div>
+            )}
           </div>
-        )}
 
-        {/* Step 4: Review and Sign */}
-        {currentStep === 4 && (
-          <div className="space-y-4 animate-fade-in">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-success" />
-              <span>Step 4 — Review Commercial Agreement & Sign</span>
-            </h3>
+          {/* Nav Controls */}
+          <PanelFooter className="flex items-center justify-between gap-3">
+            {currentStep > 1 ? (
+              <Button variant="secondary" size="md" onClick={handleBack} disabled={isSubmitting}>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back
+              </Button>
+            ) : (
+              <Link href="/app/invoices" className={buttonStyles({ variant: "ghost", size: "md" })}>
+                Cancel
+              </Link>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1">
-                <span className="text-[11px] uppercase font-mono text-foreground-muted">Seller</span>
-                <div className="font-medium text-foreground">{selectedSeller.displayName}</div>
-                <div className="font-mono text-foreground-secondary">{formatAddress(selectedSeller.walletAddress)}</div>
-              </div>
+            {currentStep < STEPS.length ? (
+              <Button variant="primary" size="md" onClick={handleNext}>
+                Continue
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            ) : (
+              <Button variant="primary" size="md" onClick={() => handleCreateAndSign(true)} isLoading={isSubmitting}>
+                {!isSubmitting && <FileSignature className="w-3.5 h-3.5" />}
+                Create &amp; sign invoice
+              </Button>
+            )}
+          </PanelFooter>
+        </Panel>
 
-              <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1">
-                <span className="text-[11px] uppercase font-mono text-foreground-muted">Payee & Amount</span>
-                <AmountDisplay amountMinor={amountMinor} size="md" />
-                <div className="font-mono text-foreground-secondary">{formatAddress(payeeAddress)}</div>
-              </div>
+        {/* ── Live preview ─────────────────────────────────────────── */}
+        <aside className="xl:col-span-5 min-w-0 space-y-4 xl:sticky xl:top-6">
+          <Panel>
+            <PanelHeader
+              title="Invoice preview"
+              description="Structured record as it will be signed."
+              actions={<StatusBadge status="DRAFT" type="invoice" size="sm" />}
+            />
+            <div className="divide-y divide-border">
+              <PreviewGroup title="Parties" active={currentStep === 1}>
+                <DataRow label="Seller">{selectedSeller.displayName}</DataRow>
+                <DataRow label="Seller wallet" mono>
+                  {formatAddress(selectedSeller.walletAddress, 6)}
+                </DataRow>
+                <DataRow label="Buyer ref" mono>
+                  {buyerRef || <Missing />}
+                </DataRow>
+              </PreviewGroup>
+
+              <PreviewGroup title="Service" active={currentStep === 2}>
+                <DataRow label="Type" mono>
+                  hsk_address_analytics_v1
+                </DataRow>
+                <DataRow label="Subject" mono>
+                  {targetAddress ? formatAddress(targetAddress, 6) : <Missing />}
+                </DataRow>
+                <DataRow label="Block range">
+                  <span className="font-mono text-xs tabular-nums">
+                    {startBlock || "—"} → {endBlock || "—"}
+                  </span>
+                  {span !== null && span > 0 && (
+                    <span className="block text-2xs text-foreground-muted mt-0.5 tabular-nums">{span.toLocaleString("en-US")} blocks</span>
+                  )}
+                </DataRow>
+                <DataRow label="Policy" mono>
+                  analytics_v1
+                </DataRow>
+              </PreviewGroup>
+
+              <PreviewGroup title="Payment" active={currentStep === 3}>
+                <DataRow label="Amount">
+                  <span className="tabular-nums">{formatMinorToUsd(amountMinor)}</span>
+                  <span className="text-2xs text-foreground-muted"> USD</span>
+                  <span className="block font-mono text-2xs text-foreground-muted mt-0.5 tabular-nums">{amountMinor} minor units</span>
+                </DataRow>
+                <DataRow label="Payee">
+                  <span className="font-mono text-xs">{payeeAddress ? formatAddress(payeeAddress, 6) : <Missing />}</span>
+                  <span className="block text-2xs text-foreground-muted mt-0.5">
+                    {payeeIsSeller ? "Seller wallet" : "Differs from seller wallet"}
+                  </span>
+                </DataRow>
+                <DataRow label="Chain">
+                  {chainLabel(preferredChainId)}
+                  <span className="font-mono text-2xs text-foreground-muted tabular-nums"> · {preferredChainId}</span>
+                </DataRow>
+                <DataRow label="Validity">
+                  <span className="tabular-nums">{expiresInDays}</span> {expiresInDays === 1 ? "day" : "days"} from signing
+                </DataRow>
+              </PreviewGroup>
             </div>
+          </Panel>
 
-            <div className="p-3 rounded-lg bg-surface-2 border border-border space-y-1 text-xs">
-              <span className="text-[11px] uppercase font-mono text-foreground-muted">Service Parameters</span>
-              <div className="font-mono text-foreground">
-                Address: {targetAddress}
-              </div>
-              <div className="font-mono text-foreground-secondary">
-                Block Range: {startBlock} to {endBlock} ({parseInt(endBlock, 10) - parseInt(startBlock, 10)} blocks)
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-lg bg-surface-2/60 border border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono text-foreground-secondary font-medium">
-                  EIP-712 Typed Structured Data Preview
-                </span>
-                <span className="text-[11px] font-mono text-primary-light">
-                  PrimaryType: HashXInvoice
-                </span>
-              </div>
-              <pre className="text-[11px] font-mono text-foreground-secondary max-h-40 overflow-y-auto scrollbar-thin p-2 rounded bg-surface-1">
-                {JSON.stringify(
-                  {
-                    seller: selectedSeller.walletAddress,
-                    buyerRefHash: "0x...",
-                    serviceType: stringToBytes32("hsk_address_analytics_v1"),
-                    serviceTermsHash: computeServiceTermsHash(targetAddress as `0x${string}`, startBlock, endBlock),
-                    amountMinor: amountMinor,
-                    currency: stringToBytes32("USD"),
-                    payee: payeeAddress,
-                    paymentChainId: preferredChainId,
-                    nonce: "1006",
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-
-            <div className="p-3 rounded-lg bg-primary-subtle/30 border border-primary/30 text-xs text-primary-light">
-              <span className="font-medium">Signature Notice: </span>
-              In Demo Mode, a simulated EIP-712 signature matching the registered seller wallet will be recorded. Once signed, the invoice terms become immutable.
-            </div>
-          </div>
-        )}
-
-        {/* Nav Controls */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          {currentStep > 1 ? (
-            <Button variant="secondary" size="sm" onClick={handleBack} disabled={isSubmitting}>
-              Back
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          {currentStep < 4 ? (
-            <Button variant="primary" size="sm" onClick={handleNext} className="gap-1.5">
-              <span>Continue</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => handleCreateAndSign(true)}
-              isLoading={isSubmitting}
-              className="gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Create & Sign Invoice</span>
-            </Button>
-          )}
-        </div>
+          <CodeViewer
+            title="EIP-712 message · HashXInvoice"
+            data={typedMessage}
+            maxHeight="max-h-72"
+            className={cn(currentStep === 4 && "ring-1 ring-inset ring-border-strong")}
+            actions={
+              <span className="hidden sm:inline-flex items-center gap-1 text-2xs text-foreground-muted pr-1">
+                <PenLine className="w-3 h-3" aria-hidden="true" />
+                Live
+              </span>
+            }
+          />
+        </aside>
       </div>
     </div>
   );
+}
+
+function PreviewGroup({ title, active, children }: { title: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <section className={cn("relative px-4 sm:px-5 py-4 transition-colors", active && "bg-surface-2/40")}>
+      {active && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" />}
+      <div className={cn("eyebrow mb-3", active && "text-foreground-secondary")}>{title}</div>
+      <DataList dense>{children}</DataList>
+    </section>
+  );
+}
+
+function ReviewRow({ label, summary, onEdit }: { label: string; summary: React.ReactNode; onEdit: () => void }) {
+  return (
+    <div className="flex items-center gap-4 px-3.5 py-2.5">
+      <span className="w-28 shrink-0 text-xs text-foreground-muted">{label}</span>
+      <span className="flex-1 min-w-0 truncate text-[13px] text-foreground">{summary}</span>
+      <Button variant="ghost" size="xs" onClick={onEdit}>
+        Edit
+      </Button>
+    </div>
+  );
+}
+
+function Missing() {
+  return <span className="font-sans text-xs text-warning">Required</span>;
 }

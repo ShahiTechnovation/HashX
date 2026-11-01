@@ -1,0 +1,682 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HashX â€” Verifiable Cryptographic Receipt (#HX-8942-RECEIPT)</title>
+  <!-- Tailwind CSS CDN with configuration -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            carbon: {
+              void: '#0A1012',
+              base: '#0D1417',
+              panel: '#11181B',
+              surface: '#151F23',
+              border: '#273137',
+              borderDim: '#1B2428',
+              muted: '#7A8C94',
+              text: '#E3E8EA',
+              highlight: '#00E5FF'
+            },
+            parchment: {
+              paper: '#FBFAF6',
+              surfaceDim: '#F4F2EB',
+              hairline: '#D9DCD7',
+              subtle: '#E6E8E2',
+              ink: '#111719',
+              inkMuted: '#515B60',
+              inkSubtle: '#788287',
+              sealBlue: '#345BEE',
+              sealLight: '#EFF3FF',
+              emeraldVerified: '#0D824B',
+              emeraldBg: '#E9F8F0'
+            },
+            signal: {
+              blue: '#345BEE',
+              emerald: '#00D084',
+              amber: '#F59E0B'
+            }
+          },
+          fontFamily: {
+            sans: ['Space Grotesk', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+          },
+          boxShadow: {
+            'certificate': '0 24px 64px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.07)',
+            'seal': '0 4px 16px rgba(52, 91, 238, 0.18)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Guilloche Pattern Generator with CSS Gradients & SVG Masking */
+    .guilloche-bg {
+      background-color: #FBFAF6;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(52, 91, 238, 0.03) 0%, transparent 60%),
+        repeating-radial-gradient(circle at 50% 120px, transparent 0, transparent 4px, rgba(17, 23, 25, 0.015) 5px, transparent 6px),
+        linear-gradient(to right, rgba(217, 220, 215, 0.25) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(217, 220, 215, 0.25) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 24px 24px, 24px 24px;
+    }
+
+    .security-micro-pattern {
+      background-image: radial-gradient(#345bee 0.75px, transparent 0.75px);
+      background-size: 8px 8px;
+    }
+
+    /* Subtle deckled security hairline border */
+    .certificate-border {
+      border: 1px solid #D9DCD7;
+      box-shadow: inset 0 0 0 4px #FBFAF6, inset 0 0 0 5px #D9DCD7;
+    }
+
+    .crosshair-corner {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+    }
+  </style>
+</head>
+<body class="bg-carbon-void text-carbon-text font-sans antialiased min-h-screen selection:bg-signal-blue selection:text-white flex flex-col">
+
+  <!-- TOP SHELL NAVIGATION / RECONCILER STATUS -->
+  <header class="border-b border-carbon-border bg-carbon-base/95 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between text-xs font-mono">
+      <!-- Left: Brand & Node Telemetry -->
+      <div class="flex items-center space-x-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-6 h-6 bg-signal-blue flex items-center justify-center rounded-[2px] font-mono font-bold text-white tracking-tighter text-xs">
+            HX
+          </div>
+          <span class="font-sans font-bold tracking-tight text-white text-sm">HASHX</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] bg-carbon-surface border border-carbon-border text-carbon-muted">v2.4 CORE</span>
+        </div>
+
+        <div class="h-4 w-px bg-carbon-border"></div>
+
+        <div class="flex items-center space-x-4 text-carbon-muted">
+          <span class="flex items-center space-x-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-signal-emerald animate-pulse"></span>
+            <span class="text-carbon-text">HSP Mainnet: Connected</span>
+          </span>
+          <span>Block: <strong class="text-carbon-text font-normal">#19,482,918</strong></span>
+          <span>Epoch: <strong class="text-carbon-text font-normal">#608,842</strong></span>
+          <span>Latency: <strong class="text-signal-emerald font-normal">142ms</strong></span>
+        </div>
+      </div>
+
+      <!-- Right: Main Nav Links & Protocol Actions -->
+      <div class="flex items-center space-x-6">
+        <nav class="hidden lg:flex items-center space-x-5 text-carbon-muted font-sans text-xs tracking-wide">
+          <a href="#" class="hover:text-white transition">Console</a>
+          <a href="#" class="hover:text-white transition">Proof Circuit</a>
+          <a href="#" class="hover:text-white transition">Settlement</a>
+          <a href="#" class="text-signal-blue font-medium border-b border-signal-blue pb-0.5">Verifiable Receipts</a>
+          <a href="#" class="hover:text-white transition">MCP Registry</a>
+        </nav>
+        <div class="flex items-center space-x-2">
+          <span class="px-2 py-1 rounded bg-carbon-surface border border-carbon-border text-[11px] text-signal-emerald flex items-center gap-1.5 font-mono">
+            <svg class="w-3 h-3 text-signal-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            2-of-2 Quorum Signed
+          </span>
+          <button class="bg-carbon-surface hover:bg-carbon-border border border-carbon-border px-3 py-1 rounded text-xs text-white font-sans transition flex items-center gap-1">
+            <span>Audit Key: 0x918F...29D4</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- OPERATIONAL SUB-HEADER / ACTIONS BAR -->
+  <div class="border-b border-carbon-border bg-carbon-panel/60">
+    <div class="max-w-[1440px] mx-auto px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <!-- Breadcrumbs & Status Indicator -->
+      <div class="flex items-center space-x-3 text-xs">
+        <a href="#" class="text-carbon-muted hover:text-white font-mono">Console</a>
+        <span class="text-carbon-border">/</span>
+        <a href="#" class="text-carbon-muted hover:text-white font-mono">Verifiable Receipts</a>
+        <span class="text-carbon-border">/</span>
+        <span class="px-2 py-0.5 rounded bg-signal-blue/10 border border-signal-blue/30 text-signal-blue font-mono font-medium">Record #HX-8942-RECEIPT</span>
+        <span class="text-carbon-muted text-[11px] hidden sm:inline ml-2 border-l border-carbon-border pl-3">
+          Status: <span class="text-signal-emerald font-mono font-medium">SETTLED & FINALIZED</span>
+        </span>
+      </div>
+
+      <!-- Institutional Action Buttons -->
+      <div class="flex items-center space-x-2 text-xs font-sans">
+        <button class="px-3 py-1.5 rounded bg-carbon-surface hover:bg-carbon-border border border-carbon-border text-carbon-text hover:text-white transition flex items-center space-x-1.5 font-mono text-[11px]">
+          <svg class="w-3.5 h-3.5 text-carbon-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span>Copy Merkle Proof</span>
+        </button>
+
+        <button class="px-3 py-1.5 rounded bg-carbon-surface hover:bg-carbon-border border border-carbon-border text-carbon-text hover:text-white transition flex items-center space-x-1.5 font-mono text-[11px]">
+          <svg class="w-3.5 h-3.5 text-carbon-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          <span>Export JSON-LD Envelope</span>
+        </button>
+
+        <button class="px-3 py-1.5 rounded bg-carbon-surface hover:bg-carbon-border border border-carbon-border text-carbon-text hover:text-white transition flex items-center space-x-1.5 font-mono text-[11px]">
+          <svg class="w-3.5 h-3.5 text-carbon-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          <span>Print Certificate</span>
+        </button>
+
+        <button class="px-3.5 py-1.5 rounded bg-signal-blue hover:bg-blue-600 text-white font-medium transition flex items-center space-x-1.5 shadow-sm text-xs">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span>Download Cryptographic PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION STAGE -->
+  <main class="flex-1 py-10 px-4 sm:px-6 bg-carbon-void relative overflow-hidden">
+    <!-- Background Technical Grid & Coordinate Markers -->
+    <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: linear-gradient(#273137 1px, transparent 1px), linear-gradient(90deg, #273137 1px, transparent 1px); background-size: 80px 80px;"></div>
+    
+    <div class="max-w-[1240px] mx-auto relative flex flex-col items-center">
+      
+      <!-- Top Stage Telemetry Badge -->
+      <div class="w-full max-w-[880px] mb-3 flex items-center justify-between text-[11px] font-mono text-carbon-muted">
+        <div class="flex items-center space-x-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-signal-emerald"></span>
+          <span class="text-carbon-text">AUDIT SPECIFICATION: ISO-20022 / HX-ERC-7739 COMPLIANT</span>
+        </div>
+        <div class="flex items-center space-x-3">
+          <span>FORMAT: ARCHIVAL INSTRUMENT</span>
+          <span class="text-carbon-border">|</span>
+          <span>INTEGRITY: 100% UNCONDITIONAL</span>
+        </div>
+      </div>
+
+      <!-- =================================================================================== -->
+      <!-- TACTILE PARCHMENT CERTIFICATE CENTERPIECE (880px WIDE INSTITUTIONAL FINANCIAL INSTRUMENT) -->
+      <!-- =================================================================================== -->
+      <article class="w-full max-w-[880px] guilloche-bg text-parchment-ink certificate-border rounded-[2px] shadow-certificate relative overflow-hidden p-8 sm:p-12 mb-10 transition-all">
+
+        <!-- Physical document corner registration marks -->
+        <div class="crosshair-corner top-3 left-3 pointer-events-none">
+          <svg class="w-full h-full text-parchment-hairline" viewBox="0 0 14 14" fill="none" stroke="currentColor">
+            <path d="M0 7H14M7 0V14" stroke-width="0.75"/>
+          </svg>
+        </div>
+        <div class="crosshair-corner top-3 right-3 pointer-events-none">
+          <svg class="w-full h-full text-parchment-hairline" viewBox="0 0 14 14" fill="none" stroke="currentColor">
+            <path d="M0 7H14M7 0V14" stroke-width="0.75"/>
+          </svg>
+        </div>
+        <div class="crosshair-corner bottom-3 left-3 pointer-events-none">
+          <svg class="w-full h-full text-parchment-hairline" viewBox="0 0 14 14" fill="none" stroke="currentColor">
+            <path d="M0 7H14M7 0V14" stroke-width="0.75"/>
+          </svg>
+        </div>
+        <div class="crosshair-corner bottom-3 right-3 pointer-events-none">
+          <svg class="w-full h-full text-parchment-hairline" viewBox="0 0 14 14" fill="none" stroke="currentColor">
+            <path d="M0 7H14M7 0V14" stroke-width="0.75"/>
+          </svg>
+        </div>
+
+        <!-- Watermark / Security Holographic Crosshair Overlay in Center -->
+        <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.035] overflow-hidden">
+          <svg class="w-[620px] h-[620px] text-parchment-ink" viewBox="0 0 200 200" fill="none" stroke="currentColor">
+            <circle cx="100" cy="100" r="90" stroke-width="0.5" stroke-dasharray="2 2"/>
+            <circle cx="100" cy="100" r="75" stroke-width="0.75"/>
+            <circle cx="100" cy="100" r="55" stroke-width="0.5"/>
+            <circle cx="100" cy="100" r="35" stroke-width="0.75" stroke-dasharray="4 2"/>
+            <path d="M100 5v190M5 100h190" stroke-width="0.5"/>
+            <path d="M30 30l140 140M170 30L30 170" stroke-width="0.25" stroke-dasharray="1 3"/>
+            <text x="100" y="94" font-size="7" font-family="Space Grotesk" text-anchor="middle" font-weight="bold" letter-spacing="4">HASHX PROTOCOL</text>
+            <text x="100" y="109" font-size="5" font-family="JetBrains Mono" text-anchor="middle" letter-spacing="2">DETERMINISTIC FINALITY</text>
+          </svg>
+        </div>
+
+        <!-- CERTIFICATE HEADER -->
+        <div class="relative border-b-2 border-parchment-ink pb-6 mb-8">
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+            <!-- Left Header: Protocol Seal & Title -->
+            <div class="space-y-3">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 border border-parchment-ink bg-parchment-paper flex items-center justify-center font-mono font-bold text-sm tracking-tighter shadow-sm">
+                  HX
+                </div>
+                <div>
+                  <div class="font-mono text-[10px] tracking-[0.2em] uppercase text-parchment-inkMuted">
+                    HASHX VERIFICATION PROTOCOL FOUNDATION
+                  </div>
+                  <div class="text-[10px] font-mono text-parchment-sealBlue">
+                    SETTLED VIA HASHKEY HSP RECONCILER ENGINE â€¢ CASPER FINALITY GADGET
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h1 class="font-sans font-bold text-xl sm:text-2xl text-parchment-ink tracking-tight uppercase leading-snug">
+                  Certificate of Cryptographic Commerce<br class="hidden sm:inline">&amp; Settlement Finality
+                </h1>
+                <p class="font-mono text-xs text-parchment-inkMuted mt-1">
+                  Issued under Dual-Key Quorum Protocol // Canonical State Proof Record
+                </p>
+              </div>
+            </div>
+
+            <!-- Right Header: Cryptographic Seal & Merkle QR Anchor -->
+            <div class="sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between gap-4">
+              <!-- Official Ultramarine Blue Notary Stamp / Badge -->
+              <div class="border-2 border-parchment-sealBlue rounded px-3 py-1.5 bg-parchment-sealLight text-parchment-sealBlue flex items-center space-x-2 shadow-seal">
+                <svg class="w-4 h-4 text-parchment-sealBlue shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <div class="text-left leading-tight">
+                  <div class="font-mono font-bold text-[10px] tracking-wider uppercase">NOTARIZED FINALITY</div>
+                  <div class="font-mono text-[9px]">L1 ATTESTED â€¢ 64/64</div>
+                </div>
+              </div>
+
+              <!-- High-density QR Pattern representation for machine audit -->
+              <div class="flex items-center space-x-3 bg-parchment-surfaceDim p-2 border border-parchment-hairline">
+                <div class="w-12 h-12 bg-parchment-ink p-1 shrink-0 flex flex-col justify-between">
+                  <!-- Pixel matrix preview -->
+                  <div class="flex justify-between">
+                    <span class="w-3 h-3 bg-white border border-parchment-ink"></span>
+                    <span class="w-1 h-3 bg-white"></span>
+                    <span class="w-3 h-3 bg-white border border-parchment-ink"></span>
+                  </div>
+                  <div class="flex justify-between items-center my-0.5">
+                    <span class="w-1 h-1 bg-white"></span>
+                    <span class="w-2 h-1 bg-white"></span>
+                    <span class="w-1 h-1 bg-white"></span>
+                    <span class="w-1 h-1 bg-white"></span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="w-3 h-3 bg-white border border-parchment-ink"></span>
+                    <span class="w-2 h-1 bg-white self-end"></span>
+                    <span class="w-3 h-3 bg-white border border-parchment-ink"></span>
+                  </div>
+                </div>
+                <div class="text-left text-[9px] font-mono text-parchment-inkMuted leading-tight">
+                  <div>PROOF ANCHOR</div>
+                  <div class="text-parchment-ink font-semibold mt-0.5">SHA-256 TREE</div>
+                  <div class="text-[8px] text-parchment-inkSubtle">SCAN TO RE-EXECUTE</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prominent Receipt Root Banner -->
+          <div class="mt-6 pt-4 border-t border-parchment-hairline bg-parchment-surfaceDim/70 p-3.5 border border-parchment-subtle rounded-[1px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="min-w-0">
+              <span class="text-[10px] font-mono tracking-widest text-parchment-inkSubtle uppercase block mb-0.5">
+                UNIQUE RECEIPT ROOT HASH (MERKLE ANCHOR)
+              </span>
+              <div class="font-mono font-bold text-xs sm:text-sm text-parchment-ink tracking-tight select-all break-all">
+                0x4f12d8a0c79b19e482bf10aa29e08a44b1c2089e023e4811b7ef8914c8102
+              </div>
+            </div>
+            <div class="shrink-0 flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-parchment-emeraldBg text-parchment-emeraldVerified border border-emerald-300">
+                â€¢ VERIFIED MATCH
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CERTIFICATE BODY SECTIONS -->
+        <div class="space-y-7 relative">
+
+          <!-- SECTION 01: COMMERCIAL AGREEMENT & INTENT -->
+          <section class="border-b border-parchment-hairline pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">1</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  Commercial Agreement &amp; Intent Verification
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] text-parchment-inkMuted">SPEC: EIP-712 / V4 STRUCTURAL</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white/70 p-3.5 border border-parchment-hairline text-xs font-mono">
+              <div>
+                <span class="text-[10px] text-parchment-inkSubtle uppercase block">Invoice ID</span>
+                <span class="font-bold text-parchment-ink">#HX-8942</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-parchment-inkSubtle uppercase block">Attestation Timestamp</span>
+                <span class="text-parchment-ink">2026-11-01 23:40:19 UTC</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-parchment-inkSubtle uppercase block">Chain / Domain Verifier</span>
+                <span class="text-parchment-ink">Ethereum L1 (0x71C0...948A)</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-parchment-inkSubtle uppercase block">EIP-712 Nonce</span>
+                <span class="text-parchment-ink">#491 (Anti-Replay Passed)</span>
+              </div>
+            </div>
+
+            <!-- Agreement Line Item & Settlement Valuation Breakdown -->
+            <div class="mt-3 border border-parchment-hairline bg-parchment-paper overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-parchment-hairline bg-parchment-surfaceDim font-mono text-[10px] text-parchment-inkMuted uppercase">
+                    <th class="py-2 px-3">Service Scope &amp; Deliverable Specification</th>
+                    <th class="py-2 px-3">SLA Bounds</th>
+                    <th class="py-2 px-3 text-right">Principal</th>
+                    <th class="py-2 px-3 text-right">HSP Gas</th>
+                    <th class="py-2 px-3 text-right font-bold text-parchment-ink">Total Obligation</th>
+                  </tr>
+                </thead>
+                <tbody class="font-mono divide-y divide-parchment-hairline">
+                  <tr>
+                    <td class="py-2.5 px-3">
+                      <div class="font-bold text-parchment-ink font-sans text-xs">Autonomous LLM Batch Inference Task</div>
+                      <div class="text-[10px] text-parchment-inkMuted font-mono">Deliverable: 4,000,000 FP8 tokens â€¢ Model: Llama-3.3-70B</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-[11px] text-parchment-inkMuted">Latency &lt;850ms</td>
+                    <td class="py-2.5 px-3 text-right text-parchment-ink">14,200.00 USDC</td>
+                    <td class="py-2.5 px-3 text-right text-parchment-inkMuted">2.40 USDC</td>
+                    <td class="py-2.5 px-3 text-right font-bold text-parchment-sealBlue text-sm">14,202.40 USDC</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- SECTION 02: COUNTERPARTY CRYPTOGRAPHIC BINDING -->
+          <section class="border-b border-parchment-hairline pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">2</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  Counterparty Cryptographic Binding
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] text-parchment-emeraldVerified font-medium">100% REGISTRY IDENTITY ATTESTED</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Payer Entity Box -->
+              <div class="p-3.5 border border-parchment-hairline bg-white/70 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono text-[10px] tracking-wider uppercase text-parchment-inkSubtle">PAYER ENTITY (DEBITOR)</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.2 bg-parchment-surfaceDim border border-parchment-hairline">REGISTRY #AG-1100</span>
+                </div>
+                <div class="font-sans font-bold text-sm text-parchment-ink">Autonomous Treasury Alpha</div>
+                <div class="font-mono text-xs space-y-1 text-parchment-inkMuted">
+                  <div>Vault Contract: <span class="text-parchment-ink font-semibold">0x19F2d88194a974b219e8b3A</span></div>
+                  <div>Role: Autonomous Capital Allocator // Tier-2 Authority</div>
+                </div>
+              </div>
+
+              <!-- Payee Entity Box -->
+              <div class="p-3.5 border border-parchment-hairline bg-white/70 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono text-[10px] tracking-wider uppercase text-parchment-inkSubtle">PAYEE ENTITY (CREDITOR)</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.2 bg-parchment-surfaceDim border border-parchment-hairline">REGISTRY #AG-9912</span>
+                </div>
+                <div class="font-sans font-bold text-sm text-parchment-ink">DeepCompute Agent 09</div>
+                <div class="font-mono text-xs space-y-1 text-parchment-inkMuted">
+                  <div>Service Wallet: <span class="text-parchment-ink font-semibold">0x429A88c2195F38F1</span></div>
+                  <div>Public Key Witness: <span class="text-parchment-sealBlue font-semibold">0x38F1...902a</span> (secp256k1 verified)</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SECTION 03: INDEPENDENT DELIVERY PROOF WITNESS -->
+          <section class="border-b border-parchment-hairline pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">3</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  Independent Delivery Proof Witness
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] text-parchment-emeraldVerified font-medium">3/3 FULL NODE CONSENSUS</span>
+            </div>
+
+            <div class="bg-white/70 border border-parchment-hairline p-4 space-y-3 font-mono text-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-parchment-hairline pb-2.5">
+                <div>
+                  <span class="text-[10px] text-parchment-inkSubtle uppercase block">Digital Service Deliverable Artifact (IPFS Hash)</span>
+                  <span class="font-bold text-parchment-ink break-all text-[11px]">ipfs://bafybeicx4z7e9w849qm018a99k4z0029bca71092e01f01</span>
+                </div>
+                <span class="text-[10px] px-2 py-0.5 bg-parchment-surfaceDim border border-parchment-hairline text-parchment-ink self-start sm:self-auto">
+                  Payload Size: 42.8 MB
+                </span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-[11px]">
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Execution State Diff</span>
+                  <span class="font-bold text-parchment-emeraldVerified">0 Delta (Zero Leakage)</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Latency Realized</span>
+                  <span class="font-bold text-parchment-ink">612ms <span class="font-normal text-parchment-inkMuted">(&lt; 850ms target)</span></span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Output Merkle Root</span>
+                  <span class="font-semibold text-parchment-ink">0x3d4f...991a (100% Match)</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SECTION 04: CHAIN OF CUSTODY & HUMAN AUTHORIZATION -->
+          <section class="border-b border-parchment-hairline pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">4</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  Chain of Custody &amp; Human Authorization (Dual-Key Quorum)
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 bg-parchment-emeraldBg text-parchment-emeraldVerified border border-emerald-300 font-medium">
+                QUORUM SATISFIED
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Stage 1 Signature -->
+              <div class="border border-parchment-hairline bg-white/70 p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-mono tracking-wider text-parchment-inkSubtle uppercase">STAGE 01 // POLICY ORACLE KEY</span>
+                  <span class="w-2 h-2 rounded-full bg-parchment-emeraldVerified"></span>
+                </div>
+                <div class="font-mono text-xs">
+                  <div class="font-bold text-parchment-ink">Oracle Key: 0x44f2...8a91</div>
+                  <div class="text-[11px] text-parchment-inkMuted mt-0.5">Automated Policy &amp; AML Check passed</div>
+                  <div class="text-[10px] text-parchment-inkSubtle mt-1">Signed: 2026-11-01 23:44:01 UTC</div>
+                </div>
+              </div>
+
+              <!-- Stage 2 Signature -->
+              <div class="border border-parchment-hairline bg-white/70 p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-mono tracking-wider text-parchment-inkSubtle uppercase">STAGE 02 // HUMAN SIGN-OFF (HSM)</span>
+                  <span class="w-2 h-2 rounded-full bg-parchment-emeraldVerified"></span>
+                </div>
+                <div class="font-mono text-xs">
+                  <div class="font-bold text-parchment-ink">Treasury Officer: 0x918F...29D4</div>
+                  <div class="text-[11px] text-parchment-inkMuted mt-0.5">Ledger Enterprise Hardware Security Module</div>
+                  <div class="text-[10px] text-parchment-inkSubtle mt-1">Signed: 2026-11-01 23:45:50 UTC</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SECTION 05: HASHKEY HSP SETTLEMENT FINALITY -->
+          <section class="border-b border-parchment-hairline pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">5</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  HashKey HSP Settlement Finality Track
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] text-parchment-sealBlue font-semibold uppercase">L1 Casper Safe (64/64 Attested)</span>
+            </div>
+
+            <div class="bg-white/70 border border-parchment-hairline p-4 space-y-3 font-mono text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <span class="text-[10px] text-parchment-inkSubtle uppercase block">HSP Settlement ID</span>
+                  <span class="font-bold text-parchment-ink">#HSP-8942-HK</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-parchment-inkSubtle uppercase block">On-Chain Tx Hash</span>
+                  <span class="font-semibold text-parchment-sealBlue">0x7c91e48b1...914b</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-parchment-inkSubtle uppercase block">Block Height</span>
+                  <span class="font-semibold text-parchment-ink">Block #19,482,918</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-parchment-inkSubtle uppercase block">Casper Epoch</span>
+                  <span class="font-semibold text-parchment-ink">Epoch #608,842</span>
+                </div>
+              </div>
+
+              <!-- Finality Invariant Statement -->
+              <div class="pt-2 border-t border-parchment-hairline flex items-center justify-between text-[11px]">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-parchment-emeraldVerified" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  <span class="text-parchment-ink font-semibold">Invariant Guaranteed: Funds released unconditionally into payee vault.</span>
+                </div>
+                <span class="font-mono text-[10px] text-parchment-inkMuted">Reorg Probability: &lt; 0.000001%</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- SECTION 06: INDEPENDENT VERIFICATION SPECIFICATION & CLI -->
+          <section>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-4 h-4 rounded-full bg-parchment-ink text-white font-mono text-[9px] flex items-center justify-center font-bold">6</span>
+                <h2 class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+                  Independent Verification Specification &amp; CLI Audit
+                </h2>
+              </div>
+              <span class="font-mono text-[10px] text-parchment-inkMuted">OPEN RE-PROVABLE</span>
+            </div>
+
+            <!-- Merkle Proof Metadata & Terminal Command -->
+            <div class="space-y-3 font-mono text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-white/70 border border-parchment-hairline text-[11px]">
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Merkle Leaf Index</span>
+                  <span class="font-bold text-parchment-ink">Index #491</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Proof Depth</span>
+                  <span class="font-bold text-parchment-ink">12 Blocks (Merkle Patricia Trie)</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-parchment-inkSubtle uppercase block">Casper Quorum Weight</span>
+                  <span class="font-bold text-parchment-ink">67.8% &gt; 2/3 Stake</span>
+                </div>
+              </div>
+
+              <!-- Re-Verification CLI Block -->
+              <div class="bg-carbon-void text-carbon-text p-3.5 rounded-[2px] border border-carbon-border font-mono text-[11px] space-y-1.5">
+                <div class="text-[10px] text-carbon-muted uppercase tracking-wider flex items-center justify-between">
+                  <span>INDEPENDENT VERIFICATION CLI (OFF-CHAIN RUNTIME)</span>
+                  <span class="text-signal-highlight">NODE.JS &gt;= 18.0</span>
+                </div>
+                <div class="text-white select-all overflow-x-auto whitespace-pre py-1">
+npx @hashx/verifier verify-receipt \
+  --tx 0x7c91e48b1d94a2e8914b \
+  --artifact ipfs://bafybeicx4z7e9w849qm018a99k4z0029bca71092e01f01 \
+  --root 0x4f12d8a0c79b19e482bf10aa29e08a44b1c2089e
+                </div>
+                <div class="text-[10px] text-carbon-muted">
+                  Expected standard return: <span class="text-signal-emerald">{"status": "CONFIRMED_IMMUTABLE", "reorg_risk": 0.0}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- CERTIFICATE FOOTER NOTARY / STAMP -->
+        <div class="mt-10 pt-6 border-t-2 border-parchment-ink flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div class="space-y-1">
+            <div class="font-sans font-bold text-xs uppercase tracking-wider text-parchment-ink">
+              HashX Cryptographic Notary &amp; Registry Division
+            </div>
+            <p class="font-mono text-[10px] text-parchment-inkMuted leading-relaxed">
+              This digital certificate represents an irrevocable cryptographic receipt under the HashX Protocol Foundation charter.
+              The underlying transaction was executed via deterministic escrow and validated across Casper finality consensus.
+            </p>
+          </div>
+
+          <!-- Official Geometric Ink Stamp -->
+          <div class="border-2 border-parchment-ink p-2 text-center shrink-0 w-44 bg-parchment-surfaceDim rotate-[-1deg] shadow-sm">
+            <div class="text-[8px] font-mono tracking-widest text-parchment-ink uppercase">HASHX AUDIT ARCHIVE</div>
+            <div class="font-mono font-bold text-xs text-parchment-ink py-0.5 border-y border-parchment-ink my-0.5">
+              VERIFIED IMMUTABLE
+            </div>
+            <div class="text-[8px] font-mono text-parchment-sealBlue">STAMP ID: #HX-NOTARY-8942</div>
+          </div>
+        </div>
+
+      </article>
+
+      <!-- AUDIT QUICK CONTROLS / HASH EXPLORER BAR BELOW CERTIFICATE -->
+      <div class="w-full max-w-[880px] bg-carbon-base border border-carbon-border p-4 rounded-[2px] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-carbon-muted">
+        <div class="flex items-center space-x-3">
+          <span class="w-2 h-2 rounded-full bg-signal-blue"></span>
+          <span>Receipt Root Witness: <strong class="text-carbon-text font-normal">SHA-256 Validated</strong></span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a href="#" class="text-carbon-text hover:text-signal-blue transition underline decoration-carbon-border">View raw EIP-712 Envelope (.json)</a>
+          <span class="text-carbon-border">â€¢</span>
+          <a href="#" class="text-carbon-text hover:text-signal-blue transition underline decoration-carbon-border">Inspect in HashKey HSP Explorer &rarr;</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- TELEMETRY FOOTER STRIP -->
+  <footer class="border-t border-carbon-border bg-carbon-base py-4 px-6 text-xs font-mono text-carbon-muted">
+    <div class="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-4">
+        <span class="text-carbon-text font-sans font-bold">HASHX</span>
+        <span class="text-carbon-border">|</span>
+        <span>Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing.</span>
+      </div>
+      <div class="flex items-center space-x-6 text-[11px]">
+        <span>Casper Proof Circuit: <span class="text-signal-emerald">Online</span></span>
+        <span>Escrow Model: <span class="text-carbon-text">Non-Custodial</span></span>
+        <span class="text-carbon-border">|</span>
+        <a href="#" class="hover:text-carbon-text transition">Whitepaper v1.4</a>
+        <a href="#" class="hover:text-carbon-text transition">HSP Protocol Specs</a>
+        <a href="#" class="hover:text-carbon-text transition">Incident Disclosure</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

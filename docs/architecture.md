@@ -1,7 +1,7 @@
-# HashX Global V1 — System Architecture
+# HashXV1 — System Architecture
 
 ## 1. Overview
-**HashX Global** is the Trust Layer for Agentic Commerce, built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
+**HashX** is the Trust Layer for Agent Payments, built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
 
 In an autonomous agent ecosystem, an AI agent should never authorize payment merely because another agent sends a payment request. HashX enforces a strict commercial pipeline:
 1. **Commercial Intent**: Structured agreement creation.
@@ -57,3 +57,4 @@ Verifiable Receipt & On-Chain Commitment
 - **Testnet**: Chain ID `133`, RPC: `https://testnet.hsk.xyz`
 - **Mainnet**: Chain ID `177`, RPC: `https://mainnet.hsk.xyz`
 - **Evidence Registry Contract**: `0x19B861876D8075A11eC6c4596395b058fe8466C2`
+

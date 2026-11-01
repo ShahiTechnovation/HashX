@@ -4,20 +4,19 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
+  LayoutGrid,
   FileText,
-  ShieldCheck,
-  CheckCircle,
-  Coins,
-  Receipt,
-  Sparkles,
+  ScanSearch,
+  KeyRound,
+  ArrowLeftRight,
+  ReceiptText,
+  FlaskConical,
   Terminal,
   Settings,
-  HelpCircle,
-  ExternalLink,
+  ArrowUpRight,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/brand/Logo";
 import { useApp } from "@/providers/AppContext";
 
 interface SidebarProps {
@@ -25,130 +24,221 @@ interface SidebarProps {
   className?: string;
 }
 
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: React.ReactNode;
+  shortcut?: string;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) => {
   const pathname = usePathname();
-  const { pendingApprovalsCount, mode } = useApp();
+  const { pendingApprovalsCount, mode, chainId } = useApp();
 
-  const navigation = [
-    { name: "Overview", href: "/app", icon: LayoutDashboard },
-    { name: "Invoices", href: "/app/invoices", icon: FileText },
-    { name: "Trust Inspector", href: "/app/trust", icon: ShieldCheck },
+  const isActive = (href: string) => {
+    if (href === "/app") return pathname === "/app";
+    return pathname.startsWith(href);
+  };
+
+  const coreNav: NavItem[] = [
     {
-      name: "Approvals",
+      name: "Overview",
+      href: "/app",
+      icon: LayoutGrid,
+      shortcut: "CTRL+1",
+    },
+    {
+      name: "Trust Inspector",
+      href: "/app/trust",
+      icon: ScanSearch,
+      badge: (
+        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-danger/15 text-danger border border-danger/30">
+          Forensics
+        </span>
+      ),
+    },
+    {
+      name: "Invoices & Intent",
+      href: "/app/invoices",
+      icon: FileText,
+      badge: <span className="text-[10px] font-mono text-carbon-muted">EIP-712</span>,
+    },
+    {
+      name: "Human Authorization",
       href: "/app/approvals",
-      icon: CheckCircle,
-      badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount}` : undefined,
-      badgeVariant: "warning",
+      icon: KeyRound,
+      badge: pendingApprovalsCount > 0 ? (
+        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 animate-pulse">
+          {pendingApprovalsCount} Pending
+        </span>
+      ) : (
+        <span className="text-[9px] font-mono text-carbon-muted">Quorum</span>
+      ),
     },
-    { name: "Settlements", href: "/app/settlements", icon: Coins },
-    { name: "Receipts", href: "/app/receipts", icon: Receipt },
     {
-      name: "Demo Center",
-      href: "/app/demo",
-      icon: Sparkles,
-      badge: "Guided",
-      badgeVariant: "primary",
+      name: "Settlement (HSP)",
+      href: "/app/settlements",
+      icon: ArrowLeftRight,
+      badge: (
+        <span className="text-[9px] font-mono text-success font-semibold flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
+          Active
+        </span>
+      ),
     },
-    { name: "Developers", href: "/app/developers", icon: Terminal },
-    { name: "Settings", href: "/app/settings", icon: Settings },
+    {
+      name: "Verifiable Receipts",
+      href: "/app/receipts",
+      icon: ReceiptText,
+    },
   ];
+
+  const toolsNav: NavItem[] = [
+    {
+      name: "Proof Lab",
+      href: "/app/demo",
+      icon: FlaskConical,
+      badge: <span className="text-[9px] font-mono text-carbon-muted">Simulate</span>,
+    },
+    {
+      name: "MCP Tools",
+      href: "/app/developers",
+      icon: Terminal,
+      badge: (
+        <span className="text-[9px] font-mono text-success font-semibold">8 RPC</span>
+      ),
+    },
+  ];
+
+  const renderItem = (item: NavItem) => {
+    const active = isActive(item.href);
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.name}
+        href={item.href}
+        onClick={onCloseMobile}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-colors group",
+          active
+            ? "bg-carbon-panel text-carbon-text border border-carbon-border/80 shadow-sm"
+            : "text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40 border border-transparent"
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          {active && (
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-primary rounded-r"
+            />
+          )}
+          <Icon
+            strokeWidth={1.8}
+            className={cn(
+              "w-4 h-4 shrink-0 transition-colors",
+              active ? "text-primary" : "text-carbon-muted group-hover:text-carbon-text"
+            )}
+          />
+          <span className="truncate font-sans">{item.name}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {item.badge}
+          {item.shortcut && (
+            <span className="text-[9px] font-mono text-carbon-muted/70 group-hover:text-carbon-muted hidden sm:inline">
+              {item.shortcut}
+            </span>
+          )}
+        </div>
+      </Link>
+    );
+  };
 
   return (
     <aside
       className={cn(
-        "w-64 h-full bg-surface-1 border-r border-border flex flex-col shrink-0 select-none",
+        "w-[240px] flex-shrink-0 bg-carbon-nav border-r border-carbon-border flex flex-col justify-between h-full select-none",
         className
       )}
     >
-      <div className="h-16 flex items-center px-5 border-b border-border">
-        <Logo href="/app" />
+      <div className="flex flex-col">
+        {/* Brand Lockup */}
+        <Link
+          href="/app"
+          className="h-16 px-5 flex items-center gap-3 border-b border-carbon-border group hover:bg-carbon-panel/20 transition-colors"
+        >
+          <div className="w-8 h-8 rounded bg-primary/15 border border-primary/40 flex items-center justify-center text-primary font-mono font-bold text-sm tracking-tighter">
+            HX
+          </div>
+          <div>
+            <div className="font-display font-bold text-carbon-text tracking-tight text-sm leading-tight flex items-center gap-1.5">
+              HashX
+              <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-carbon-panel text-carbon-muted border border-carbon-border">
+                v2.4
+              </span>
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-carbon-muted">
+              Proof System / Console
+            </div>
+          </div>
+        </Link>
+
+        {/* Core Operations Section */}
+        <div className="px-5 pt-5 pb-2 text-[10px] font-mono uppercase tracking-wider text-carbon-muted font-semibold">
+          Core Operations
+        </div>
+        <nav className="space-y-0.5 px-3" aria-label="Core Navigation">
+          {coreNav.map(renderItem)}
+        </nav>
+
+        {/* Tooling & Protocols Section */}
+        <div className="px-5 pt-5 pb-2 text-[10px] font-mono uppercase tracking-wider text-carbon-muted font-semibold">
+          Tooling &amp; Protocols
+        </div>
+        <nav className="space-y-0.5 px-3" aria-label="Tooling Navigation">
+          {toolsNav.map(renderItem)}
+        </nav>
       </div>
 
-      {mode === "demo" && (
-        <div className="mx-3.5 mt-3.5 p-2 rounded-lg bg-surface-2/80 border border-primary/20 text-xs text-foreground-secondary flex items-center justify-between">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-            <span className="font-mono text-[11px] text-primary-light font-medium truncate">
-              DEMO SIMULATION
-            </span>
-          </div>
+      {/* Bottom Telemetry & Environment */}
+      <div className="p-3 m-3 rounded bg-carbon-void/90 border border-carbon-border space-y-2">
+        <div className="flex items-center justify-between text-[11px] font-mono">
+          <span className="text-carbon-muted flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
+            HashKey HSP
+          </span>
+          <span className="text-success font-semibold text-[10px]">CONNECTED</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px] font-mono">
+          <span className="text-carbon-muted flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            Payment Signer
+          </span>
+          <span className="text-carbon-text text-[10px]">READY</span>
+        </div>
+        <div className="border-t border-carbon-border/70 pt-2 flex items-center justify-between text-[10px] font-mono text-carbon-muted">
+          <span>NETWORK</span>
+          <span className="text-carbon-text font-mono">
+            {chainId === 133 ? "TESTNET 133" : "MAINNET 133"}
+          </span>
+        </div>
+        <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-carbon-muted">
           <Link
-            href="/app/demo"
-            className="text-[10px] uppercase font-mono text-foreground-muted hover:text-foreground underline shrink-0"
+            href="/app/settings"
+            className="hover:text-carbon-text flex items-center gap-1 transition-colors"
           >
-            Guided
+            <Settings className="w-3 h-3" />
+            <span>Settings</span>
+          </Link>
+          <Link
+            href="/"
+            className="hover:text-carbon-text flex items-center gap-1 transition-colors"
+          >
+            <span>hashx.global</span>
+            <ArrowUpRight className="w-2.5 h-2.5" />
           </Link>
         </div>
-      )}
-
-      <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
-        <div className="px-2 pb-1.5 text-[11px] font-mono uppercase tracking-wider text-foreground-muted">
-          Platform
-        </div>
-
-        {navigation.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/app" && pathname.startsWith(item.href));
-
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onCloseMobile}
-              className={cn(
-                "group flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                isActive
-                  ? "bg-primary-subtle/50 text-white border border-primary/40 shadow-sm"
-                  : "text-foreground-secondary hover:text-foreground hover:bg-surface-2"
-              )}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Icon
-                  className={cn(
-                    "w-4 h-4 shrink-0 transition-colors",
-                    isActive
-                      ? "text-primary-light"
-                      : "text-foreground-muted group-hover:text-foreground"
-                  )}
-                />
-                <span className="truncate">{item.name}</span>
-              </div>
-
-              {item.badge && (
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 text-[10px] font-mono rounded-full shrink-0 font-semibold",
-                    item.badgeVariant === "primary"
-                      ? "bg-primary/20 text-primary-light border border-primary/40"
-                      : "bg-warning/20 text-warning border border-warning/40"
-                  )}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="p-3 border-t border-border bg-surface-2/40 space-y-2">
-        <div className="px-2 py-1 text-[11px] text-foreground-muted flex items-center justify-between">
-          <span>HashKey Chain</span>
-          <span className="font-mono text-primary-light font-medium">EVM ID 133</span>
-        </div>
-        <Link
-          href="/"
-          className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-foreground-secondary hover:text-foreground hover:bg-surface-3 transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <HelpCircle className="w-3.5 h-3.5" />
-            Marketing & Docs
-          </span>
-          <ExternalLink className="w-3 h-3 opacity-60" />
-        </Link>
       </div>
     </aside>
   );

@@ -1,33 +1,42 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+// Self-hosted at build time: no external stylesheet, no fallback flash.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
+
 export const metadata: Metadata = {
-  title: "HashX Global — The Trust Layer for Agentic Commerce",
+  title: {
+    default: "HashX — The Trust Layer for Agent Payments",
+    template: "%s · HashX",
+  },
   description:
-    "Cryptographic verification, deterministic fulfillment validation, exact human authorization, and reconciled HSP settlement on HashKey Chain.",
+    "HashX verifies commercial intent, authenticates structured invoices, validates objective fulfillment, enforces two-stage human authorization, reconciles HSP settlement, and anchors evidence for verifiable receipts.",
   keywords: [
+    "Agent Payments",
     "Agentic Commerce",
+    "Payment Authorization",
     "HashKey Chain",
     "HSP",
     "EIP-712",
-    "Deterministic Verification",
-    "AI Agent Payments",
-    "Smart Invoices",
+    "Verifiable Receipts",
   ],
-  authors: [{ name: "HashX Global Protocol Team" }],
+  authors: [{ name: "HashX" }],
   openGraph: {
-    title: "HashX Global — The Trust Layer for Agentic Commerce",
+    title: "HashX — The Trust Layer for Agent Payments",
     description:
-      "Verify commercial intent. Validate delivery. Authorize exact payments. Prove settlement.",
+      "Verify commercial intent. Validate fulfillment. Authorize exact payments. Prove settlement.",
     url: "https://hashx.global",
-    siteName: "HashX Global",
+    siteName: "HashX",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HashX Global — The Trust Layer for Agentic Commerce",
-    description: "The Trust Layer for Agentic Commerce on HashKey Chain.",
+    title: "HashX — The Trust Layer for Agent Payments",
+    description: "Verify commercial intent. Validate fulfillment. Authorize exact payments. Prove settlement.",
   },
   robots: {
     index: true,
@@ -36,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B0911",
+  themeColor: "#0A1012",
   width: "device-width",
   initialScale: 1,
 };
@@ -47,16 +56,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary-subtle selection:text-primary-light">
+    <html lang="en" className={`dark ${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/25 selection:text-foreground">
         {children}
       </body>
     </html>

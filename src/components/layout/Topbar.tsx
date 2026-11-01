@@ -1,20 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Menu,
-  ChevronRight,
-  Wallet,
-  Globe,
-  Radio,
-  SlidersHorizontal,
   ChevronDown,
   LogOut,
   Copy,
   Check,
-  AlertCircle,
+  Wallet,
+  Layers,
+  Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/providers/AppContext";
@@ -26,168 +24,258 @@ interface TopbarProps {
   action?: React.ReactNode;
 }
 
+const SEGMENT_LABELS: Record<string, string> = {
+  app: "Overview",
+  invoices: "Invoices",
+  trust: "Trust Inspector",
+  approvals: "Approvals",
+  settlements: "Settlements",
+  receipts: "Receipts",
+  developers: "Developers",
+  demo: "Proof Lab",
+  settings: "Settings",
+  new: "New invoice",
+};
+
 export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
   const pathname = usePathname();
-  const { mode, setMode, chainId, setChainId, walletAddress, isWalletConnected, connectWallet, disconnectWallet } = useApp();
-  const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
+  const {
+    mode,
+    setMode,
+    chainId,
+    walletAddress,
+    isWalletConnected,
+    connectWallet,
+    disconnectWallet,
+  } = useApp();
+  const [walletOpen, setWalletOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Derive breadcrumb path
-  const pathParts = pathname.split("/").filter(Boolean);
-  const breadcrumbs = pathParts.map((part, index) => {
-    const href = "/" + pathParts.slice(0, index + 1).join("/");
-    const label = part === "app" ? "Dashboard" : part.replace(/-/g, " ");
-    return { href, label };
-  });
+  useEffect(() => {
+    if (!walletOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setWalletOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setWalletOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [walletOpen]);
+
+  const parts = pathname.split("/").filter(Boolean);
+  const crumbs = parts.map((part, index) => ({
+    href: "/" + parts.slice(0, index + 1).join("/"),
+    label: SEGMENT_LABELS[part] ?? decodeURIComponent(part),
+    isId: !(part in SEGMENT_LABELS),
+  }));
+  const visibleCrumbs = crumbs.length > 1 ? crumbs.slice(1) : crumbs;
 
   const handleCopyWallet = async () => {
     if (walletAddress) {
       await navigator.clipboard.writeText(walletAddress);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1600);
     }
   };
 
   return (
-    <header className="h-16 border-b border-border bg-surface-1/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-16 shrink-0 border-b border-carbon-border bg-carbon-void/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 select-none">
+      {/* Left: Mobile trigger, Workspace & Breadcrumbs */}
+      <div className="flex items-center gap-3.5 min-w-0">
         <button
           type="button"
           onClick={onOpenMobileMenu}
-          aria-label="Open mobile navigation"
-          className="p-1.5 rounded-lg text-foreground-muted hover:text-foreground hover:bg-surface-2 md:hidden"
+          aria-label="Open navigation"
+          className="p-1.5 -ml-1 rounded text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel md:hidden"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Breadcrumb nav */}
-        <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-xs text-foreground-muted">
-          <Link href="/app" className="hover:text-foreground transition-colors">
-            HashX
-          </Link>
-          {breadcrumbs.map((crumb, idx) => (
-            <React.Fragment key={crumb.href}>
-              <ChevronRight className="w-3.5 h-3.5 text-foreground-muted/60" />
-              <Link
-                href={crumb.href}
-                className={cn(
-                  "capitalize transition-colors",
-                  idx === breadcrumbs.length - 1
-                    ? "text-foreground font-medium pointer-events-none"
-                    : "hover:text-foreground"
+        {/* Workspace Pill */}
+        <div className="hidden lg:flex items-center gap-2 bg-carbon-nav px-2.5 py-1 rounded border border-carbon-border text-xs">
+          <Layers className="w-3.5 h-3.5 text-primary" />
+          <span className="font-display font-semibold text-carbon-text tracking-tight">
+            Autonomous Treasury Alpha
+          </span>
+        </div>
+
+        {/* Reconciler Environment Pill */}
+        <div className="hidden sm:flex items-center gap-1.5 pl-1">
+          <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse" />
+          <span className="font-mono text-[11px] uppercase tracking-wider text-carbon-muted">
+            ENV:{" "}
+            <span className="text-carbon-text font-medium">
+              {chainId === 133 ? "TESTNET RECONCILER" : "MAINNET RECONCILER"}
+            </span>
+          </span>
+        </div>
+
+        {/* Mobile / Secondary Breadcrumb */}
+        <nav
+          aria-label="Breadcrumb"
+          className="flex sm:hidden items-center gap-1.5 text-xs min-w-0 font-mono"
+        >
+          {visibleCrumbs.map((crumb, idx) => {
+            const last = idx === visibleCrumbs.length - 1;
+            return (
+              <React.Fragment key={crumb.href}>
+                {idx > 0 && <span className="text-carbon-muted/50">/</span>}
+                {last ? (
+                  <span
+                    aria-current="page"
+                    className={cn(
+                      "text-carbon-text font-medium truncate",
+                      crumb.isId && "font-mono text-2xs"
+                    )}
+                  >
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <Link
+                    href={crumb.href}
+                    className="text-carbon-muted hover:text-carbon-text transition-colors truncate"
+                  >
+                    {crumb.label}
+                  </Link>
                 )}
-              >
-                {crumb.label}
-              </Link>
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            );
+          })}
         </nav>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Environment toggle */}
-        <div className="hidden lg:flex items-center rounded-lg bg-surface-2 p-0.5 border border-border text-xs">
-          <button
-            type="button"
-            onClick={() => setMode("demo")}
-            className={cn(
-              "px-2.5 py-1 rounded-md font-mono text-[11px] transition-all",
-              mode === "demo"
-                ? "bg-primary text-white font-medium shadow-sm"
-                : "text-foreground-secondary hover:text-foreground"
-            )}
-          >
-            Demo Mode
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("connected")}
-            className={cn(
-              "px-2.5 py-1 rounded-md font-mono text-[11px] transition-all",
-              mode === "connected"
-                ? "bg-primary text-white font-medium shadow-sm"
-                : "text-foreground-secondary hover:text-foreground"
-            )}
-          >
-            Connected Mode
-          </button>
+      {/* Right: Telemetry & Controls */}
+      <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
+        {/* Latency Telemetry */}
+        <div className="hidden xl:flex items-center gap-1.5 text-carbon-muted">
+          <span>HSP Latency:</span>
+          <span className="text-success font-semibold">142ms</span>
         </div>
 
-        {/* Network indicator */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-2 border border-border text-xs text-foreground-secondary font-mono">
-          <span className="w-2 h-2 rounded-full bg-success" />
-          <span>HashKey {chainId === 133 ? "Testnet (133)" : "Mainnet (177)"}</span>
+        <div className="hidden xl:block h-3.5 w-px bg-carbon-border" />
+
+        {/* Quorum Notice */}
+        <div className="hidden md:flex items-center gap-1.5 text-carbon-muted">
+          <span>Quorum:</span>
+          <span className="text-warning font-semibold bg-warning/10 px-1.5 py-0.5 rounded border border-warning/20 text-[11px]">
+            2-Stage Required
+          </span>
         </div>
 
-        {/* Wallet status */}
-        <div className="relative">
+        <div className="hidden md:block h-3.5 w-px bg-carbon-border" />
+
+        {/* Mode Toggle (Demo vs Connected) */}
+        <div className="flex items-center h-8 rounded border border-carbon-border bg-carbon-nav p-0.5 text-xs">
+          {(["demo", "connected"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={mode === m}
+              onClick={() => setMode(m)}
+              className={cn(
+                "h-6 px-2.5 rounded font-mono text-[11px] transition-colors capitalize",
+                mode === m
+                  ? "bg-carbon-panel text-carbon-text font-semibold border border-carbon-border shadow-sm"
+                  : "text-carbon-muted hover:text-carbon-text"
+              )}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        {/* Wallet Connector / Badge */}
+        <div className="relative" ref={menuRef}>
           {isWalletConnected && walletAddress ? (
-            <div>
+            <>
               <button
                 type="button"
-                onClick={() => setWalletDropdownOpen(!walletDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-hover border border-border text-xs text-foreground font-mono transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                onClick={() => setWalletOpen(!walletOpen)}
+                aria-expanded={walletOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-2 h-8 px-2.5 rounded border border-primary/30 bg-primary/10 hover:bg-primary/15 text-xs text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                <span>{formatAddress(walletAddress)}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-foreground-muted" />
+                <span className="w-2 h-2 rounded-full bg-success" />
+                <span className="font-mono text-[11px] font-medium">
+                  {formatAddress(walletAddress)}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-primary/70 transition-transform",
+                    walletOpen && "rotate-180"
+                  )}
+                />
               </button>
 
-              {walletDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-surface-1 shadow-2xl p-3 z-50 animate-fade-in space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-border">
-                    <span className="text-xs font-medium text-foreground">Connected Wallet</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-3 text-success">
-                      Active EOA
-                    </span>
+              {walletOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-72 rounded bg-carbon-panel border border-carbon-border shadow-2xl z-50 animate-fade-in overflow-hidden"
+                >
+                  <div className="px-3.5 pt-3 pb-3 border-b border-carbon-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-carbon-text">
+                        Approver Key
+                      </span>
+                      <span className="text-[10px] text-success font-mono flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                        Connected EOA
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded bg-carbon-void border border-carbon-border px-2.5 py-1.5">
+                      <span className="font-mono text-2xs text-carbon-muted break-all">
+                        {walletAddress}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyWallet}
+                        aria-label="Copy address"
+                        className="p-1 rounded text-carbon-muted hover:text-carbon-text shrink-0"
+                      >
+                        {copied ? (
+                          <Check className="w-3.5 h-3.5 text-success" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-carbon-muted leading-relaxed font-sans">
+                      Authorizes commercial terms and HSP settlements. HashX never stores private keys.
+                    </p>
                   </div>
-
-                  <div className="p-2 rounded-lg bg-surface-2 border border-border flex items-center justify-between">
-                    <span className="font-mono text-xs text-foreground-secondary truncate max-w-[170px]">
-                      {walletAddress}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyWallet}
-                      aria-label="Copy address"
-                      className="p-1 rounded text-foreground-muted hover:text-foreground"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-
-                  <div className="text-[11px] text-foreground-muted leading-tight">
-                    Authorizes exact commercial terms and HSP payments without storing private keys.
-                  </div>
-
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       disconnectWallet();
-                      setWalletDropdownOpen(false);
+                      setWalletOpen(false);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20 text-xs font-medium transition-colors"
+                    className="w-full flex items-center gap-2 px-3.5 h-9 text-xs text-carbon-muted hover:text-danger hover:bg-danger/10 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Disconnect Wallet</span>
+                    Disconnect
                   </button>
                 </div>
               )}
-            </div>
+            </>
           ) : (
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               onClick={connectWallet}
-              className="gap-2"
+              className="h-8 font-mono text-xs gap-1.5 bg-primary text-white hover:bg-primary/90"
             >
-              <Wallet className="w-3.5 h-3.5 text-primary-light" />
-              <span>Connect Wallet</span>
+              <Wallet className="w-3.5 h-3.5" />
+              <span>Connect</span>
             </Button>
           )}
         </div>
 
-        {/* Contextual Page Action */}
         {action}
       </div>
     </header>

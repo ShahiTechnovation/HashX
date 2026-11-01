@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hashx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hashx_v1}
+      POSTGRES_USER: ${POSTGRES_USER:-hashx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hashx_secure_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hashx} -d ${POSTGRES_DB:-hashx_v1}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hashx-internal
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: hashx-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hashx}:${POSTGRES_PASSWORD:-hashx_secure_pass}@postgres:5432/${POSTGRES_DB:-hashx_v1}
+      HSP_MCP_STREAMABLE_HTTP_ENDPOINT: ${HSP_MCP_STREAMABLE_HTTP_ENDPOINT:-https://qa-hsp.hashkey.com/mcp}
+      HSP_MERCHANT_NAME: ${HSP_MERCHANT_NAME:-HashX}
+      HSP_APP_KEY: ${HSP_APP_KEY}
+      HSP_APP_SECRET: ${HSP_APP_SECRET}
+      HSP_ALLOWLIST_CONFIRMED: ${HSP_ALLOWLIST_CONFIRMED:-false}
+      HSK_TESTNET_RPC: ${HSK_TESTNET_RPC:-https://testnet.hsk.xyz}
+      HSK_MAINNET_RPC: ${HSK_MAINNET_RPC:-https://mainnet.hsk.xyz}
+    ports:
+      - "8080:8080"
+    networks:
+      - hashx-internal
+      - hashx-egress
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  hashx-internal:
+    driver: bridge
+  hashx-egress:
+    driver: bridge
+

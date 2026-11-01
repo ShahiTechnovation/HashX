@@ -1,0 +1,723 @@
+﻿<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HashX // Proof Lab &amp; Adversarial Simulation Bench</title>
+<!-- Typography: Space Grotesk, Inter, Space Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-high": "#252b2d",
+            "on-secondary-container": "#004d44",
+            "on-primary-fixed": "#001355",
+            "on-surface-variant": "#c4c5d8",
+            "surface-bright": "#343a3c",
+            "on-primary-container": "#e8eaff",
+            "primary": "#b8c3ff",
+            "on-error": "#690005",
+            "on-primary-fixed-variant": "#0035bd",
+            "on-primary": "#002387",
+            "tertiary-fixed-dim": "#ffb95f",
+            "surface-container-highest": "#303638",
+            "on-error-container": "#ffdad6",
+            "surface-container-low": "#171d1f",
+            "inverse-surface": "#dee3e6",
+            "error-container": "#93000a",
+            "on-secondary": "#003731",
+            "secondary": "#44e2cd",
+            "on-tertiary-fixed": "#2a1700",
+            "outline-variant": "#444655",
+            "on-tertiary-fixed-variant": "#653e00",
+            "surface-container-lowest": "#090f11",
+            "surface-container": "#1a2123",
+            "surface-tint": "#b8c3ff",
+            "inverse-primary": "#234ee2",
+            "tertiary": "#ffb95f",
+            "secondary-fixed": "#62fae3",
+            "on-secondary-fixed-variant": "#005047",
+            "primary-fixed-dim": "#b8c3ff",
+            "error": "#ffb4ab",
+            "tertiary-container": "#955e00",
+            "on-background": "#dee3e6",
+            "background": "#0e1416",
+            "inverse-on-surface": "#2b3134",
+            "tertiary-fixed": "#ffddb8",
+            "on-tertiary": "#472a00",
+            "primary-fixed": "#dde1ff",
+            "on-surface": "#dee3e6",
+            "primary-container": "#345bee",
+            "on-secondary-fixed": "#00201c",
+            "surface-variant": "#303638",
+            "surface": "#0e1416",
+            "secondary-fixed-dim": "#3cddc7",
+            "outline": "#8e90a1",
+            "secondary-container": "#03c6b2",
+            "on-tertiary-container": "#ffe7d0",
+            "surface-dim": "#0e1416"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {},
+          "fontFamily": {
+            "headline": ["Space Grotesk", "sans-serif"],
+            "display": ["Space Grotesk", "sans-serif"],
+            "body": ["Inter", "sans-serif"],
+            "mono": ["Space Mono", "monospace"],
+            "label": ["Inter", "sans-serif"]
+          },
+          "fontSize": {}
+        },
+      },
+    }
+  </script>
+<style>
+    .font-mono-tech {
+      font-family: 'Space Mono', monospace;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Precise Aerospace Telemetry Grid */
+    .bg-grid-aerospace {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(68, 70, 85, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(68, 70, 85, 0.08) 1px, transparent 1px);
+    }
+    .circuit-glow-red {
+      box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.4);
+    }
+    .pulse-danger {
+      animation: pulse-danger-kf 2s infinite ease-in-out;
+    }
+    @keyframes pulse-danger-kf {
+      0%, 100% { opacity: 1; border-color: rgba(239, 68, 68, 0.8); }
+      50% { opacity: 0.65; border-color: rgba(239, 68, 68, 0.3); }
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body antialiased min-h-screen selection:bg-primary-container selection:text-white relative bg-grid-aerospace flex flex-col justify-between">
+<!-- TOP LEVEL WRAPPER -->
+<div class="w-full flex flex-col">
+<!-- 1. SHARED COMPONENT: TopNavBar (Exact mapping from JSON & Brand Blueprint) -->
+<header class="w-full bg-surface-container-lowest border-b border-outline-variant/40 sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-6 max-w-[1440px] mx-auto h-16">
+<!-- Brand & Version Anchor -->
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="w-2.5 h-2.5 bg-primary-container rounded-none inline-block"></span>
+<span class="font-display text-xl font-bold tracking-tight text-on-surface uppercase">HashX</span>
+<span class="text-xs px-2 py-0.5 bg-surface-container border border-outline-variant font-mono-tech text-secondary tracking-wide">v2.4</span>
+</div>
+<!-- Live Bench Telemetry Pills -->
+<div class="hidden xl:flex items-center gap-3 border-l border-outline-variant/40 pl-6 text-[11px] font-mono-tech">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
+              SIMULATOR: <span class="text-on-surface">v2.4-SANDBOX</span>
+</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container inline-block"></span>
+              RTT: <span class="text-on-surface">0.8ms (SYNTHETIC)</span>
+</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant">GAS: <span class="text-on-surface">ZERO COST MOCK</span></span>
+<span class="text-outline-variant">/</span>
+<span class="text-error flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+              HARNESS: ARMED
+            </span>
+</div>
+</div>
+<!-- Navigation Links (Active mapping: Proof Lab is active in this testbench context) -->
+<nav class="hidden md:flex items-center gap-7 text-xs font-mono-tech uppercase tracking-wider">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Proof Circuit</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Protocol Specs</a>
+<a class="text-secondary border-b-2 border-secondary pb-1 font-semibold flex items-center gap-1" href="#">
+<span class="w-1.5 h-1.5 bg-secondary inline-block"></span>
+            Proof Lab
+          </a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">MCP Tools</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Adversarial Model</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Documentation</a>
+</nav>
+<!-- Trailing Actions from JSON -->
+<div class="flex items-center gap-3">
+<button class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-surface-container border border-outline-variant/60 hover:border-outline text-xs font-mono-tech text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">restart_alt</span>
+            Reset Harness
+          </button>
+<button class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high border border-outline-variant/80 hover:bg-surface-variant text-xs font-mono-tech text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">tune</span>
+            Testbench Config
+          </button>
+<button class="flex items-center gap-2 px-3.5 py-1.5 bg-primary-container text-on-primary-container font-mono-tech text-xs font-medium hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">terminal</span>
+<span>Connect Protocol</span>
+</button>
+</div>
+</div>
+</header>
+<!-- 2. OPERATIONAL HEADER & NOTICE BANNER -->
+<div class="w-full border-b border-outline-variant/40 bg-surface-container-low/80 backdrop-blur-sm">
+<div class="max-w-[1440px] mx-auto px-6 py-4 flex flex-col gap-3">
+<!-- Breadcrumbs & Quick State -->
+<div class="flex flex-wrap items-center justify-between gap-2 text-xs font-mono-tech text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span>CONSOLE</span>
+<span class="text-outline">/</span>
+<span>PROOF LAB</span>
+<span class="text-outline">/</span>
+<span class="text-secondary font-medium">ADVERSARIAL TESTBENCH v2.4</span>
+</div>
+<div class="flex items-center gap-4 text-[11px]">
+<span class="text-on-surface-variant">ENVIRONMENT: <strong class="text-on-surface">CARBON CONTROL ROOM</strong></span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">ISOLATION: <strong class="text-secondary">HARDWARE_ENCLAVE_EMULATED</strong></span>
+</div>
+</div>
+<!-- High-Impact Title & Action Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
+<div>
+<h1 class="text-xl md:text-2xl font-headline font-bold tracking-tight text-on-surface flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-2xl">biotech</span>
+              HASHX INTERACTIVE PROOF LAB // THREAT SIMULATION &amp; VERIFICATION BENCH
+            </h1>
+<p class="text-xs text-on-surface-variant font-mono-tech mt-1">
+              Deterministic verification gauntlet for zero-trust autonomous agent settlement. Intercepts signature replay, payee tampering, and execution witness fraud.
+            </p>
+</div>
+<!-- Fast Action Toolstrip -->
+<div class="flex flex-wrap items-center gap-2 self-start lg:self-auto font-mono-tech text-xs">
+<button class="px-3 py-1.5 bg-error-container/80 text-on-error-container border border-error/50 hover:bg-error-container flex items-center gap-1.5 transition-colors font-semibold">
+<span class="material-symbols-outlined text-sm">play_arrow</span>
+              Run Active Simulation
+            </button>
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm">step_into</span>
+              Step-by-Step [F10]
+            </button>
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm">difference</span>
+              Inspect Hex Diff
+            </button>
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm">file_download</span>
+              Export Incident (.json)
+            </button>
+</div>
+</div>
+<!-- High-Integrity Amber/Red Hazard Striped Caution Banner -->
+<div class="mt-2 w-full p-2.5 bg-tertiary-container/30 border-l-4 border-tertiary flex items-center justify-between gap-3 text-xs font-mono-tech">
+<div class="flex items-center gap-2.5 text-tertiary-fixed">
+<span class="material-symbols-outlined text-base text-tertiary animate-pulse">warning</span>
+<span class="font-bold tracking-tight">â— SIMULATED TELEMETRY ENGINE // DEMONSTRATION DATA ONLY // ZERO CAPITAL AT RISK</span>
+<span class="hidden md:inline text-tertiary-fixed-dim">â€” RUNNING FORMAL ADVERSARIAL GAUNTLET (RFC-0021 SANDBOX)</span>
+</div>
+<span class="text-[10px] text-tertiary-fixed-dim uppercase tracking-widest hidden sm:block">ENCLAVE_EPOCH: 0x98EF4</span>
+</div>
+</div>
+</div>
+<!-- MAIN CONTROL ROOM CANVAS -->
+<main class="max-w-[1440px] mx-auto px-6 py-6 w-full flex flex-col gap-6">
+<!-- 3. SCENARIO MATRIX (4 Interactive Cards) -->
+<section>
+<div class="flex items-center justify-between mb-3 font-mono-tech text-xs">
+<span class="text-on-surface font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-secondary">view_column</span>
+            THREAT VECTORS &amp; TEST GAUNTLETS
+          </span>
+<span class="text-on-surface-variant text-[11px]">SELECT SCENARIO TO LOAD PROOF CIRCUIT MODEL</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+<!-- Scenario A: ACTIVE SELECTED -->
+<div class="relative bg-surface-container-low border-2 border-error p-4 circuit-glow-red transition-all cursor-pointer">
+<div class="absolute -top-2.5 right-3 bg-error text-surface-container-lowest font-mono-tech font-bold text-[10px] px-2 py-0.5 tracking-wider uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-container-lowest inline-block"></span>
+              ACTIVE TESTBENCH
+            </div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-error font-bold tracking-tight">01 // PAYEE SUBSTITUTION ATTACK</span>
+</div>
+<p class="text-xs text-on-surface-variant line-clamp-2 mb-3">
+              Adversary replaces invoice payee address between EIP-712 creation and settlement request.
+            </p>
+<div class="space-y-1.5 text-[11px] font-mono-tech border-t border-outline-variant/40 pt-2.5">
+<div class="flex justify-between text-on-surface-variant">
+<span>TARGET ASSET:</span>
+<span class="text-on-surface font-bold">$14,200.00 USDC</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>VECTOR:</span>
+<span class="text-error">Memory Injection / MITM</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant pt-1">
+<span>STATUS:</span>
+<span class="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 border border-error/50 font-bold">
+                  INTERCEPTED // QUARANTINED
+                </span>
+</div>
+</div>
+</div>
+<!-- Scenario B -->
+<div class="bg-surface-container border border-outline-variant/50 p-4 hover:border-outline transition-all cursor-pointer opacity-85 hover:opacity-100">
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-on-surface font-bold tracking-tight">02 // FAKE FULFILLMENT</span>
+</div>
+<p class="text-xs text-on-surface-variant line-clamp-2 mb-3">
+              Agent claims completion of compute task without valid on-chain execution witness or matching Merkle root.
+            </p>
+<div class="space-y-1.5 text-[11px] font-mono-tech border-t border-outline-variant/40 pt-2.5">
+<div class="flex justify-between text-on-surface-variant">
+<span>TARGET ASSET:</span>
+<span class="text-on-surface">$8,500.00 USDT</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>VECTOR:</span>
+<span class="text-on-surface-variant">Phantom Proof / Void Hash</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant pt-1">
+<span>STATUS:</span>
+<span class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-0.5 border border-outline-variant">
+                  READY // 0/3 CONSENSUS
+                </span>
+</div>
+</div>
+</div>
+<!-- Scenario C -->
+<div class="bg-surface-container border border-outline-variant/50 p-4 hover:border-outline transition-all cursor-pointer opacity-85 hover:opacity-100">
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-on-surface font-bold tracking-tight">03 // DUPLICATE INVOICE REPLAY</span>
+</div>
+<p class="text-xs text-on-surface-variant line-clamp-2 mb-3">
+              Attacker replays previously authorized EIP-712 signature with incremented block or parallel channel.
+            </p>
+<div class="space-y-1.5 text-[11px] font-mono-tech border-t border-outline-variant/40 pt-2.5">
+<div class="flex justify-between text-on-surface-variant">
+<span>TARGET ASSET:</span>
+<span class="text-on-surface">$22,000.00 USDC</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>VECTOR:</span>
+<span class="text-on-surface-variant">Signature Nonce Desync</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant pt-1">
+<span>STATUS:</span>
+<span class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-0.5 border border-outline-variant">
+                  READY // NONCE CHECK
+                </span>
+</div>
+</div>
+</div>
+<!-- Scenario D -->
+<div class="bg-surface-container border border-outline-variant/50 p-4 hover:border-secondary transition-all cursor-pointer opacity-85 hover:opacity-100">
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-secondary font-bold tracking-tight">04 // CANONICAL TRANSACTION</span>
+</div>
+<p class="text-xs text-on-surface-variant line-clamp-2 mb-3">
+              Fully authenticated EIP-712 intent, 3/3 validator RPC consensus delivery, dual-key authorized, HSP settled.
+            </p>
+<div class="space-y-1.5 text-[11px] font-mono-tech border-t border-outline-variant/40 pt-2.5">
+<div class="flex justify-between text-on-surface-variant">
+<span>TARGET ASSET:</span>
+<span class="text-on-surface">$5,400.00 USDC</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>INTEGRITY:</span>
+<span class="text-secondary">Golden Path (Valid)</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant pt-1">
+<span>STATUS:</span>
+<span class="text-[10px] bg-on-secondary-container text-secondary px-2 py-0.5 border border-secondary/40 font-bold">
+                  PASS // 100% FINALITY
+                </span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. SIGNATURE VISUAL: THE HASHX PROOF CIRCUIT (Active Scenario A Breakdown) -->
+<section class="bg-surface-container-low border border-outline-variant p-5 lg:p-6 relative overflow-hidden">
+<!-- Header & Circuit Metadata -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-5 border-b border-outline-variant/50">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-error text-surface-container-lowest font-mono-tech text-[10px] font-bold uppercase tracking-wider">
+                LIVE INTERCEPTION TRACE
+              </span>
+<span class="text-xs font-mono-tech text-on-surface-variant">HASHX PROOF CIRCUIT PIPELINE // SIMULATION #491-A</span>
+</div>
+<h2 class="text-lg font-headline font-bold text-on-surface tracking-tight mt-1">
+              Deterministic Gate Execution &amp; Hazard Diverter Rail
+            </h2>
+</div>
+<div class="flex items-center gap-4 text-xs font-mono-tech">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Validated Gate
+            </span>
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> Intercepted / Diverted
+            </span>
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span> Disarmed / Blocked
+            </span>
+</div>
+</div>
+<!-- Five-Gate Architecture Visualization -->
+<div class="mt-6 grid grid-cols-1 md:grid-cols-5 gap-3 relative">
+<!-- GATE 1: INGESTION -->
+<div class="bg-surface-container border border-outline-variant p-4 flex flex-col justify-between relative group hover:border-secondary transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-on-surface-variant">GATE 01</span>
+<span class="text-secondary font-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">check_circle</span> PASS
+                </span>
+</div>
+<h3 class="font-headline font-semibold text-sm text-on-surface">Payload Ingestion</h3>
+<p class="text-[11px] text-on-surface-variant mt-1.5 font-mono-tech leading-relaxed">
+                EIP-712 schema matched. Nonce #491 verified inside mempool enclave buffer.
+              </p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/40 text-[10px] font-mono-tech text-secondary flex items-center gap-1">
+<span>GAS BOUND: SAFE (21,400)</span>
+</div>
+</div>
+<!-- GATE 2: EIP-712 SIGNATURE VALIDATION -->
+<div class="bg-surface-container border border-outline-variant p-4 flex flex-col justify-between relative group hover:border-secondary transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-on-surface-variant">GATE 02</span>
+<span class="text-secondary font-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">check_circle</span> PASS
+                </span>
+</div>
+<h3 class="font-headline font-semibold text-sm text-on-surface">Signature Recovery</h3>
+<p class="text-[11px] text-on-surface-variant mt-1.5 font-mono-tech leading-relaxed">
+                ecRecover matches expected authority agent pubkey (0x38F1...4A2D).
+              </p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/40 text-[10px] font-mono-tech text-secondary flex items-center gap-1">
+<span>INTENT INTEGRITY: 100%</span>
+</div>
+</div>
+<!-- GATE 3: PAYEE IDENTITY INTEGRITY CHECK (THE INTERCEPTION POINT) -->
+<div class="bg-surface-container-high border-2 border-error p-4 flex flex-col justify-between relative circuit-glow-red pulse-danger">
+<div class="absolute -top-2.5 right-2 bg-error text-surface-container-lowest text-[9px] font-mono-tech font-bold px-1.5 py-0.2 uppercase">
+              INTERCEPTED
+            </div>
+<div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-error font-bold">GATE 03</span>
+<span class="text-error font-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">error</span> FAILED
+                </span>
+</div>
+<h3 class="font-headline font-bold text-sm text-error">Payee Identity Check</h3>
+<p class="text-[11px] text-on-surface-variant mt-1.5 font-mono-tech leading-relaxed">
+                Invoice Payee drift detected! Request targets rogue drain address instead of registered seller.
+              </p>
+<!-- Micro Diff inside Gate -->
+<div class="mt-2.5 bg-surface-container-lowest p-2 border border-error/50 font-mono-tech text-[10px] space-y-1">
+<div class="text-secondary flex justify-between">
+<span>EXP:</span> <span>0x429A...38F1</span>
+</div>
+<div class="text-error font-bold flex justify-between">
+<span>ACT:</span> <span>0x99A0...11B0</span>
+</div>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-error/40 text-[10px] font-mono-tech text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">alt_route</span>
+              DIVERTER RAIL ENGAGED
+            </div>
+</div>
+<!-- GATE 4: HUMAN AUTHORIZATION GATE (BLOCKED) -->
+<div class="bg-surface-container/60 border border-outline-variant/40 p-4 flex flex-col justify-between relative opacity-60">
+<div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-outline">GATE 04</span>
+<span class="text-outline font-mono-tech text-[10px]">LOCKED</span>
+</div>
+<h3 class="font-headline font-semibold text-sm text-outline">Human Authorization</h3>
+<p class="text-[11px] text-outline mt-1.5 font-mono-tech leading-relaxed">
+                Stage 1 &amp; 2 multi-party hardware prompt disarmed. Automatic interlock engaged.
+              </p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/30 text-[10px] font-mono-tech text-outline flex items-center gap-1">
+<span>DISPATCH PROHIBITED</span>
+</div>
+</div>
+<!-- GATE 5: HSP ESCROW & FINALITY (HALTED) -->
+<div class="bg-surface-container/60 border border-outline-variant/40 p-4 flex flex-col justify-between relative opacity-60">
+<div>
+<div class="flex items-center justify-between text-xs font-mono-tech mb-2">
+<span class="text-outline">GATE 05</span>
+<span class="text-outline font-mono-tech text-[10px]">HALTED</span>
+</div>
+<h3 class="font-headline font-semibold text-sm text-outline">HSP Atomic Settlement</h3>
+<p class="text-[11px] text-outline mt-1.5 font-mono-tech leading-relaxed">
+                HashKey Layer 2 smart contract transaction suppressed. Vault balance untransferred.
+              </p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/30 text-[10px] font-mono-tech text-outline flex items-center gap-1">
+<span>ZERO CAPITAL DRAWDOWN</span>
+</div>
+</div>
+</div>
+<!-- SIGNATURE DIVERTER RAIL CALLOUT (Hazard Branch Route) -->
+<div class="mt-4 p-4 bg-error-container/20 border-2 border-dashed border-error/70 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono-tech text-xs">
+<div class="flex items-start gap-3">
+<div class="p-2 bg-error text-surface-container-lowest font-bold text-sm">
+<span class="material-symbols-outlined">security_update_warning</span>
+</div>
+<div>
+<span class="text-error font-bold text-sm tracking-tight flex items-center gap-2">
+                DIVERTER RAIL ROUTE: QUARANTINE ISOLATION CHAMBER // FUNDS FROZEN
+              </span>
+<p class="text-[11px] text-on-surface-variant mt-0.5">
+                Malicious instruction intercepted at Gate 03. Interceptor rerouted gas deposit and frozen payload into Forensic Enclave: <span class="text-on-surface">hashx://vault-quarantine/0x99a0...11b0</span>. Zero capital was exposed to mempool front-running.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="text-[10px] px-2.5 py-1 bg-surface-container border border-error/50 text-error font-bold">
+              DRIFT_DELTA: 40_BYTES
+            </span>
+<span class="text-[10px] px-2.5 py-1 bg-surface-container border border-secondary/50 text-secondary font-bold">
+              PROTECTION: 100%
+            </span>
+</div>
+</div>
+</section>
+<!-- 5. STRUCTURED FORENSIC EVIDENCE & ATTACK TELEMETRY (Two Columns) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- LEFT COLUMN: FORENSIC VERDICT & THREAT DOSSIER (5 Cols) -->
+<div class="lg:col-span-5 bg-surface-container-low border border-outline-variant p-5 flex flex-col justify-between">
+<div>
+<!-- Heavy Red Forensic Stamp Box -->
+<div class="border-2 border-error p-3 bg-surface-container-lowest/80 relative mb-4">
+<div class="flex items-center justify-between text-xs font-mono-tech">
+<span class="text-error font-bold tracking-wider uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">gavel</span>
+                  INCIDENT VERDICT
+                </span>
+<span class="text-[10px] text-on-surface-variant">RFC-0021 CLASSIFICATION</span>
+</div>
+<div class="mt-2 text-base md:text-lg font-headline font-bold text-error tracking-tight">
+                VERDICT: BLOCKED // PAYEE MISMATCH DETECTED
+              </div>
+<div class="text-[11px] font-mono-tech text-on-surface-variant mt-1">
+                Deterministic Guardrail rule <code class="text-on-surface font-semibold">SIG_AUTH_DOMAIN_HASH</code> triggered refusal.
+              </div>
+</div>
+<!-- Structured Metadata Table -->
+<h3 class="text-xs font-mono-tech font-bold text-on-surface mb-3 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-secondary">database</span>
+              FORENSIC INCIDENT TELEMETRY
+            </h3>
+<div class="space-y-2.5 text-xs font-mono-tech">
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">ATTACK VECTOR</span>
+<span class="text-on-surface text-right font-medium">Memory Injection / MITM Substitution</span>
+</div>
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">INTERCEPTION POINT</span>
+<span class="text-secondary text-right font-mono-tech">HashX Verifier Domain (0x71c0...948a)</span>
+</div>
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">CAPITAL PRESERVED</span>
+<span class="text-secondary font-bold text-right">$14,200.00 USDC in Autonomous Vault</span>
+</div>
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">DESTINATION (ROGUE)</span>
+<span class="text-error font-mono-tech text-right">0x99A071C4...11B0 [BLACKLISTED]</span>
+</div>
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">EXECUTION NONCE</span>
+<span class="text-on-surface text-right">#491 (Revoked &amp; Slashing Logged)</span>
+</div>
+<div class="p-2.5 bg-surface-container border border-outline-variant/40 flex justify-between items-start gap-2">
+<span class="text-on-surface-variant">INTERCEPT LATENCY</span>
+<span class="text-tertiary-fixed font-bold text-right">42ms to Intercept &amp; Quarantine</span>
+</div>
+</div>
+</div>
+<!-- Quarantine Fingerprint Seal -->
+<div class="mt-5 pt-4 border-t border-outline-variant/40 flex items-center justify-between text-[11px] font-mono-tech text-on-surface-variant">
+<span>HASHX ENCLAVE ID: #HX-ENC-8819</span>
+<span class="text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">verified</span> INTEGRITY ATTESTED
+            </span>
+</div>
+</div>
+<!-- RIGHT COLUMN: HEX TELEMETRY & ATTACK DIFF (7 Cols) -->
+<div class="lg:col-span-7 bg-surface-container-low border border-outline-variant p-5 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-3 border-b border-outline-variant/40 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm">terminal</span>
+<h3 class="text-xs font-mono-tech font-bold text-on-surface">
+                  EIP-712 INTENT DIFF VS. EXPLOIT PAYLOAD
+                </h3>
+</div>
+<span class="text-[11px] font-mono-tech text-error bg-error-container/40 px-2 py-0.5 border border-error/30">
+                DELTA: BYTES 64..96 CORRUPTED
+              </span>
+</div>
+<!-- Comparative Hex Diff Component -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono-tech text-xs">
+<!-- Canonical Side -->
+<div class="p-3 bg-surface-container border border-secondary/40">
+<div class="flex items-center justify-between text-[11px] text-secondary pb-1.5 border-b border-outline-variant/30 mb-2">
+<span class="font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">verified_user</span> CANONICAL SIGNED INTENT
+                  </span>
+<span>EIP-712</span>
+</div>
+<div class="space-y-1.5 text-[11px]">
+<div class="text-on-surface-variant text-[10px]">PAYEE ADDRESS:</div>
+<div class="p-1.5 bg-surface-container-lowest text-secondary break-all border border-secondary/20">
+                    0x429a88c2195f38f1b901ca94892c902384f938f1
+                  </div>
+<div class="text-on-surface-variant text-[10px] pt-1">REGISTERED ENTITY:</div>
+<div class="text-on-surface text-[11px]">DeepCompute 09 Verified Pool</div>
+<div class="text-on-surface-variant text-[10px] pt-1">INVOICE SPEC:</div>
+<div class="text-on-surface text-[11px]">DC-BATCH-2025-0812</div>
+</div>
+</div>
+<!-- Malicious Intercepted Side -->
+<div class="p-3 bg-surface-container border border-error/60">
+<div class="flex items-center justify-between text-[11px] text-error pb-1.5 border-b border-outline-variant/30 mb-2">
+<span class="font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">warning</span> INJECTED SETTLEMENT TARGET
+                  </span>
+<span>TAMPERED</span>
+</div>
+<div class="space-y-1.5 text-[11px]">
+<div class="text-on-surface-variant text-[10px]">SUBSTITUTED PAYEE:</div>
+<div class="p-1.5 bg-surface-container-lowest text-error line-through break-all border border-error/30 font-bold">
+                    0x99a071c48201fa4982bb491048bca902849111b0
+                  </div>
+<div class="text-on-surface-variant text-[10px] pt-1">ENTITY STATUS:</div>
+<div class="text-error font-semibold text-[11px]">UNKNOWN / UNREGISTERED DRAIN</div>
+<div class="text-on-surface-variant text-[10px] pt-1">MATCH INTEGRITY:</div>
+<div class="text-error font-bold text-[11px]">0.00% (CRITICAL MISMATCH)</div>
+</div>
+</div>
+</div>
+<!-- Proof Witness Merkle Root Data -->
+<div class="mt-4 p-3 bg-surface-container border border-outline-variant/50 font-mono-tech text-[11px]">
+<div class="flex items-center justify-between text-on-surface-variant mb-1">
+<span>PROOF WITNESS MERKLE ROOT:</span>
+<span class="text-secondary">CONSENSUS VALID</span>
+</div>
+<div class="text-on-surface font-mono break-all text-[11px]">
+                0x8a9f24c01e523f4b89ce7d903f56b2c78491bb42cef91048bca902849111b0c482
+              </div>
+</div>
+<!-- Terminal Real-Time Interception Stream -->
+<div class="mt-3 bg-surface-container-lowest border border-outline-variant p-3 font-mono-tech text-[11px] space-y-1 text-on-surface-variant overflow-x-auto">
+<div class="text-on-surface-variant flex items-center gap-2">
+<span class="text-secondary">[23:45:12.852]</span> HARNESS_INGEST: Transaction payload nonce #491 received.
+              </div>
+<div class="text-on-surface-variant flex items-center gap-2">
+<span class="text-secondary">[23:45:12.871]</span> VERIFY_RECOVER: Signer 0x38F1 authorized EIP-712 hash 0xae82...19a0.
+              </div>
+<div class="text-error flex items-center gap-2 font-semibold">
+<span class="text-error">[23:45:12.894]</span> THREAT_INTERCEPT: Payee mismatch! Payload 0x99a0 != Intent 0x429a.
+              </div>
+<div class="text-error flex items-center gap-2">
+<span class="text-error">[23:45:12.895]</span> DIVERTER_RAIL: Diverting transaction to Quarantine Enclave. Disarming Gate 4 &amp; 5.
+              </div>
+<div class="text-tertiary-fixed flex items-center gap-2">
+<span class="text-tertiary-fixed">[23:45:12.910]</span> HSP_FINALITY: Zero capital drawdown confirmed. Vault 0x19F2 safe.
+              </div>
+</div>
+</div>
+<!-- Diff Footer State -->
+<div class="mt-4 pt-3 border-t border-outline-variant/40 flex items-center justify-between text-xs font-mono-tech text-on-surface-variant">
+<span>RULE TRIGGERED: HASHX_GUARD_PAYEE_INTEGRITY</span>
+<span class="text-secondary">AUDIT HASH: #SHA256-42981-VERIFIED</span>
+</div>
+</div>
+</section>
+<!-- 6. SIMULATION CONTROLS & BENCH ACTIONS TOOLBAR -->
+<section class="bg-surface-container border border-outline-variant p-4 flex flex-col md:flex-row items-center justify-between gap-4 font-mono-tech text-xs">
+<div class="flex items-center gap-3">
+<span class="flex h-3 w-3 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+</span>
+<span class="text-on-surface font-semibold">SIMULATION BENCH STATE:</span>
+<span class="text-error font-bold">ATTACK INTERCEPTED &amp; RECORDED</span>
+</div>
+<div class="flex flex-wrap items-center gap-2.5">
+<button class="px-4 py-2 bg-error text-surface-container-lowest font-bold hover:bg-opacity-90 transition-opacity flex items-center gap-2 tracking-wide uppercase">
+<span class="material-symbols-outlined text-sm">replay</span>
+            Execute Attack Simulation
+          </button>
+<button class="px-3.5 py-2 bg-surface-container-high border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">keyboard_tab</span>
+            Step-by-Step [F10]
+          </button>
+<button class="px-3.5 py-2 bg-surface-container-high border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">code</span>
+            View Raw EIP-712 Payload
+          </button>
+<button class="px-3.5 py-2 bg-surface-container-high border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">download</span>
+            Export Incident Report (.json)
+          </button>
+</div>
+</section>
+</main>
+</div>
+<!-- 7. SHARED COMPONENT: Footer (Editorial Monograph Mapping) -->
+<footer class="w-full bg-surface-container-lowest border-t border-outline-variant/40 mt-12">
+<div class="w-full px-6 py-8 max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-xs font-mono-tech">
+<!-- Brand & Foundation Notice from JSON -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="font-display font-bold text-sm tracking-tight text-on-surface">HashX Protocol Foundation</span>
+<span class="text-[10px] px-2 py-0.5 bg-surface-container border border-outline-variant text-secondary">HSP-Mainnet Live</span>
+</div>
+<p class="text-on-surface-variant text-[11px]">
+          Â© 2025 HashX Protocol Foundation. Deterministic Settlement &amp; Intent Proofing. All telemetry immutable.
+        </p>
+</div>
+<!-- Links Array from JSON verbatim -->
+<div class="flex flex-wrap items-center gap-5 text-[11px] text-tertiary-fixed-dim">
+<a class="hover:text-secondary transition-colors underline" href="#">Whitepaper v1.4</a>
+<a class="hover:text-secondary transition-colors" href="#">Proof Circuit Spec</a>
+<a class="hover:text-secondary transition-colors" href="#">MCP Tool Registry</a>
+<a class="hover:text-secondary transition-colors" href="#">Audits &amp; Verification</a>
+<a class="hover:text-secondary transition-colors" href="#">Incident Disclosure</a>
+<span class="text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
+          Status: HSP-Mainnet Live
+        </span>
+</div>
+</div>
+</footer>
+</body></html>

@@ -1,35 +1,29 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { FileQuestion, ArrowLeft, Home } from "lucide-react";
+import { buttonStyles } from "@/components/ui/Button";
+import { LogoMark } from "@/components/brand/Logo";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-      <div className="p-4 rounded-full bg-surface-2 border border-border text-primary-light mb-4 shadow-xl">
-        <FileQuestion className="w-10 h-10" />
+    <main className="min-h-screen bg-background flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-md text-center animate-fade-in">
+        <LogoMark className="mx-auto w-7 h-7 text-foreground" />
+        <p className="eyebrow mt-8 tabular-nums">404 · Not found</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-[-0.025em] text-foreground">
+          There&apos;s no record at this address
+        </h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-foreground-secondary">
+          The invoice, settlement, or receipt you&apos;re looking for doesn&apos;t exist in this environment. It may belong to a
+          different mode, or the link may be incomplete.
+        </p>
+        <div className="mt-7 flex items-center justify-center gap-2">
+          <Link href="/app" className={buttonStyles({ variant: "primary" })}>
+            Go to overview
+          </Link>
+          <Link href="/" className={buttonStyles({ variant: "ghost" })}>
+            HashX home
+          </Link>
+        </div>
       </div>
-      <h1 className="text-3xl font-display font-bold text-foreground">
-        404 — Record Not Found
-      </h1>
-      <p className="text-sm text-foreground-secondary max-w-md mt-2 mb-6">
-        The requested HashX commercial record, invoice, or verification proof does not exist on this environment.
-      </p>
-      <div className="flex items-center gap-3">
-        <Link href="/app">
-          <Button variant="secondary" className="gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Button>
-        </Link>
-        <Link href="/">
-          <Button variant="primary" className="gap-2">
-            <Home className="w-4 h-4" />
-            <span>Home</span>
-          </Button>
-        </Link>
-      </div>
-    </div>
+    </main>
   );
 }
