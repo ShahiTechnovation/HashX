@@ -1,3 +1,6 @@
+-- 001_baseline: original HashX V1 schema, adopted verbatim as the migration baseline.
+-- Every statement is idempotent so databases created from the former schema.sql adopt it safely.
+
 -- ==============================================================================
 -- HashXV1 — Production PostgreSQL Relational Schema
 -- ==============================================================================

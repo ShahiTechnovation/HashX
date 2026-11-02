@@ -1,577 +1,523 @@
+/**
+ * HashX fail-closed verification engine (protocol v2).
+ *
+ * Invariants:
+ *  - PASS is only produced when every check independently passes.
+ *  - RPC unavailability, chain-ID mismatch, timeouts or unconfirmed blocks yield PENDING, never PASS.
+ *  - Seller-provided figures are never used as the reference value; they are compared against
+ *    facts recomputed from the configured RPC.
+ *  - Workloads are bounded (block range cap, concurrency, overall deadline).
+ */
+import { z } from "zod";
+import { getAddress, isAddress, keccak256, toBytes } from "viem";
 import {
-  createPublicClient,
-  http,
-  keccak256,
-  toBytes,
-  recoverTypedDataAddress,
-  hashTypedData,
-  stringToHex,
-  padHex,
-  getAddress,
-  encodeAbiParameters,
-  parseAbiParameters,
-} from "viem";
-import {
-  Invoice,
-  Delivery,
-  Counterparty,
-  InvoiceVerificationResult,
-  DeliveryVerificationResult,
-  CombinedVerificationResult,
-  VerificationReasonCode,
-  CheckStatus,
+  ANALYTICS_ARTIFACT_SCHEMA,
+  DELIVERY_MANIFEST_SCHEMA,
+  computeAddressAnalytics,
+  computeArtifactSha256,
+  computeInvoiceDigest,
+  computeManifestDigest,
+  computeServiceTermsHash,
+  recoverInvoiceSigner,
+  recoverManifestSigner,
+  sameAddress,
+  type DeliveryManifest,
+  type InvoiceTerms,
+  type MinimalBlock,
+} from "../../../shared/protocol.js";
+import { findNetwork, railSupportsChain } from "../../../shared/networks.js";
+import type { AppConfig } from "../config.js";
+import { ChainReadError, withDeadline, type ChainReader } from "../chain/readers.js";
+import { invoiceTermsFromRow } from "../types.js";
+import type {
   Address,
+  CheckDetail,
+  CheckStatus,
+  EvidenceSource,
   Hash,
+  VerificationReasonCode,
+  VerificationResult,
 } from "../types.js";
-import { query } from "../db/client.js";
 
-const TESTNET_RPC = process.env.HSK_TESTNET_RPC || "https://testnet.hsk.xyz";
-const MAINNET_RPC = process.env.HSK_MAINNET_RPC || "https://mainnet.hsk.xyz";
+export const INVOICE_VERIFIER_VERSION = "hashx.verifier.invoice.v2.0.0";
+export const DELIVERY_VERIFIER_VERSION = "hashx.verifier.analytics.v2.0.0";
+const CLOCK_SKEW_SECONDS = 120;
 
-export const publicTestnetClient = createPublicClient({
-  transport: http(TESTNET_RPC),
-});
+class CheckSet {
+  checks: Record<string, CheckStatus> = {};
+  details: Record<string, CheckDetail> = {};
+  reasons: VerificationReasonCode[] = [];
 
-export const publicMainnetClient = createPublicClient({
-  transport: http(MAINNET_RPC),
-});
-
-export function getRpcClient(chainId: number) {
-  return chainId === 177 ? publicMainnetClient : publicTestnetClient;
-}
-
-// Invoice EIP-712 Domain Verifying Contract
-export const HASHX_EIP712_VERIFYING_CONTRACT: Address = getAddress(
-  "0x19b861876D8075A11EC6C4596395B058fe8466c2"
-);
-
-// On-Chain Evidence Registry Contract (Separated from EIP-712 domain and token)
-export const HASHX_EVIDENCE_REGISTRY_ADDRESS: Address | null = process.env.HASHX_EVIDENCE_REGISTRY_ADDRESS
-  ? getAddress(process.env.HASHX_EVIDENCE_REGISTRY_ADDRESS)
-  : null;
-
-export function isEvidenceRegistryDeployed(): boolean {
-  return Boolean(
-    HASHX_EVIDENCE_REGISTRY_ADDRESS &&
-    HASHX_EVIDENCE_REGISTRY_ADDRESS !== "0x0000000000000000000000000000000000000000"
-  );
-}
-
-// HSP Payment Token & Settlement Contracts (Distinct from Evidence Registry)
-export const HSP_TESTNET_TOKEN_ADDRESS: Address = "0x19B861876D8075A11eC6c4596395b058fe8466C2";
-export const HSP_TESTNET_SPENDER_CONTRACT: Address = "0x6969696969696969696969696969696969696969";
-
-export const HASHX_EIP712_DOMAIN = {
-  name: "HashX Global",
-  version: "1",
-  chainId: 133,
-  verifyingContract: HASHX_EIP712_VERIFYING_CONTRACT,
-} as const;
-
-export const HASHX_EIP712_TYPES = {
-  HashXInvoice: [
-    { name: "invoiceId", type: "bytes32" },
-    { name: "version", type: "uint256" },
-    { name: "seller", type: "address" },
-    { name: "buyerRefHash", type: "bytes32" },
-    { name: "serviceType", type: "bytes32" },
-    { name: "serviceTermsHash", type: "bytes32" },
-    { name: "amountMinor", type: "uint256" },
-    { name: "currency", type: "bytes32" },
-    { name: "payee", type: "address" },
-    { name: "paymentChainId", type: "uint256" },
-    { name: "nonce", type: "uint256" },
-    { name: "issuedAt", type: "uint64" },
-    { name: "expiresAt", type: "uint64" },
-  ],
-} as const;
-
-export function stringToBytes32(str: string): Hash {
-  const clean = str.replace(/-/g, "");
-  if (clean.length <= 64) {
-    const hex = stringToHex(clean);
-    return padHex(hex, { size: 32, dir: "right" });
+  set(key: string, status: CheckStatus, rule: string, explanation: string, extra: Partial<CheckDetail> = {}) {
+    this.checks[key] = status;
+    this.details[key] = { status, rule, explanation, ...extra };
+    if (extra.failureCode && (status === "FAIL" || status === "PENDING") && !this.reasons.includes(extra.failureCode)) {
+      this.reasons.push(extra.failureCode);
+    }
   }
-  return keccak256(toBytes(str));
+
+  decision(): "PASS" | "FAIL" | "PENDING" {
+    const values = Object.values(this.checks);
+    if (values.includes("FAIL")) return "FAIL";
+    if (values.some((v) => v === "PENDING" || v === "SKIPPED")) return "PENDING";
+    return values.length > 0 ? "PASS" : "PENDING";
+  }
 }
 
-/**
- * Computes deterministic service terms hash
- */
-export function computeServiceTermsHash(
-  address: Address,
-  startBlock: string,
-  endBlock: string,
-  acceptancePolicy: string
-): Hash {
-  const encoded = encodeAbiParameters(
-    parseAbiParameters("address, uint64, uint64, string"),
-    [address, BigInt(startBlock), BigInt(endBlock), acceptancePolicy]
-  );
-  return keccak256(encoded);
+// ---------------------------------------------------------------------------
+// Invoice verification
+// ---------------------------------------------------------------------------
+
+export interface InvoiceVerificationContext {
+  row: any;
+  sellerCounterparty: { status: string; wallet_verified_at: Date | null } | null;
+  nonceReusedBy: string[];
+  cfg: AppConfig;
+  now?: number;
 }
 
-export function buildInvoiceEIP712Message(invoice: Invoice) {
-  const issuedAtSeconds = Math.floor(new Date(invoice.issuedAt).getTime() / 1000);
-  const expiresAtSeconds = Math.floor(new Date(invoice.expiresAt).getTime() / 1000);
+export async function verifyInvoiceV2(ctx: InvoiceVerificationContext): Promise<VerificationResult> {
+  const { row, cfg } = ctx;
+  const now = Math.floor((ctx.now ?? Date.now()) / 1000);
+  const c = new CheckSet();
 
-  return {
-    invoiceId: stringToBytes32(invoice.id),
-    version: BigInt(invoice.version || 1),
-    seller: getAddress(invoice.sellerWallet),
-    buyerRefHash: invoice.buyerRefHash,
-    serviceType: stringToBytes32(invoice.service.type),
-    serviceTermsHash: invoice.serviceTermsHash,
-    amountMinor: BigInt(invoice.payment.amount_minor),
-    currency: stringToBytes32(invoice.payment.currency || "USD"),
-    payee: getAddress(invoice.payment.payee),
-    paymentChainId: BigInt(invoice.payment.preferred_chain_id || 133),
-    nonce: BigInt(invoice.nonce),
-    issuedAt: BigInt(issuedAtSeconds),
-    expiresAt: BigInt(expiresAtSeconds),
-  };
-}
-
-/**
- * Computes canonical EIP-712 digest for HashX invoice
- */
-export function computeInvoiceDigest(invoice: Invoice, chainId = 133): Hash {
-  const domain = {
-    ...HASHX_EIP712_DOMAIN,
-    chainId,
-  };
-
-  const message = buildInvoiceEIP712Message(invoice);
-
-  return hashTypedData({
-    domain,
-    types: HASHX_EIP712_TYPES,
-    primaryType: "HashXInvoice",
-    message,
-  });
-}
-
-/**
- * Server-side deterministic EIP-712 signature verification
- */
-export async function verifyInvoiceSignature(
-  invoice: Invoice,
-  chainId: number
-): Promise<{ valid: boolean; recoveredSigner?: Address }> {
-  if (!invoice.signature) return { valid: false };
-
-  try {
-    const domain = {
-      ...HASHX_EIP712_DOMAIN,
-      chainId,
-    };
-
-    const message = buildInvoiceEIP712Message(invoice);
-
-    const recovered = await recoverTypedDataAddress({
-      domain,
-      types: HASHX_EIP712_TYPES,
-      primaryType: "HashXInvoice",
-      message,
-      signature: invoice.signature,
+  if (row.protocol_version < 2) {
+    c.set("schema", "FAIL", "Protocol v2 invoice", "Legacy v1 invoices cannot be verified for payment.", {
+      failureCode: "LEGACY_PROTOCOL",
     });
-
-    const matches = recovered.toLowerCase() === invoice.sellerWallet.toLowerCase();
-    return { valid: matches, recoveredSigner: recovered };
-  } catch (err: any) {
-    return { valid: false };
-  }
-}
-
-/**
- * Deterministically evaluates an invoice against integrity, signature, counterparty, and replay policies.
- */
-export async function verifyInvoice(
-  invoice: Invoice,
-  registeredCounterparties?: Counterparty[]
-): Promise<InvoiceVerificationResult> {
-  const reasonCodes: VerificationReasonCode[] = [];
-  const checkDetails: Record<string, any> = {
-    schema: { status: "PASS", rule: "Valid EIP-712 HashXInvoice v1 schema", explanation: "All required invoice fields conform to protocol schema." },
-    signature: { status: "PASS", rule: "EIP-712 cryptographic signature valid", explanation: "Digest signed by authorized seller wallet." },
-    identity_binding: { status: "PASS", rule: "Seller wallet registered in trusted registry", explanation: "Seller address resolved to active counterparty record." },
-    expiry: { status: "PASS", rule: "Invoice within validity window", explanation: "Current timestamp does not exceed expiresAt." },
-    nonce_unused: { status: "PASS", rule: "Replay protection: seller nonce unused", explanation: "Nonce has not been previously executed." },
-    terms_consistent: { status: "PASS", rule: "Commercial terms match hash digest", explanation: "Service parameters and terms correspond to serviceTermsHash." },
-  };
-
-  const checks: Record<string, CheckStatus> = {
-    schema: "PASS",
-    signature: "PASS",
-    identity_binding: "PASS",
-    expiry: "PASS",
-    nonce_unused: "PASS",
-    terms_consistent: "PASS",
-  };
-
-  // 1. Schema check
-  if (!invoice.id || !invoice.payment?.amount_minor || !invoice.service?.parameters?.address) {
-    checks.schema = "FAIL";
-    checkDetails.schema = {
-      status: "FAIL",
-      rule: "Valid EIP-712 HashXInvoice v1 schema",
-      explanation: "Required top-level or payment fields are missing.",
-      failureCode: "DELIVERY_SCHEMA_INVALID",
-    };
-    reasonCodes.push("DELIVERY_SCHEMA_INVALID");
+    return finishInvoice(c, row, keccak256(toBytes(`legacy:${row.id}`)));
   }
 
-  // 2. Identity binding against database or provided list
-  let counterparties = registeredCounterparties;
-  if (!counterparties) {
-    try {
-      const res = await query<Counterparty>("SELECT id, display_name as \"displayName\", wallet_address as \"walletAddress\", wallet_type as \"walletType\", status FROM counterparties WHERE status = 'ACTIVE'");
-      counterparties = res.rows;
-    } catch {
-      counterparties = [];
-    }
-  }
-
-  const sellerCounterparty = counterparties.find(
-    (c) => c.walletAddress.toLowerCase() === invoice.sellerWallet.toLowerCase() && c.status === "ACTIVE"
-  );
-  if (!sellerCounterparty && counterparties.length > 0) {
-    checks.identity_binding = "FAIL";
-    checkDetails.identity_binding = {
-      status: "FAIL",
-      rule: "Seller wallet registered in trusted registry",
-      explanation: `Seller wallet ${invoice.sellerWallet} is not bound to a registered active counterparty.`,
-      failureCode: "SELLER_UNBOUND",
-      expected: "Registered active counterparty EOA",
-      actual: invoice.sellerWallet,
-    };
-    reasonCodes.push("SELLER_UNBOUND");
-  }
-
-  // 3. Expiry check
-  const now = Date.now();
-  const expiresAtTime = new Date(invoice.expiresAt).getTime();
-  if (now > expiresAtTime) {
-    checks.expiry = "FAIL";
-    checkDetails.expiry = {
-      status: "FAIL",
-      rule: "Invoice within validity window",
-      explanation: `Invoice expired at ${invoice.expiresAt}.`,
-      failureCode: "INVOICE_EXPIRED",
-      expected: `< ${invoice.expiresAt}`,
-      actual: new Date(now).toISOString(),
-    };
-    reasonCodes.push("INVOICE_EXPIRED");
-  }
-
-  // 4. Replay check (nonce unused for this seller in DB)
+  let terms: InvoiceTerms | null = null;
   try {
-    const nonceCheck = await query(
-      "SELECT id FROM invoices WHERE seller_wallet = $1 AND nonce = $2 AND id != $3 AND status NOT IN ('DRAFT', 'REJECTED')",
-      [invoice.sellerWallet, invoice.nonce, invoice.id]
-    );
-    if (nonceCheck.rowCount > 0) {
-      checks.nonce_unused = "FAIL";
-      checkDetails.nonce_unused = {
-        status: "FAIL",
-        rule: "Replay protection: seller nonce unused",
-        explanation: `Nonce ${invoice.nonce} was previously settled for seller ${invoice.sellerWallet}.`,
-        failureCode: "REPLAY_NONCE_REUSED",
-        expected: "Unique unused nonce",
-        actual: `Reused nonce ${invoice.nonce}`,
-      };
-      reasonCodes.push("REPLAY_NONCE_REUSED");
+    terms = invoiceTermsFromRow(row);
+    if (!isAddress(terms.seller) || !isAddress(terms.buyer) || !isAddress(terms.payee) || !isAddress(terms.token)) {
+      throw new Error("address field invalid");
     }
+    if (BigInt(terms.amount) <= 0n) throw new Error("amount must be positive");
+    c.set("schema", "PASS", "Protocol v2 invoice schema", "All signed fields are present and well-formed.");
+  } catch (err) {
+    c.set("schema", "FAIL", "Protocol v2 invoice schema", `Malformed invoice terms: ${(err as Error).message}`, {
+      failureCode: "SCHEMA_INVALID",
+    });
+    return finishInvoice(c, row, keccak256(toBytes(`malformed:${row.id}`)));
+  }
+
+  // Terms consistency: recompute both digests from stored fields; detects storage-level tampering.
+  const service = row.service_params ?? {};
+  let expectedTermsHash: Hash | null = null;
+  try {
+    expectedTermsHash = computeServiceTermsHash({
+      serviceType: row.service_type,
+      deliveryChainId: terms.deliveryChainId,
+      subjectAddress: service.parameters?.address,
+      startBlock: service.parameters?.start_block,
+      endBlock: service.parameters?.end_block,
+      acceptancePolicy: service.acceptance_policy,
+    });
   } catch {
-    // If DB check fails, continue
+    expectedTermsHash = null;
   }
-
-  // 5. Terms consistency check
-  const expectedTermsHash = computeServiceTermsHash(
-    invoice.service.parameters.address,
-    invoice.service.parameters.start_block,
-    invoice.service.parameters.end_block,
-    invoice.service.acceptance_policy
-  );
-  if (invoice.serviceTermsHash !== expectedTermsHash) {
-    checks.terms_consistent = "FAIL";
-    checkDetails.terms_consistent = {
-      status: "FAIL",
-      rule: "Commercial terms match hash digest",
-      explanation: "Computed service terms hash does not match declared serviceTermsHash.",
+  const recomputedDigest = computeInvoiceDigest(terms);
+  if (expectedTermsHash !== row.service_terms_hash || recomputedDigest !== row.digest) {
+    c.set("terms_consistent", "FAIL", "Commercial terms match committed digests", "Stored terms do not reproduce the committed hashes.", {
       failureCode: "TERMS_MUTATED",
-      expected: expectedTermsHash,
-      actual: invoice.serviceTermsHash,
-    };
-    reasonCodes.push("TERMS_MUTATED");
-  }
-
-  // 6. Signature check
-  let recoveredSigner: Address | undefined;
-  if (invoice.status === "DRAFT" || !invoice.signature) {
-    checks.signature = "SKIPPED";
-    checkDetails.signature = {
-      status: "SKIPPED",
-      rule: "EIP-712 cryptographic signature valid",
-      explanation: "Invoice is currently unsigned (DRAFT).",
-    };
-  } else if (invoice.signatureValid === false) {
-    checks.signature = "FAIL";
-    checkDetails.signature = {
-      status: "FAIL",
-      rule: "EIP-712 cryptographic signature valid",
-      explanation: "Submitted signature does not match canonical invoice digest. Terms or payee were mutated.",
-      failureCode: "SIGNATURE_INVALID",
-      expected: `Authorized signature by ${invoice.sellerWallet}`,
-      actual: "Signature mismatch against mutated payload",
-    };
-    reasonCodes.push("SIGNATURE_INVALID");
+      expected: `${row.service_terms_hash} / ${row.digest}`,
+      actual: `${expectedTermsHash ?? "uncomputable"} / ${recomputedDigest}`,
+    });
   } else {
-    const sigResult = await verifyInvoiceSignature(invoice, invoice.payment.preferred_chain_id);
-    recoveredSigner = sigResult.recoveredSigner;
-    if (!sigResult.valid) {
-      checks.signature = "FAIL";
-      checkDetails.signature = {
-        status: "FAIL",
-        rule: "EIP-712 cryptographic signature valid",
-        explanation: "Signature does not recover to declared seller wallet address.",
+    c.set("terms_consistent", "PASS", "Commercial terms match committed digests", "Service terms hash and EIP-712 digest recompute exactly.");
+  }
+
+  // Signature
+  let recovered: Address | null = null;
+  if (!row.signature) {
+    c.set("signature", "PENDING", "EIP-712 seller signature", "Invoice has not been signed by the seller wallet.", {
+      failureCode: "SIGNATURE_MISSING",
+    });
+  } else {
+    recovered = await recoverInvoiceSigner(terms, row.signature);
+    if (!sameAddress(recovered, terms.seller)) {
+      c.set("signature", "FAIL", "EIP-712 seller signature", "Signature does not recover to the seller wallet over the canonical terms.", {
         failureCode: "SIGNATURE_INVALID",
-        expected: `Authorized signature by ${invoice.sellerWallet}`,
-        actual: recoveredSigner ? `Recovered: ${recoveredSigner}` : "Invalid signature bytes",
-      };
-      reasonCodes.push("SIGNATURE_INVALID");
+        expected: terms.seller,
+        actual: recovered ?? "unrecoverable",
+      });
+    } else {
+      c.set("signature", "PASS", "EIP-712 seller signature", `Recovered signer ${recovered} equals the seller wallet.`);
     }
   }
 
-  const invoiceDigest = computeInvoiceDigest(invoice, invoice.payment.preferred_chain_id);
-  const hasFailure = Object.values(checks).some((c) => c === "FAIL");
-  const hasSkipped = Object.values(checks).some((c) => c === "SKIPPED");
-  const decision = hasFailure ? "FAIL" : hasSkipped ? "PENDING" : "PASS";
+  // Identity binding: the seller wallet must have proven control via SIWE and be ACTIVE.
+  const cp = ctx.sellerCounterparty;
+  if (!cp || cp.status !== "ACTIVE" || !cp.wallet_verified_at) {
+    c.set("identity_binding", "FAIL", "Seller wallet bound to an active, wallet-verified account", "Seller wallet has no active SIWE-verified account.", {
+      failureCode: "SELLER_UNBOUND",
+      actual: cp ? `status=${cp.status}, verified=${Boolean(cp.wallet_verified_at)}` : "no account",
+    });
+  } else {
+    c.set("identity_binding", "PASS", "Seller wallet bound to an active, wallet-verified account", "Seller proved wallet control via SIWE.");
+  }
 
+  // Expiry
+  if (now > terms.expiresAt) {
+    c.set("expiry", "FAIL", "Invoice within validity window", `Invoice expired at ${new Date(terms.expiresAt * 1000).toISOString()}.`, {
+      failureCode: "INVOICE_EXPIRED",
+    });
+  } else if (terms.issuedAt > now + CLOCK_SKEW_SECONDS) {
+    c.set("expiry", "FAIL", "Invoice within validity window", "issuedAt is in the future.", { failureCode: "SCHEMA_INVALID" });
+  } else {
+    c.set("expiry", "PASS", "Invoice within validity window", "Current time is within [issuedAt, expiresAt].");
+  }
+
+  // Replay: nonce and digest are unique per seller (also enforced by DB constraints).
+  if (ctx.nonceReusedBy.length > 0) {
+    c.set("nonce_unused", "FAIL", "Replay protection: seller nonce unique", `Nonce reused by ${ctx.nonceReusedBy.join(", ")}.`, {
+      failureCode: "REPLAY_NONCE_REUSED",
+    });
+  } else {
+    c.set("nonce_unused", "PASS", "Replay protection: seller nonce unique", "No other invoice by this seller uses this nonce.");
+  }
+
+  // Settlement terms: rail/chain/token must be exactly the configured settlement asset.
+  const settlementProblems: string[] = [];
+  const net = findNetwork(terms.settlementChainId);
+  if (!net) settlementProblems.push(`unsupported settlement chain ${terms.settlementChainId}`);
+  if (!railSupportsChain(terms.settlementRail as any, terms.settlementChainId)) {
+    settlementProblems.push(`rail ${terms.settlementRail} cannot settle on chain ${terms.settlementChainId}`);
+  }
+  if (terms.settlementRail === "sepolia-usdc") {
+    const token = cfg.chains.get(terms.settlementChainId)?.settlementToken;
+    if (!token || !sameAddress(token.address, terms.token)) {
+      settlementProblems.push(`token ${terms.token} is not the configured settlement token`);
+    }
+  }
+  if (sameAddress(terms.seller, terms.buyer)) settlementProblems.push("seller and buyer are the same wallet");
+  if (/^0x0{40}$/i.test(terms.payee)) settlementProblems.push("payee is the zero address");
+  if (terms.signingChainId !== terms.settlementChainId) settlementProblems.push("signing chain differs from settlement chain");
+  if (settlementProblems.length) {
+    c.set("settlement_terms", "FAIL", "Settlement rail, chain and token are supported", settlementProblems.join("; "), {
+      failureCode: "SETTLEMENT_TERMS_INVALID",
+    });
+  } else {
+    c.set("settlement_terms", "PASS", "Settlement rail, chain and token are supported", `${terms.settlementRail} on chain ${terms.settlementChainId}.`);
+  }
+
+  const inputDigest = keccak256(toBytes(`${row.digest}:${row.signature ?? "unsigned"}`));
+  const result = finishInvoice(c, row, inputDigest);
+  result.signerRecovered = recovered ?? undefined;
+  return result;
+}
+
+function finishInvoice(c: CheckSet, row: any, inputDigest: Hash): VerificationResult {
+  const decision = c.decision();
   return {
+    objectType: "INVOICE",
+    objectId: row.id,
     decision,
-    checks: checks as any,
-    checkDetails,
-    invoiceDigest,
-    reasonCodes,
-    verifierVersion: "hashx.verifier.invoice.v1.0",
+    payable: decision === "PASS",
+    checks: c.checks,
+    checkDetails: c.details,
+    reasonCodes: c.reasons,
+    verifierVersion: INVOICE_VERIFIER_VERSION,
     verifiedAt: new Date().toISOString(),
-    signerRecovered: recoveredSigner || invoice.signer || invoice.sellerWallet,
+    inputDigest,
+    evidenceDigest: row.digest,
+    evidenceSources: [{ type: "signature", description: "EIP-712 HashXInvoice v2 recovered from stored canonical terms" }],
   };
 }
 
-/**
- * Deterministically evaluates a fulfillment delivery artifact against invoice terms and RPC expectations.
- */
-export async function verifyDelivery(
-  invoice: Invoice,
-  delivery: Delivery,
-  mockRpcExpectedTxCount?: number
-): Promise<DeliveryVerificationResult> {
-  const reasonCodes: VerificationReasonCode[] = [];
-  const checkDetails: Record<string, any> = {
-    manifest_signature: { status: "PASS", rule: "Seller manifest signature valid", explanation: "Manifest signed by seller wallet." },
-    artifact_hash: { status: "PASS", rule: "SHA-256 byte integrity", explanation: "Computed artifact byte SHA-256 equals manifest artifact_sha256." },
-    schema: { status: "PASS", rule: "hashx.analytics.v1 schema compliance", explanation: "Delivered artifact matches strict v1 analytics schema." },
-    requested_address: { status: "PASS", rule: "Target address matches invoice", explanation: "Subject address matches invoice request." },
-    block_range: { status: "PASS", rule: "Block range matches agreement", explanation: "Start and end blocks match invoice request." },
-    transaction_count: { status: "PASS", rule: "Deterministic RPC transaction count verification", explanation: "Recomputed on-chain transaction count matches artifact." },
-    sample_transaction_proofs: { status: "PASS", rule: "Sample transaction proofs verify", explanation: "Sample transactions confirmed in requested block range." },
-    freshness: { status: "PASS", rule: "Delivery generated after target block range", explanation: "Generated timestamp corresponds to post-block finality." },
-  };
+// ---------------------------------------------------------------------------
+// Delivery verification
+// ---------------------------------------------------------------------------
 
-  const checks: Record<string, CheckStatus> = {
-    manifest_signature: "PASS",
-    artifact_hash: "PASS",
-    schema: "PASS",
-    requested_address: "PASS",
-    block_range: "PASS",
-    transaction_count: "PASS",
-    sample_transaction_proofs: "PASS",
-    freshness: "PASS",
-  };
+const hexAddressLower = z.string().regex(/^0x[0-9a-f]{40}$/, "must be a lowercase hex address");
+const hexHashLower = z.string().regex(/^0x[0-9a-f]{64}$/, "must be a lowercase 32-byte hash");
+const decimalString = z.string().regex(/^(0|[1-9]\d*)$/, "must be a non-negative integer string");
 
-  const artifact = delivery.artifactContent;
+export const AnalyticsArtifactSchema = z
+  .object({
+    schema: z.literal(ANALYTICS_ARTIFACT_SCHEMA),
+    chain_id: z.number().int().positive(),
+    address: hexAddressLower,
+    start_block: z.number().int().nonnegative(),
+    end_block: z.number().int().nonnegative(),
+    transaction_count: z.number().int().nonnegative(),
+    native_value_in_raw: decimalString,
+    native_value_out_raw: decimalString,
+    counterparties: z.array(z.object({ address: hexAddressLower, tx_count: z.number().int().positive() }).strict()).max(10000),
+    sample_transactions: z.array(z.object({ hash: hexHashLower, block_number: z.number().int().nonnegative() }).strict()).max(100),
+  })
+  .strict();
 
-  // 1. Schema check
-  if (artifact.schema !== "hashx.analytics.v1" || delivery.manifest.schema !== "hashx.delivery.analytics.v1") {
-    checks.schema = "FAIL";
-    checkDetails.schema = {
-      status: "FAIL",
-      rule: "hashx.analytics.v1 schema compliance",
-      explanation: `Invalid schema declared: ${artifact.schema}`,
-      failureCode: "DELIVERY_SCHEMA_INVALID",
-      expected: "hashx.analytics.v1",
-      actual: artifact.schema,
-    };
-    reasonCodes.push("DELIVERY_SCHEMA_INVALID");
-  }
+export interface DeliveryVerificationContext {
+  invoiceRow: any;
+  deliveryRow: any;
+  reader: ChainReader | null;
+  readerError?: ChainReadError;
+  cfg: AppConfig;
+  now?: number;
+}
 
-  // 2. Chain check
-  if (artifact.chain_id !== invoice.payment.preferred_chain_id) {
-    checks.schema = "FAIL";
-    reasonCodes.push("CHAIN_MISMATCH");
-  }
-
-  // 3. Artifact hash check
-  if (delivery.artifactSha256 !== delivery.manifest.artifact_sha256) {
-    checks.artifact_hash = "FAIL";
-    checkDetails.artifact_hash = {
-      status: "FAIL",
-      rule: "SHA-256 byte integrity",
-      explanation: "Artifact byte SHA-256 does not match signed manifest commitment. Content was tampered.",
-      failureCode: "ARTIFACT_TAMPERED",
-      expected: delivery.manifest.artifact_sha256,
-      actual: delivery.artifactSha256,
-    };
-    reasonCodes.push("ARTIFACT_TAMPERED");
-  }
-
-  // 4. Requested address check
-  if (artifact.address.toLowerCase() !== invoice.service.parameters.address.toLowerCase()) {
-    checks.requested_address = "FAIL";
-    checkDetails.requested_address = {
-      status: "FAIL",
-      rule: "Target address matches invoice",
-      explanation: "Artifact reports on an address different from the invoice requirement.",
-      failureCode: "SUBJECT_MISMATCH",
-      expected: invoice.service.parameters.address,
-      actual: artifact.address,
-    };
-    reasonCodes.push("SUBJECT_MISMATCH");
-  }
-
-  // 5. Block range check
-  const invStart = parseInt(invoice.service.parameters.start_block, 10);
-  const invEnd = parseInt(invoice.service.parameters.end_block, 10);
-  if (artifact.start_block !== invStart || artifact.end_block !== invEnd) {
-    checks.block_range = "FAIL";
-    checkDetails.block_range = {
-      status: "FAIL",
-      rule: "Block range matches agreement",
-      explanation: `Requested blocks ${invStart}..${invEnd}, but artifact delivered ${artifact.start_block}..${artifact.end_block}.`,
-      failureCode: "BLOCK_RANGE_MISMATCH",
-      expected: `Blocks ${invStart} to ${invEnd}`,
-      actual: `Blocks ${artifact.start_block} to ${artifact.end_block}`,
-    };
-    reasonCodes.push("BLOCK_RANGE_MISMATCH");
-  }
-
-  // 6. Transaction count recomputation against HashKey Chain RPC
-  let expectedTxCount = mockRpcExpectedTxCount ?? artifact.transaction_count;
-  if (mockRpcExpectedTxCount === undefined) {
-    try {
-      const client = getRpcClient(invoice.payment.preferred_chain_id);
-      const diff = invEnd - invStart;
-      if (diff >= 0 && diff <= 10) {
-        let count = 0;
-        for (let b = invStart; b <= invEnd; b++) {
-          const blk = await client.getBlock({ blockNumber: BigInt(b), includeTransactions: true });
-          for (const tx of blk.transactions) {
-            if (typeof tx !== "string") {
-              if (
-                tx.from?.toLowerCase() === artifact.address.toLowerCase() ||
-                tx.to?.toLowerCase() === artifact.address.toLowerCase()
-              ) {
-                count++;
-              }
-            }
-          }
-        }
-        expectedTxCount = count;
+async function fetchBlocks(reader: ChainReader, start: number, end: number, concurrency: number): Promise<MinimalBlock[]> {
+  const numbers: number[] = [];
+  for (let b = start; b <= end; b++) numbers.push(b);
+  const out: MinimalBlock[] = new Array(numbers.length);
+  let next = 0;
+  async function worker() {
+    while (next < numbers.length) {
+      const i = next++;
+      const blk = await reader.getBlockWithTransactions(BigInt(numbers[i]));
+      if (blk.number === null || Number(blk.number) !== numbers[i]) {
+        throw new ChainReadError("RPC_UNAVAILABLE", `RPC returned wrong block for ${numbers[i]}`);
       }
-    } catch (rpcErr) {
-      console.warn("[VerificationEngine] HashKey RPC check fell back to artifact count:", rpcErr);
+      out[i] = {
+        number: blk.number,
+        transactions: blk.transactions.map((tx) => ({ hash: tx.hash, from: tx.from, to: tx.to ?? null, value: tx.value })),
+      };
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, numbers.length) }, worker));
+  return out;
+}
+
+export async function verifyDeliveryV2(ctx: DeliveryVerificationContext): Promise<VerificationResult> {
+  const { invoiceRow, deliveryRow, cfg } = ctx;
+  const now = Math.floor((ctx.now ?? Date.now()) / 1000);
+  const c = new CheckSet();
+  const sources: EvidenceSource[] = [];
+  const terms = invoiceTermsFromRow(invoiceRow);
+  const service = invoiceRow.service_params;
+  const manifest = deliveryRow.manifest as DeliveryManifest;
+  let manifestDigest: Hash | null = null;
+
+  // 1. Manifest structure & signature
+  let manifestWellFormed = true;
+  try {
+    manifestDigest = computeManifestDigest(manifest, terms.signingChainId);
+  } catch {
+    manifestWellFormed = false;
+  }
+  if (!manifestWellFormed || manifest?.schema !== DELIVERY_MANIFEST_SCHEMA) {
+    c.set("manifest_signature", "FAIL", "Seller-signed EIP-712 delivery manifest", "Manifest is malformed or uses an unknown schema.", {
+      failureCode: "DELIVERY_SCHEMA_INVALID",
+    });
+  } else {
+    const signer = await recoverManifestSigner(manifest, terms.signingChainId, deliveryRow.manifest_signature);
+    if (!sameAddress(signer, terms.seller)) {
+      c.set("manifest_signature", "FAIL", "Seller-signed EIP-712 delivery manifest", "Manifest signature does not recover to the invoice seller.", {
+        failureCode: "MANIFEST_SIGNATURE_INVALID",
+        expected: terms.seller,
+        actual: signer ?? "unrecoverable",
+      });
+    } else {
+      c.set("manifest_signature", "PASS", "Seller-signed EIP-712 delivery manifest", `Recovered ${signer}.`);
+      sources.push({ type: "signature", description: `Manifest signed by ${signer}` });
     }
   }
 
-  if (artifact.transaction_count !== expectedTxCount) {
-    checks.transaction_count = "FAIL";
-    checkDetails.transaction_count = {
-      status: "FAIL",
-      rule: "Deterministic RPC transaction count verification",
-      explanation: `Seller claimed ${artifact.transaction_count} transactions, but HashKey Chain RPC recomputation found ${expectedTxCount}.`,
-      failureCode: "TX_COUNT_MISMATCH",
-      expected: `${expectedTxCount} transactions confirmed on-chain`,
-      actual: `${artifact.transaction_count} claimed by seller`,
-    };
-    reasonCodes.push("TX_COUNT_MISMATCH");
+  // 2. Manifest binding to this invoice/version/chain/terms
+  const bindingProblems: string[] = [];
+  if (manifestWellFormed) {
+    if (manifest.invoiceId !== terms.invoiceId) bindingProblems.push("invoiceId");
+    if (manifest.invoiceDigest !== invoiceRow.digest) bindingProblems.push("invoiceDigest");
+    if (!sameAddress(manifest.seller, terms.seller)) bindingProblems.push("seller");
+    if (manifest.deliveryVersion !== deliveryRow.version) bindingProblems.push("deliveryVersion");
+    if (manifest.serviceTermsHash !== invoiceRow.service_terms_hash) bindingProblems.push("serviceTermsHash");
+    if (manifest.artifactUri !== deliveryRow.artifact_uri) bindingProblems.push("artifactUri");
+  } else {
+    bindingProblems.push("manifest");
+  }
+  const chainBound = manifestWellFormed && manifest.deliveryChainId === terms.deliveryChainId;
+  if (bindingProblems.length || !chainBound) {
+    c.set("manifest_binding", "FAIL", "Manifest bound to this invoice, version, chain and terms", `Mismatched: ${[...bindingProblems, ...(chainBound ? [] : ["deliveryChainId"])].join(", ")}.`, {
+      failureCode: chainBound ? "EVIDENCE_BINDING_MISMATCH" : "CHAIN_MISMATCH",
+    });
+  } else {
+    c.set("manifest_binding", "PASS", "Manifest bound to this invoice, version, chain and terms", "All binding fields match.");
   }
 
-  // 7. Sample transaction proofs check
-  const invalidSamples = (artifact.sample_transactions || []).filter(
-    (tx: any) => tx.block_number < invStart || tx.block_number > invEnd
-  );
-  if (invalidSamples.length > 0) {
-    checks.sample_transaction_proofs = "FAIL";
-    checkDetails.sample_transaction_proofs = {
-      status: "FAIL",
-      rule: "Sample transaction proofs verify",
-      explanation: "Delivered sample transaction block number falls outside requested range.",
-      failureCode: "EVIDENCE_INVALID",
-    };
-    reasonCodes.push("EVIDENCE_INVALID");
+  // 3. Artifact integrity: recompute SHA-256 from the stored artifact bytes.
+  let computedSha: Hash | null = null;
+  try {
+    computedSha = computeArtifactSha256(deliveryRow.artifact_content);
+  } catch {
+    computedSha = null;
+  }
+  if (!computedSha || !manifestWellFormed || computedSha !== manifest.artifactSha256) {
+    c.set("artifact_hash", "FAIL", "SHA-256 of canonical artifact equals signed commitment", "Artifact bytes do not match the manifest commitment.", {
+      failureCode: "ARTIFACT_TAMPERED",
+      expected: manifestWellFormed ? manifest.artifactSha256 : "valid manifest",
+      actual: computedSha ?? "uncanonicalizable",
+    });
+  } else {
+    c.set("artifact_hash", "PASS", "SHA-256 of canonical artifact equals signed commitment", computedSha);
+    sources.push({ type: "artifact", description: `canonical JSON sha256 ${computedSha}` });
   }
 
-  const evidenceDigest = keccak256(
-    toBytes(`${delivery.manifest.artifact_sha256}:${delivery.manifest.seller}:${delivery.manifest.generated_at}`)
-  );
+  // 4. Artifact schema & subject/range binding
+  const parsed = AnalyticsArtifactSchema.safeParse(deliveryRow.artifact_content);
+  const start = Number(service?.parameters?.start_block);
+  const end = Number(service?.parameters?.end_block);
+  const subject = String(service?.parameters?.address ?? "").toLowerCase();
+  if (!parsed.success) {
+    c.set("schema", "FAIL", `${ANALYTICS_ARTIFACT_SCHEMA} schema`, parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ").slice(0, 500), {
+      failureCode: "DELIVERY_SCHEMA_INVALID",
+    });
+  } else {
+    c.set("schema", "PASS", `${ANALYTICS_ARTIFACT_SCHEMA} schema`, "Artifact conforms to the strict schema.");
+  }
+  const art = parsed.success ? parsed.data : null;
+  if (art) {
+    if (art.address !== subject) {
+      c.set("requested_address", "FAIL", "Subject address matches invoice", "Artifact reports a different address.", {
+        failureCode: "SUBJECT_MISMATCH",
+        expected: subject,
+        actual: art.address,
+      });
+    } else c.set("requested_address", "PASS", "Subject address matches invoice", subject);
 
-  const hasFailure = Object.values(checks).some((c) => c === "FAIL");
-  const decision = hasFailure ? "FAIL" : "PASS";
+    if (art.chain_id !== terms.deliveryChainId) {
+      c.set("delivery_chain", "FAIL", "Artifact chain matches invoice delivery chain", "Artifact computed on another chain.", {
+        failureCode: "CHAIN_MISMATCH",
+        expected: String(terms.deliveryChainId),
+        actual: String(art.chain_id),
+      });
+    } else c.set("delivery_chain", "PASS", "Artifact chain matches invoice delivery chain", String(art.chain_id));
 
+    if (art.start_block !== start || art.end_block !== end) {
+      c.set("block_range", "FAIL", "Block range matches agreement", `Requested ${start}..${end}, delivered ${art.start_block}..${art.end_block}.`, {
+        failureCode: "BLOCK_RANGE_MISMATCH",
+      });
+    } else c.set("block_range", "PASS", "Block range matches agreement", `${start}..${end}`);
+  }
+
+  // 5. Freshness
+  const generatedAt = manifestWellFormed ? Number(manifest.generatedAt) : NaN;
+  const submittedAt = Math.floor(new Date(deliveryRow.submitted_at).getTime() / 1000);
+  if (!Number.isFinite(generatedAt) || generatedAt < terms.issuedAt - CLOCK_SKEW_SECONDS || generatedAt > submittedAt + CLOCK_SKEW_SECONDS || submittedAt > terms.expiresAt) {
+    c.set("freshness", "FAIL", "Delivery generated after issuance and submitted before expiry", "Manifest timestamp or submission time is outside the invoice window.", {
+      failureCode: "DELIVERY_STALE",
+    });
+  } else {
+    c.set("freshness", "PASS", "Delivery generated after issuance and submitted before expiry", new Date(generatedAt * 1000).toISOString());
+  }
+
+  // 6. Independent RPC recomputation (bounded; fail-closed)
+  const rangeSize = end - start + 1;
+  let observedBlock: bigint | undefined;
+  const rpcKeys = ["transaction_count", "native_values", "counterparties", "sample_transaction_proofs"] as const;
+  const pendAll = (code: VerificationReasonCode, why: string) => {
+    for (const k of rpcKeys) c.set(k, "PENDING", "Recomputed from independent RPC", why, { failureCode: code });
+  };
+
+  const network = findNetwork(terms.deliveryChainId);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) {
+    for (const k of rpcKeys) c.set(k, "FAIL", "Recomputed from independent RPC", "Invalid block range.", { failureCode: "RANGE_UNSUPPORTED" });
+  } else if (rangeSize > cfg.delivery.maxBlockRange) {
+    for (const k of rpcKeys) {
+      c.set(k, "FAIL", "Recomputed from independent RPC", `Range of ${rangeSize} blocks exceeds verifier limit ${cfg.delivery.maxBlockRange}.`, {
+        failureCode: "RANGE_UNSUPPORTED",
+      });
+    }
+  } else if (!network?.deliveryVerificationSupported) {
+    for (const k of rpcKeys) c.set(k, "FAIL", "Recomputed from independent RPC", "Delivery chain unsupported.", { failureCode: "CHAIN_MISMATCH" });
+  } else if (!ctx.reader) {
+    const code = (ctx.readerError?.code ?? "RPC_UNCONFIGURED") as VerificationReasonCode;
+    pendAll(code, ctx.readerError?.message ?? "No RPC configured for the delivery chain.");
+  } else if (!art) {
+    for (const k of rpcKeys) c.set(k, "SKIPPED", "Recomputed from independent RPC", "Skipped: artifact schema invalid.");
+  } else {
+    const reader = ctx.reader;
+    try {
+      const recomputed = await withDeadline(cfg.delivery.totalTimeoutMs, async () => {
+        await reader.assertChainId();
+        observedBlock = await reader.getBlockNumber();
+        const confirmedTip = observedBlock - BigInt(cfg.delivery.minConfirmations);
+        if (BigInt(end) > confirmedTip) return { notConfirmed: true as const };
+        const blocks = await fetchBlocks(reader, start, end, 5);
+        return {
+          notConfirmed: false as const,
+          ...computeAddressAnalytics({
+            chainId: terms.deliveryChainId,
+            address: subject,
+            startBlock: start,
+            endBlock: end,
+            blocks,
+            maxSamples: cfg.delivery.maxSampleTransactions,
+          }),
+        };
+      });
+
+      if (recomputed.notConfirmed) {
+        pendAll("BLOCK_NOT_CONFIRMED", `Block ${end} is not yet ${cfg.delivery.minConfirmations} blocks deep (tip ${observedBlock}).`);
+      } else {
+        const truth = recomputed.artifact;
+        sources.push({
+          type: "rpc",
+          description: `Recomputed ${rangeSize} blocks via independent RPC`,
+          chainId: terms.deliveryChainId,
+          rpc: reader.label,
+          observedBlock: observedBlock?.toString(),
+          blocksScanned: rangeSize,
+        });
+        if (art.transaction_count !== truth.transaction_count) {
+          c.set("transaction_count", "FAIL", "Transaction count recomputed from RPC", `Seller claimed ${art.transaction_count}; RPC recomputation found ${truth.transaction_count}.`, {
+            failureCode: "TX_COUNT_MISMATCH",
+            expected: String(truth.transaction_count),
+            actual: String(art.transaction_count),
+          });
+        } else c.set("transaction_count", "PASS", "Transaction count recomputed from RPC", `${truth.transaction_count} transactions.`);
+
+        if (art.native_value_in_raw !== truth.native_value_in_raw || art.native_value_out_raw !== truth.native_value_out_raw) {
+          c.set("native_values", "FAIL", "Native value flows recomputed from RPC", "Claimed in/out values differ from RPC recomputation.", {
+            failureCode: "VALUE_MISMATCH",
+            expected: `${truth.native_value_in_raw}/${truth.native_value_out_raw}`,
+            actual: `${art.native_value_in_raw}/${art.native_value_out_raw}`,
+          });
+        } else c.set("native_values", "PASS", "Native value flows recomputed from RPC", "In/out values match.");
+
+        const claimedCp = JSON.stringify(art.counterparties);
+        const truthCp = JSON.stringify(truth.counterparties);
+        if (claimedCp !== truthCp) {
+          c.set("counterparties", "FAIL", "Counterparty breakdown recomputed from RPC", "Counterparty breakdown differs from RPC recomputation.", {
+            failureCode: "COUNTERPARTY_MISMATCH",
+          });
+        } else c.set("counterparties", "PASS", "Counterparty breakdown recomputed from RPC", `${truth.counterparties.length} counterparties.`);
+
+        const badSamples = art.sample_transactions.filter((s) => recomputed.matchedHashes.get(s.hash) !== s.block_number);
+        if (art.sample_transactions.length > cfg.delivery.maxSampleTransactions || badSamples.length > 0) {
+          c.set("sample_transaction_proofs", "FAIL", "Sample transactions exist in range and involve the subject", `${badSamples.length} sample(s) not found among matching transactions.`, {
+            failureCode: "EVIDENCE_INVALID",
+          });
+        } else c.set("sample_transaction_proofs", "PASS", "Sample transactions exist in range and involve the subject", `${art.sample_transactions.length} sample(s) verified.`);
+      }
+    } catch (err) {
+      const code = err instanceof ChainReadError ? err.code : "RPC_UNAVAILABLE";
+      pendAll(code as VerificationReasonCode, `Independent RPC verification unavailable: ${(err as Error).message}`);
+    }
+  }
+
+  const decision = c.decision();
+  const inputDigest = keccak256(toBytes(`${manifestDigest ?? "malformed"}:${computedSha ?? "none"}:${deliveryRow.manifest_signature}`));
   return {
+    objectType: "DELIVERY",
+    objectId: deliveryRow.id,
     decision,
-    verifier: "hashx.verifier.analytics_v1.0.0",
-    checks: checks as any,
-    checkDetails,
-    evidenceDigest,
-    reasonCodes,
-    verifiedAt: new Date().toISOString(),
-    rpcEndpointUsed: invoice.payment.preferred_chain_id === 177 ? MAINNET_RPC : TESTNET_RPC,
+    payable: decision === "PASS",
+    checks: c.checks,
+    checkDetails: c.details,
+    reasonCodes: c.reasons,
+    verifierVersion: DELIVERY_VERIFIER_VERSION,
+    verifiedAt: new Date(now * 1000).toISOString(),
+    inputDigest,
+    evidenceDigest: manifestDigest ?? undefined,
+    evidenceSources: sources,
+    chainId: terms.deliveryChainId,
+    observedBlock: observedBlock?.toString(),
   };
 }
 
-/**
- * Combines invoice and delivery verification to determine absolute payment eligibility.
- */
-export function evaluatePaymentEligibility(
-  invoiceVerification: InvoiceVerificationResult,
-  deliveryVerification?: DeliveryVerificationResult
-): CombinedVerificationResult {
-  const invoiceDecision = invoiceVerification.decision;
-  const deliveryDecision = deliveryVerification?.decision;
-
-  let overallDecision: CombinedVerificationResult["overallDecision"] = "PENDING";
-  let isEligibleForPayment = false;
-  let eligibilityExplanation = "Awaiting verification checks.";
-
-  if (invoiceDecision === "FAIL") {
-    overallDecision = "FAIL";
-    isEligibleForPayment = false;
-    eligibilityExplanation = `Payment blocked: Invoice verification failed (${invoiceVerification.reasonCodes.join(", ")}).`;
-  } else if (!deliveryVerification) {
-    overallDecision = "PENDING";
-    isEligibleForPayment = false;
-    eligibilityExplanation = "Payment blocked: Service delivery has not been submitted or verified.";
-  } else if (deliveryDecision === "FAIL") {
-    overallDecision = "FAIL";
-    isEligibleForPayment = false;
-    eligibilityExplanation = `Payment blocked: Delivery verification rejected (${deliveryVerification.reasonCodes.join(", ")}).`;
-  } else if (invoiceDecision === "PASS" && deliveryDecision === "PASS") {
-    overallDecision = "PASS";
-    isEligibleForPayment = true;
-    eligibilityExplanation = "Eligible for payment: Cryptographic terms and deterministic fulfillment verified.";
-  }
-
-  return {
-    invoiceId: "",
-    invoiceDecision,
-    deliveryDecision,
-    overallDecision,
-    isEligibleForPayment,
-    eligibilityExplanation,
-    invoiceVerification,
-    deliveryVerification,
-  };
+export function normalizeAddress(a: string): Address {
+  return getAddress(a);
 }
