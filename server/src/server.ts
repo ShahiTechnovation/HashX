@@ -1,13 +1,15 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { keccak256, toBytes } from "viem";
+import { keccak256, toBytes, recoverAddress, recoverMessageAddress, getAddress, isAddress } from "viem";
+import { z } from "zod";
 import { pool, query, withTransaction } from "./db/client.js";
-import { HSPClientAdapter } from "./services/hsp.js";
+import { HSPClientAdapter, HSPNotConnectedError } from "./services/hsp.js";
 import {
   computeInvoiceDigest,
   computeServiceTermsHash,
   verifyInvoice,
+  verifyInvoiceSignature,
   verifyDelivery,
   evaluatePaymentEligibility,
 } from "./services/verification.js";
@@ -17,6 +19,9 @@ import {
   PaymentAttempt,
   VerifiableReceipt,
   Counterparty,
+  VerificationDecision,
+  InvoiceVerificationResult,
+  DeliveryVerificationResult,
   Address,
   Hash,
 } from "./types.js";
@@ -24,7 +29,8 @@ import {
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT) || 8080;
+const HOST = process.env.HOST || "127.0.0.1";
 const EXPECTED_EGRESS_IP = process.env.EXPECTED_EGRESS_IP || "157.119.44.58";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000").split(",");
 
@@ -41,7 +47,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "2mb" }));
 
 // Structured Request Logger
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -63,8 +69,96 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Runtime Zod Validation Schemas
+const HexAddressSchema = z.string().refine((val) => isAddress(val), {
+  message: "Invalid Ethereum address format",
+});
+
+const HexHashSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/, {
+  message: "Invalid 32-byte hex hash format",
+});
+
+const HexSignatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/, {
+  message: "Invalid 65-byte hex signature format",
+});
+
+const CreateInvoiceSchema = z.object({
+  client_request_id: z.string().max(128).optional(),
+  seller_counterparty_id: z.string().min(1, "Seller counterparty ID required"),
+  seller_wallet: HexAddressSchema.optional(),
+  buyer_ref: z.string().min(1, "Buyer reference required").max(255),
+  service: z.object({
+    type: z.string().min(1),
+    parameters: z.object({
+      address: HexAddressSchema,
+      start_block: z.string().min(1),
+      end_block: z.string().min(1),
+    }),
+    acceptance_policy: z.string().min(1),
+  }),
+  payment: z.object({
+    amount_minor: z.string().regex(/^\d+$/, "amount_minor must be numeric string integer"),
+    currency: z.string().default("USD"),
+    payee: HexAddressSchema,
+    preferred_chain_id: z.number().int().default(133),
+  }),
+  expires_at: z.string().optional(),
+});
+
+const SignInvoiceSchema = z.object({
+  signature: HexSignatureSchema,
+  signer: HexAddressSchema,
+});
+
+const SubmitDeliverySchema = z.object({
+  artifact_uri: z.string().min(1),
+  artifact_sha256: HexHashSchema,
+  manifest: z.object({
+    schema: z.string().min(1),
+    invoice_id: z.string().min(1),
+    seller: HexAddressSchema,
+    artifact_sha256: HexHashSchema,
+    generated_at: z.string(),
+  }),
+  manifest_signature: HexSignatureSchema,
+  artifact_content: z.record(z.any()),
+});
+
+const RequestPaymentSchema = z.object({
+  payer: HexAddressSchema,
+});
+
+const ApproveSubmissionSchema = z.object({
+  signature: HexSignatureSchema,
+});
+
+// Authentication & Authorization Boundary Middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const callerWallet = req.headers["x-wallet-address"] as string | undefined;
+  const apiKey = req.headers["x-api-key"] as string | undefined;
+
+  const ip = req.ip || req.socket.remoteAddress || "";
+  const isLocal =
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1" ||
+    req.hostname === "localhost" ||
+    req.hostname === "127.0.0.1";
+
+  // In non-local environment, require explicit authentication credentials
+  if (!isLocal && !authHeader && !callerWallet && !apiKey) {
+    return res.status(401).json({
+      error: "Authentication required for financial mutations",
+      code: "UNAUTHORIZED",
+    });
+  }
+
+  next();
+}
+
 // HSP Adapter Instance
-const hspAdapter = new HSPClientAdapter({
+export const hspAdapter = new HSPClientAdapter({
   endpoint: process.env.HSP_MCP_STREAMABLE_HTTP_ENDPOINT,
   merchantName: process.env.HSP_MERCHANT_NAME || "HashX",
   appKey: process.env.HSP_APP_KEY,
@@ -73,7 +167,7 @@ const hspAdapter = new HSPClientAdapter({
 });
 
 // Helper: Append Audit Event
-async function recordAuditEvent(
+export async function recordAuditEvent(
   aggregateType: string,
   aggregateId: string,
   actor: string,
@@ -196,11 +290,17 @@ app.get("/invoices/:id", async (req: Request, res: Response) => {
   res.json(mapInvoiceRow(result.rows[0]));
 });
 
-app.post("/invoices", async (req: Request, res: Response) => {
-  const input = req.body;
-  if (!input.service?.parameters?.address || !input.payment?.amount_minor || !input.payment?.payee) {
-    return res.status(400).json({ error: "Missing required invoice fields (service, payment)" });
+app.post("/invoices", requireAuth, async (req: Request, res: Response) => {
+  const parsed = CreateInvoiceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid invoice creation payload",
+      details: parsed.error.flatten(),
+      code: "INVALID_INVOICE_PAYLOAD",
+    });
   }
+
+  const input = parsed.data;
 
   // Resolve seller counterparty
   const cpRes = await query(
@@ -216,12 +316,12 @@ app.post("/invoices", async (req: Request, res: Response) => {
 
   const newId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const termsHash = computeServiceTermsHash(
-    input.service.parameters.address,
+    input.service.parameters.address as Address,
     input.service.parameters.start_block,
     input.service.parameters.end_block,
     input.service.acceptance_policy
   );
-  const buyerRef = input.buyer_ref || `order-ref-${Date.now()}`;
+  const buyerRef = input.buyer_ref;
   const buyerRefHash = keccak256(toBytes(buyerRef));
   const nonce = Math.floor(1000 + Math.random() * 9000).toString();
   const expiresAt = input.expires_at || new Date(Date.now() + 86400 * 1000).toISOString();
@@ -235,9 +335,9 @@ app.post("/invoices", async (req: Request, res: Response) => {
     sellerWallet: seller.wallet_address as Address,
     buyerRef,
     buyerRefHash,
-    service: input.service,
+    service: input.service as any,
     serviceTermsHash: termsHash,
-    payment: input.payment,
+    payment: input.payment as any,
     issuedAt: new Date().toISOString(),
     expiresAt,
     nonce,
@@ -283,9 +383,30 @@ app.post("/invoices", async (req: Request, res: Response) => {
   res.status(201).json(tempInvoice);
 });
 
-app.post("/invoices/:id/sign", async (req: Request, res: Response) => {
+app.post("/invoices/:id/sign", requireAuth, async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  const { signature, signer } = req.body;
+
+  // Reject simulated signatures in connected mode
+  if (
+    typeof req.body?.signature === "string" &&
+    (req.body.signature.includes("simulated") || req.body.signature.includes("placeholder"))
+  ) {
+    return res.status(400).json({
+      error: "Simulated signatures are rejected in connected mode. Provide an EIP-712 wallet signature.",
+      code: "SIMULATED_SIGNATURE_REJECTED",
+    });
+  }
+
+  const parseResult = SignInvoiceSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: "Invalid signing payload: valid cryptographic signature and signer address required",
+      details: parseResult.error.flatten(),
+      code: "INVALID_SIGNATURE_PAYLOAD",
+    });
+  }
+
+  const { signature, signer } = parseResult.data;
 
   const invRes = await query("SELECT * FROM invoices WHERE id = $1", [id]);
   if (invRes.rowCount === 0) {
@@ -293,20 +414,39 @@ app.post("/invoices/:id/sign", async (req: Request, res: Response) => {
   }
 
   const invoice = mapInvoiceRow(invRes.rows[0]);
-  const activeSigner = signer || invoice.sellerWallet;
-  const activeSignature = signature || `0xsimulated_eip712_${Date.now()}`;
+
+  // Signer must match invoice sellerWallet
+  if (signer.toLowerCase() !== invoice.sellerWallet.toLowerCase()) {
+    return res.status(403).json({
+      error: `Signer ${signer} does not match invoice seller wallet ${invoice.sellerWallet}`,
+      code: "SIGNER_MISMATCH",
+    });
+  }
+
+  // Cryptographically verify the EIP-712 signature over the canonical message
+  const verification = await verifyInvoiceSignature(
+    { ...invoice, signature: signature as `0x${string}` },
+    invoice.payment.preferred_chain_id
+  );
+
+  if (!verification.valid) {
+    return res.status(403).json({
+      error: "Cryptographic signature validation failed. Recovered address does not match seller wallet.",
+      code: "INVALID_EIP712_SIGNATURE",
+    });
+  }
 
   await query(
     "UPDATE invoices SET signature = $1, signer = $2, status = 'SIGNED', updated_at = NOW() WHERE id = $3",
-    [activeSignature, activeSigner, id]
+    [signature, signer, id]
   );
 
-  invoice.signature = activeSignature;
-  invoice.signer = activeSigner;
+  invoice.signature = signature as `0x${string}`;
+  invoice.signer = signer as Address;
   invoice.status = "SIGNED";
   invoice.signatureValid = true;
 
-  await recordAuditEvent("INVOICE", id, activeSigner, "INVOICE_SIGNED", { signature: activeSignature });
+  await recordAuditEvent("INVOICE", id, signer, "INVOICE_SIGNED", { signature });
 
   res.json(invoice);
 });
@@ -375,9 +515,18 @@ app.get("/invoices/:id/delivery", async (req: Request, res: Response) => {
   res.json(mapDeliveryRow(result.rows[0]));
 });
 
-app.post("/invoices/:id/delivery", async (req: Request, res: Response) => {
+app.post("/invoices/:id/delivery", requireAuth, async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  const input = req.body;
+  const parseResult = SubmitDeliverySchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: "Invalid delivery submission payload",
+      details: parseResult.error.flatten(),
+      code: "INVALID_DELIVERY_PAYLOAD",
+    });
+  }
+
+  const input = parseResult.data;
 
   const invRes = await query("SELECT * FROM invoices WHERE id = $1", [id]);
   if (invRes.rowCount === 0) {
@@ -459,7 +608,114 @@ app.post("/invoices/:id/delivery/verify", async (req: Request, res: Response) =>
 });
 
 // ==============================================================================
-// 5. PAYMENTS & IDEMPOTENCY ENGINE
+// 5. AUTHORITATIVE PERSISTENT VERIFICATION RETRIEVAL API (RELEASE 3)
+// ==============================================================================
+app.get("/invoices/:id/verification", async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const invRes = await query("SELECT * FROM invoices WHERE id = $1", [id]);
+  if (invRes.rowCount === 0) {
+    return res.status(404).json({ error: `Invoice not found: ${id}` });
+  }
+
+  const invoice = mapInvoiceRow(invRes.rows[0]);
+
+  // Query latest invoice verification run
+  const invRunRes = await query(
+    "SELECT * FROM verification_runs WHERE object_type = 'INVOICE' AND object_id = $1 ORDER BY created_at DESC LIMIT 1",
+    [id]
+  );
+
+  // Query latest delivery and delivery verification run
+  const delRes = await query(
+    "SELECT * FROM deliveries WHERE invoice_id = $1 ORDER BY version DESC LIMIT 1",
+    [id]
+  );
+
+  let delRunRes = { rowCount: 0, rows: [] as any[] };
+  if (delRes.rowCount && delRes.rowCount > 0) {
+    delRunRes = await query(
+      "SELECT * FROM verification_runs WHERE object_type = 'DELIVERY' AND object_id = $1 ORDER BY created_at DESC LIMIT 1",
+      [delRes.rows[0].id]
+    );
+  }
+
+  const invoiceRun = invRunRes.rowCount ? invRunRes.rows[0] : null;
+  const deliveryRun = delRunRes.rowCount ? delRunRes.rows[0] : null;
+
+  const invoiceDecision = invoiceRun ? (invoiceRun.decision as VerificationDecision) : "PENDING";
+  const deliveryDecision = deliveryRun
+    ? (deliveryRun.decision as VerificationDecision)
+    : delRes.rowCount
+    ? "PENDING"
+    : undefined;
+
+  let overallDecision: VerificationDecision = "PENDING";
+  if (invoiceDecision === "FAIL" || deliveryDecision === "FAIL") {
+    overallDecision = "FAIL";
+  } else if (invoiceDecision === "PASS" && deliveryDecision === "PASS") {
+    overallDecision = "PASS";
+  }
+
+  const isEligibleForPayment = overallDecision === "PASS";
+  let eligibilityExplanation = "Authoritative verification pending.";
+  if (overallDecision === "PASS") {
+    eligibilityExplanation = "Both commercial invoice and objective delivery facts verified by HashX Engine.";
+  } else if (overallDecision === "FAIL") {
+    eligibilityExplanation = "Payment blocked: one or more cryptographic or oracle verification gates failed.";
+  }
+
+  const invoiceVerification: InvoiceVerificationResult | null = invoiceRun
+    ? {
+        decision: invoiceRun.decision,
+        checks: typeof invoiceRun.checks === "string" ? JSON.parse(invoiceRun.checks) : invoiceRun.checks,
+        checkDetails:
+          typeof invoiceRun.check_details === "string"
+            ? JSON.parse(invoiceRun.check_details)
+            : invoiceRun.check_details,
+        reasonCodes:
+          typeof invoiceRun.reason_codes === "string"
+            ? JSON.parse(invoiceRun.reason_codes)
+            : invoiceRun.reason_codes,
+        invoiceDigest: invoice.digest,
+        verifierVersion: invoiceRun.verifier_version,
+        verifiedAt: new Date(invoiceRun.created_at).toISOString(),
+      }
+    : null;
+
+  const deliveryVerification: DeliveryVerificationResult | null = deliveryRun
+    ? {
+        decision: deliveryRun.decision,
+        verifier: deliveryRun.verifier_version,
+        checks: typeof deliveryRun.checks === "string" ? JSON.parse(deliveryRun.checks) : deliveryRun.checks,
+        checkDetails:
+          typeof deliveryRun.check_details === "string"
+            ? JSON.parse(deliveryRun.check_details)
+            : deliveryRun.check_details,
+        reasonCodes:
+          typeof deliveryRun.reason_codes === "string"
+            ? JSON.parse(deliveryRun.reason_codes)
+            : deliveryRun.reason_codes,
+        evidenceDigest: deliveryRun.evidence_digest,
+        rpcEndpointUsed: deliveryRun.rpc_endpoint_used,
+        verifiedAt: new Date(deliveryRun.created_at).toISOString(),
+      }
+    : null;
+
+  res.json({
+    invoiceId: id,
+    invoiceDecision,
+    deliveryDecision,
+    overallDecision,
+    isEligibleForPayment,
+    eligibilityExplanation,
+    invoiceVerification,
+    deliveryVerification,
+    provenance: invoiceRun ? "backend_persisted" : "never_verified",
+  });
+});
+
+// ==============================================================================
+// 6. PAYMENTS & IDEMPOTENCY ENGINE
 // ==============================================================================
 function mapPaymentRow(row: any): PaymentAttempt {
   return {
@@ -501,11 +757,30 @@ app.get("/payments/:id", async (req: Request, res: Response) => {
  * 1. Lock invoice row: SELECT ... FOR UPDATE
  * 2. Verify state is DELIVERY_ACCEPTED
  * 3. Return existing active attempt if found
- * 4. Only then create new HSP payment attempt
+ * 4. FAIL CLOSED: If HSP QA is not connected/allowlisted, reject! Never create fake IDs in PostgreSQL!
  */
-app.post("/invoices/:id/pay", async (req: Request, res: Response) => {
+app.post("/invoices/:id/pay", requireAuth, async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  const { payer } = req.body;
+  const parseResult = RequestPaymentSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: "Invalid payment request payload",
+      details: parseResult.error.flatten(),
+      code: "INVALID_PAYMENT_PAYLOAD",
+    });
+  }
+
+  const { payer } = parseResult.data;
+
+  // FAIL CLOSED (Release 1B): When HSP QA is not connected, return typed error and never create fake IDs
+  if (!hspAdapter.isConfiguredForLive()) {
+    return res.status(503).json({
+      error: "HashKey HSP QA is not yet connected. Payment execution is unavailable.",
+      code: "HSP_NOT_CONNECTED",
+      egressIp: EXPECTED_EGRESS_IP,
+      allowlistStatus: "PENDING_CONFIRMATION",
+    });
+  }
 
   try {
     const attempt = await withTransaction(async (client) => {
@@ -534,7 +809,7 @@ app.post("/invoices/:id/pay", async (req: Request, res: Response) => {
       }
 
       // 4. Create Order & Prepare Payment via HSP adapter
-      const payerAddress = (payer || "0x1234567890123456789012345678901234567890") as Address;
+      const payerAddress = getAddress(payer);
       const order = await hspAdapter.createOrder({
         invoiceId: id,
         payTo: invRow.payee,
@@ -601,12 +876,12 @@ app.post("/invoices/:id/pay", async (req: Request, res: Response) => {
     await recordAuditEvent("PAYMENT", attempt.id, attempt.payer, "PAYMENT_REQUESTED", attempt);
     res.status(201).json(attempt);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message, code: "PAYMENT_FAILED" });
   }
 });
 
 // Stage 1 Approval: Signing review
-app.post("/payments/:id/approve-signing", async (req: Request, res: Response) => {
+app.post("/payments/:id/approve-signing", requireAuth, async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const payRes = await query("SELECT * FROM payment_attempts WHERE id = $1", [id]);
   if (payRes.rowCount === 0) return res.status(404).json({ error: "Payment attempt not found" });
@@ -640,9 +915,18 @@ app.post("/payments/:id/approve-signing", async (req: Request, res: Response) =>
 });
 
 // Stage 2 Approval: Broadcast confirmation
-app.post("/payments/:id/approve-submission", async (req: Request, res: Response) => {
+app.post("/payments/:id/approve-submission", requireAuth, async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  const { signature } = req.body;
+  const parseResult = ApproveSubmissionSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: "Stage 2 approval requires a valid cryptographic wallet authorization signature.",
+      details: parseResult.error.flatten(),
+      code: "SIGNATURE_REQUIRED",
+    });
+  }
+
+  const { signature } = parseResult.data;
 
   const payRes = await query("SELECT * FROM payment_attempts WHERE id = $1", [id]);
   if (payRes.rowCount === 0) return res.status(404).json({ error: "Payment attempt not found" });
@@ -669,12 +953,41 @@ app.post("/payments/:id/approve-submission", async (req: Request, res: Response)
     });
   }
 
+  // Cryptographically verify payer signature over terms hash
+  const termsHash = keccak256(toBytes(attempt.tokenTotalRaw));
+  let recovered: Address | null = null;
+  try {
+    recovered = await recoverMessageAddress({
+      message: { raw: toBytes(termsHash) },
+      signature: signature as `0x${string}`,
+    });
+  } catch {
+    try {
+      recovered = await recoverAddress({
+        hash: termsHash,
+        signature: signature as `0x${string}`,
+      });
+    } catch (sigErr: any) {
+      return res.status(400).json({
+        error: `Invalid submission signature format: ${sigErr.message}`,
+        code: "INVALID_SIGNATURE_FORMAT",
+      });
+    }
+  }
+
+  if (!recovered || recovered.toLowerCase() !== attempt.payer.toLowerCase()) {
+    return res.status(403).json({
+      error: `Submission signature recovered address ${recovered || "unknown"} does not match payer EOA ${attempt.payer}`,
+      code: "PAYER_SIGNATURE_MISMATCH",
+    });
+  }
+
   // Record Stage 2 approval
   await query(
     `INSERT INTO approvals (payment_attempt_id, stage, actor, terms_hash, signature)
      VALUES ($1, 'SUBMISSION', $2, $3, $4)
      ON CONFLICT (payment_attempt_id, stage) DO NOTHING`,
-    [id, attempt.payer, keccak256(toBytes(attempt.tokenTotalRaw)), signature || "0xuser_deliberate_submission"]
+    [id, attempt.payer, termsHash, signature]
   );
 
   let txHash = attempt.txHash;
@@ -749,7 +1062,6 @@ app.get("/invoices/:id/payment-status", async (req: Request, res: Response) => {
     } else {
       // In local safe mode before allowlist confirmation:
       // State remains SUBMITTED. NEVER auto-promote to FINALIZED or fabricate settlement!
-      // (Test suites using simulated settlement explicitly invoke dedicated test endpoints or mock adapter).
     }
   }
 
@@ -757,7 +1069,7 @@ app.get("/invoices/:id/payment-status", async (req: Request, res: Response) => {
 });
 
 // ==============================================================================
-// 6. RECEIPTS
+// 7. RECEIPTS
 // ==============================================================================
 app.get("/receipts", async (req: Request, res: Response) => {
   const result = await query("SELECT * FROM receipts ORDER BY issued_at DESC");
@@ -888,28 +1200,41 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       timestamp: new Date().toISOString(),
       level: "ERROR",
       message: err.message,
-      stack: err.stack,
     })
   );
-  res.status(500).json({ error: "Internal Server Error", message: err.message });
+  res.status(500).json({ error: "Internal Server Error", code: "INTERNAL_ERROR" });
 });
 
-// Start Server
-const serverInstance = app.listen(PORT, () => {
-  console.info(`========================================================================`);
-  console.info(`[HashX Backend] Server initialized & listening on http://localhost:${PORT}`);
-  console.info(`[HashX Backend] Environment: ${process.env.NODE_ENV || "development"}`);
-  console.info(`[HashX Backend] Expected Outbound IP: ${EXPECTED_EGRESS_IP}`);
-  console.info(`[HashX Backend] HSP Allowlist Confirmed: ${hspAdapter.config.isAllowlisted}`);
-  console.info(`========================================================================`);
-});
+export { app };
+
+export function startServer(port = PORT, host = HOST) {
+  return app.listen(port, host, () => {
+    console.info(`========================================================================`);
+    console.info(`[HashX Backend] Server initialized & listening on http://${host}:${port}`);
+    console.info(`[HashX Backend] Environment: ${process.env.NODE_ENV || "development"}`);
+    console.info(`[HashX Backend] Expected Outbound IP: ${EXPECTED_EGRESS_IP}`);
+    console.info(`[HashX Backend] HSP Allowlist Confirmed: ${hspAdapter.config.isAllowlisted}`);
+    console.info(`========================================================================`);
+  });
+}
+
+// Start Server automatically when not running in test mode
+let serverInstance: any = null;
+if (process.env.NODE_ENV !== "test") {
+  serverInstance = startServer();
+}
 
 // Graceful Shutdown
 process.on("SIGINT", async () => {
   console.info("[HashX Backend] Gracefully shutting down server...");
-  serverInstance.close(async () => {
+  if (serverInstance) {
+    serverInstance.close(async () => {
+      await pool.end();
+      console.info("[HashX Backend] PostgreSQL pool closed. Exiting process.");
+      process.exit(0);
+    });
+  } else {
     await pool.end();
-    console.info("[HashX Backend] PostgreSQL pool closed. Exiting process.");
     process.exit(0);
-  });
+  }
 });

@@ -53,8 +53,10 @@ Verifiable Receipt & On-Chain Commitment
 - **Idempotency Invariant**: Repeated payment requests return the existing active payment attempt rather than creating duplicate orders.
 - **HSP Rate Quote Expiry**: Quotes expire after 5 minutes. Expired quotes cannot be submitted; a fresh quote must be prepared.
 
-## 3. HashKey Chain Infrastructure
+## 3. HashKey Chain & Contract Architecture
 - **Testnet**: Chain ID `133`, RPC: `https://testnet.hsk.xyz`
 - **Mainnet**: Chain ID `177`, RPC: `https://mainnet.hsk.xyz`
-- **Evidence Registry Contract**: `0x19B861876D8075A11eC6c4596395b058fe8466C2`
-
+- **EIP-712 Domain Verifying Contract**: `0x19B861876D8075A11eC6c4596395b058fe8466C2` (Canonical domain contract for invoice structured data)
+- **Evidence Registry Contract**: Separate on-chain anchor registry. Marked **Not deployed** until verified deployment to HashKey Testnet (`EVIDENCE_REGISTRY_ADDRESS_TESTNET`).
+- **HSP Testnet Token Contract**: `0x55d398326f99059fF775485246999027B3197955`
+- **HSP Spender Contract**: Distinct gateway spender authorized by the payer for settlement.

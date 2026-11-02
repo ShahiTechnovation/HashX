@@ -11,6 +11,7 @@ import {
   VerifiableReceipt,
   InvoiceVerificationResult,
   DeliveryVerificationResult,
+  CombinedVerificationResult,
   Delivery,
 } from "@/types/domain";
 import {
@@ -21,7 +22,11 @@ import {
   MOCK_COUNTERPARTIES,
   FIXTURE_DELIVERY_FAKE_COUNT,
 } from "@/mocks/fixtures";
-import { verifyInvoice as runVerifyInvoice, verifyDelivery as runVerifyDelivery } from "@/lib/verification/engine";
+import {
+  verifyInvoice as runVerifyInvoice,
+  verifyDelivery as runVerifyDelivery,
+  evaluatePaymentEligibility,
+} from "@/lib/verification/engine";
 import { computeInvoiceDigest, computeServiceTermsHash, stringToBytes32 } from "@/lib/crypto/eip712";
 import { keccak256, toBytes } from "viem";
 
@@ -306,6 +311,15 @@ class DemoModeClient implements HashXClient {
     if (!receipt) throw new Error(`No receipt found for invoice ${invoiceId}`);
     return receipt;
   }
+
+  async getInvoiceVerification(invoiceId: string): Promise<CombinedVerificationResult | null> {
+    const inv = this.invoices.find((i) => i.id === invoiceId);
+    if (!inv) return null;
+    const invResult = runVerifyInvoice(inv);
+    const del = this.deliveries.find((d) => d.invoiceId === invoiceId);
+    const delResult = del ? runVerifyDelivery(inv, del) : undefined;
+    return evaluatePaymentEligibility(invResult, delResult);
+  }
 }
 
 class ConnectedModeClient implements HashXClient {
@@ -402,6 +416,10 @@ class ConnectedModeClient implements HashXClient {
 
   async getReceipt(invoiceId: string): Promise<VerifiableReceipt> {
     return this.request<VerifiableReceipt>(`/invoices/${invoiceId}/receipt`);
+  }
+
+  async getInvoiceVerification(invoiceId: string): Promise<CombinedVerificationResult | null> {
+    return this.request<CombinedVerificationResult | null>(`/invoices/${invoiceId}/verification`);
   }
 }
 

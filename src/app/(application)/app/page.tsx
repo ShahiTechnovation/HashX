@@ -199,7 +199,7 @@ export default function DashboardOverviewPage() {
               <span className="text-xs font-mono font-normal text-warning/80">items</span>
             </div>
             <div className="font-mono text-xs text-warning/90 mt-0.5">
-              {formatMinorToUsd(awaitingVolumeMinor || 2840000)} <span className="text-[10px]">USDC</span>
+              {formatMinorToUsd(awaitingVolumeMinor)} <span className="text-[10px]">USDC</span>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-[10px] font-mono">
@@ -218,11 +218,11 @@ export default function DashboardOverviewPage() {
           </div>
           <div>
             <div className="font-display text-2xl font-bold text-carbon-text tracking-tight">
-              {inSettlement.length || 7}{" "}
+              {inSettlement.length}{" "}
               <span className="text-xs font-mono font-normal text-carbon-muted">items</span>
             </div>
             <div className="font-mono text-xs text-primary mt-0.5">
-              {formatMinorToUsd(settlementVolumeMinor || 6120000)} <span className="text-[10px] text-carbon-muted">USDC</span>
+              {formatMinorToUsd(settlementVolumeMinor)} <span className="text-[10px] text-carbon-muted">USDC</span>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-carbon-muted">
@@ -239,11 +239,11 @@ export default function DashboardOverviewPage() {
           </div>
           <div>
             <div className="font-display text-2xl font-bold text-carbon-text tracking-tight">
-              {settled.length || 42}{" "}
+              {settled.length}{" "}
               <span className="text-xs font-mono font-normal text-carbon-muted">items</span>
             </div>
             <div className="font-mono text-xs text-success mt-0.5">
-              {formatMinorToUsd(settledVolumeMinor || 31950000)} <span className="text-[10px] text-carbon-muted">USDC</span>
+              {formatMinorToUsd(settledVolumeMinor)} <span className="text-[10px] text-carbon-muted">USDC</span>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-1.5 text-[10px] font-mono text-carbon-muted">
@@ -260,15 +260,15 @@ export default function DashboardOverviewPage() {
           </div>
           <div>
             <div className="font-display text-2xl font-bold text-danger tracking-tight">
-              {blocked.length || 2}{" "}
+              {blocked.length}{" "}
               <span className="text-xs font-mono font-normal text-danger/80">items</span>
             </div>
             <div className="font-mono text-xs text-danger/90 mt-0.5">
-              {formatMinorToUsd(blockedVolumeMinor || 815000)} <span className="text-[10px]">USDC</span>
+              {formatMinorToUsd(blockedVolumeMinor)} <span className="text-[10px]">USDC</span>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-[10px] font-mono">
-            <span className="text-danger font-medium">{blocked.length || 2} Threats Prevented</span>
+            <span className="text-danger font-medium">{blocked.length} Threats Prevented</span>
             <span className="px-1.5 py-0.5 bg-danger/20 text-danger border border-danger/40 rounded text-[9px] font-bold">
               ISOLATED
             </span>
@@ -280,12 +280,12 @@ export default function DashboardOverviewPage() {
       <ProofCircuit
         variant="pipeline"
         pipelineCounts={{
-          issued: active.length || 18,
-          verified: invoices.filter((i) => ["VERIFIED", "DELIVERED"].includes(i.status)).length || 14,
-          authorized: pendingApprovals.length || 3,
-          inFlight: inSettlement.length || 7,
-          settled: settled.length || 42,
-          blocked: blocked.length || 2,
+          issued: active.length,
+          verified: invoices.filter((i) => ["VERIFIED", "DELIVERED"].includes(i.status)).length,
+          authorized: pendingApprovals.length,
+          inFlight: inSettlement.length,
+          settled: settled.length,
+          blocked: blocked.length,
         }}
       />
 

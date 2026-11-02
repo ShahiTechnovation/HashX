@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Lock, PenLine, FileSignature } from "lucide-react";
-import { keccak256, toBytes } from "viem";
+import { keccak256, toBytes, createWalletClient, custom } from "viem";
 import { useApp } from "@/providers/AppContext";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { MOCK_COUNTERPARTIES } from "@/mocks/fixtures";
@@ -20,7 +20,13 @@ import { InvoiceStepper, type StepDef } from "@/components/invoices/InvoiceStepp
 import { blockSpan, chainLabel } from "@/components/invoices/utils";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatMinorToUsd, parseUsdToMinor } from "@/lib/formatters";
-import { computeServiceTermsHash, stringToBytes32 } from "@/lib/crypto/eip712";
+import {
+  computeServiceTermsHash,
+  stringToBytes32,
+  HASHX_EIP712_DOMAIN,
+  HASHX_EIP712_TYPES,
+  buildInvoiceEIP712Message,
+} from "@/lib/crypto/eip712";
 
 const STEPS: Array<StepDef & { title: string; description: string }> = [
   {
@@ -55,7 +61,7 @@ const STEPS: Array<StepDef & { title: string; description: string }> = [
 
 export default function CreateInvoicePage() {
   const router = useRouter();
-  const { mode, triggerRefresh } = useApp();
+  const { mode, triggerRefresh, walletAddress, isWalletConnected, connectWallet } = useApp();
   const client = mode === "connected" ? connectedClient : demoClient;
 
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -149,10 +155,23 @@ export default function CreateInvoicePage() {
     setErrorMessage(null);
 
     try {
+      if (mode === "connected") {
+        if (!isWalletConnected || !walletAddress) {
+          throw new Error("Wallet not connected. Connect your seller EIP-1193 wallet to sign this invoice.");
+        }
+        if (typeof window === "undefined" || !(window as any).ethereum) {
+          throw new Error("No EIP-1193 browser wallet detected.");
+        }
+      }
+
       const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+
+      const sellerWalletToBind =
+        mode === "connected" && walletAddress ? walletAddress : selectedSeller.walletAddress;
 
       const created = await client.createInvoice({
         seller_counterparty_id: selectedSeller.id,
+        seller_wallet: sellerWalletToBind,
         buyer_ref: buyerRef,
         service: {
           type: "hsk_address_analytics_v1",
@@ -172,11 +191,36 @@ export default function CreateInvoicePage() {
         expires_at: expiresAt,
       });
 
-      // Sign the invoice
-      await client.signInvoice({
-        invoice_id: created.id,
-        signer: selectedSeller.walletAddress,
-      });
+      if (mode === "connected") {
+        // Real EIP-712 wallet signature via viem
+        const walletClient = createWalletClient({
+          transport: custom((window as any).ethereum),
+        });
+
+        const activeSigner = walletAddress as `0x${string}`;
+        const signature = await walletClient.signTypedData({
+          account: activeSigner,
+          domain: {
+            ...HASHX_EIP712_DOMAIN,
+            chainId: preferredChainId,
+          },
+          types: HASHX_EIP712_TYPES,
+          primaryType: "HashXInvoice",
+          message: buildInvoiceEIP712Message(created),
+        });
+
+        await client.signInvoice({
+          invoice_id: created.id,
+          signer: activeSigner,
+          signature,
+        });
+      } else {
+        // Demo Mode deterministic signing
+        await client.signInvoice({
+          invoice_id: created.id,
+          signer: selectedSeller.walletAddress,
+        });
+      }
 
       triggerRefresh();
       router.push(`/app/invoices/${created.id}`);

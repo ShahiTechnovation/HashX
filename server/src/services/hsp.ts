@@ -7,11 +7,13 @@ import { Address, Hash, HSPStatus } from "../types.js";
  * 
  * STRICT INTEGRATION RULES:
  * 1. Safe Mode Gate: Halts connection until user confirms IP allowlisting.
- * 2. 8 Authoritative Tools: get_chain_config, create_order, get_order, estimate_fee,
+ * 2. Fail-Closed in Connected Mode: When HSP QA is not connected, throws HSPNotConnectedError.
+ * 3. 8 Authoritative Tools: get_chain_config, create_order, get_order, estimate_fee,
  *    prepare_payment, finalize_payment, submit_payment, query_payment.
- * 3. Dynamic Tool Schema Discovery via tools/list.
- * 4. Never stores or custodies user private keys.
- * 5. Strictly distinguishes 'payment-safe' (on-chain unfinalized) from 'payment-finalized'.
+ * 4. Dynamic Tool Schema Discovery via tools/list.
+ * 5. Never stores or custodies user private keys.
+ * 6. Strictly distinguishes 'payment-safe' (on-chain unfinalized) from 'payment-finalized'.
+ * 7. BigInt-safe arithmetic for token decimal precision.
  */
 export interface HSPConfig {
   endpoint: string;
@@ -19,6 +21,36 @@ export interface HSPConfig {
   appKey: string;
   appSecret: string;
   isAllowlisted: boolean;
+  allowSimulationForTesting?: boolean;
+}
+
+export class HSPNotConnectedError extends Error {
+  public readonly code = "HSP_NOT_CONNECTED";
+  constructor(message = "HashKey HSP QA is not yet connected. Payment execution is unavailable.") {
+    super(message);
+    this.name = "HSPNotConnectedError";
+  }
+}
+
+/**
+ * Separated contract addresses to avoid conflating Evidence Registry,
+ * Payment Token, and HSP settlement spender.
+ */
+export const HSP_DEFAULT_TESTNET_TOKEN_ADDRESS: Address = "0x19B861876D8075A11eC6c4596395b058fe8466C2";
+export const HSP_DEFAULT_TESTNET_SPENDER: Address = "0x6969696969696969696969696969696969696969";
+
+/**
+ * Converts minor currency units (cents, 2 decimals) to raw token units using exact BigInt math.
+ */
+export function convertMinorToRawToken(amountMinorStr: string, decimals: number): string {
+  const amountMinor = BigInt(amountMinorStr);
+  if (decimals >= 2) {
+    const factor = 10n ** BigInt(decimals - 2);
+    return (amountMinor * factor).toString();
+  } else {
+    const factor = 10n ** BigInt(2 - decimals);
+    return (amountMinor / factor).toString();
+  }
 }
 
 export interface HSPChainConfig {
@@ -81,6 +113,7 @@ export class HSPClientAdapter {
       appKey: customConfig.appKey || process.env.HSP_APP_KEY || "",
       appSecret: customConfig.appSecret || process.env.HSP_APP_SECRET || "",
       isAllowlisted: customConfig.isAllowlisted ?? (process.env.HSP_ALLOWLIST_CONFIRMED === "true"),
+      allowSimulationForTesting: customConfig.allowSimulationForTesting ?? false,
     };
   }
 
@@ -163,11 +196,11 @@ export class HSPClientAdapter {
       return {
         chainId,
         chainName: chainId === 133 ? "HashKey Chain Testnet" : "HashKey Chain Mainnet",
-        tokenAddress: "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+        tokenAddress: HSP_DEFAULT_TESTNET_TOKEN_ADDRESS,
         tokenSymbol: "USDT",
         tokenDecimals: 6,
         protocol: "permit2",
-        rawConfig: { source: "local-fallback", chain_id: chainId },
+        rawConfig: { source: "local-fallback", chain_id: chainId, allowlisted: false },
       };
     }
 
@@ -179,7 +212,7 @@ export class HSPClientAdapter {
     return {
       chainId,
       chainName: parsed.chain_name || (chainId === 133 ? "HashKey Chain Testnet" : "HashKey Chain Mainnet"),
-      tokenAddress: parsed.token_address || "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+      tokenAddress: parsed.token_address || HSP_DEFAULT_TESTNET_TOKEN_ADDRESS,
       tokenSymbol: parsed.token_symbol || "USDT",
       tokenDecimals: parsed.token_decimals || 6,
       protocol: parsed.protocol || "permit2",
@@ -199,15 +232,18 @@ export class HSPClientAdapter {
     chainId?: number;
   }): Promise<HSPOrderResult> {
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      const flowId = `hsp-flow-${Math.floor(10000 + Math.random() * 90000)}`;
-      const paymentRequestId = `hsp-pr-${Math.floor(5000000 + Math.random() * 900000)}`;
-      return {
-        flowId,
-        paymentRequestId,
-        paymentUrl: `https://qa-hsp.hashkey.com/pay/${flowId}`,
-        status: "created",
-        rawResponse: { mode: "local-prepared", flowId, paymentRequestId },
-      };
+      if (this.config.allowSimulationForTesting) {
+        const flowId = `hsp-flow-${Math.floor(10000 + Math.random() * 90000)}`;
+        const paymentRequestId = `hsp-pr-${Math.floor(5000000 + Math.random() * 900000)}`;
+        return {
+          flowId,
+          paymentRequestId,
+          paymentUrl: `https://qa-hsp.hashkey.com/pay/${flowId}`,
+          status: "created",
+          rawResponse: { mode: "isolated-test-fixture", flowId, paymentRequestId },
+        };
+      }
+      throw new HSPNotConnectedError();
     }
 
     const result = await this.mcpClient.callTool({
@@ -238,7 +274,10 @@ export class HSPClientAdapter {
    */
   async getOrder(flowId: string, paymentRequestId: string): Promise<any> {
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      return { flow_id: flowId, payment_request_id: paymentRequestId, status: "ready" };
+      if (this.config.allowSimulationForTesting) {
+        return { flow_id: flowId, payment_request_id: paymentRequestId, status: "ready" };
+      }
+      throw new HSPNotConnectedError();
     }
     const result = await this.mcpClient.callTool({
       name: "get_order",
@@ -252,7 +291,10 @@ export class HSPClientAdapter {
    */
   async estimateFee(params: { flowId: string; paymentRequestId: string }): Promise<string> {
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      return "$0.00 USD";
+      if (this.config.allowSimulationForTesting) {
+        return "$0.00 USD";
+      }
+      throw new HSPNotConnectedError();
     }
     try {
       const result = await this.mcpClient.callTool({
@@ -268,6 +310,7 @@ export class HSPClientAdapter {
 
   /**
    * 5. prepare_payment (returns exact EIP-712 payload & 5-minute expiry)
+   * Uses BigInt-safe arithmetic for token decimal precision.
    */
   async preparePayment(params: {
     flowId: string;
@@ -276,52 +319,57 @@ export class HSPClientAdapter {
     payee: Address;
     amountMinor: string;
     chainId: number;
+    tokenDecimals?: number;
   }): Promise<HSPPaymentPreparation> {
+    const decimals = params.tokenDecimals ?? 6;
     const quoteExpiresAt = new Date(Date.now() + 300 * 1000).toISOString();
-    const tokenTotalRaw = (parseInt(params.amountMinor, 10) * 10000).toString(); // e.g. 100 cents * 10000 = 1,000,000 (1 USDT, 6 decimals)
+    const tokenTotalRaw = convertMinorToRawToken(params.amountMinor, decimals);
 
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      const domain = {
-        name: "HashKey Settlement Protocol",
-        version: "1",
-        chainId: BigInt(params.chainId),
-        verifyingContract: "0x19B861876D8075A11eC6c4596395b058fe8466C2" as Address,
-      };
+      if (this.config.allowSimulationForTesting) {
+        const domain = {
+          name: "HashKey Settlement Protocol",
+          version: "1",
+          chainId: BigInt(params.chainId),
+          verifyingContract: HSP_DEFAULT_TESTNET_SPENDER,
+        };
 
-      const types = {
-        PermitTransferFrom: [
-          { name: "permitted", type: "TokenPermissions" },
-          { name: "spender", type: "address" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-        TokenPermissions: [
-          { name: "token", type: "address" },
-          { name: "amount", type: "uint256" },
-        ],
-      };
+        const types = {
+          PermitTransferFrom: [
+            { name: "permitted", type: "TokenPermissions" },
+            { name: "spender", type: "address" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+          ],
+          TokenPermissions: [
+            { name: "token", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+        };
 
-      const message = {
-        permitted: {
-          token: "0x19B861876D8075A11eC6c4596395b058fe8466C2",
-          amount: BigInt(tokenTotalRaw),
-        },
-        spender: params.payee,
-        nonce: BigInt(Math.floor(Date.now() / 1000)),
-        deadline: BigInt(Math.floor(new Date(quoteExpiresAt).getTime() / 1000)),
-      };
+        const message = {
+          permitted: {
+            token: HSP_DEFAULT_TESTNET_TOKEN_ADDRESS,
+            amount: BigInt(tokenTotalRaw),
+          },
+          spender: params.payee,
+          nonce: BigInt(Math.floor(Date.now() / 1000)),
+          deadline: BigInt(Math.floor(new Date(quoteExpiresAt).getTime() / 1000)),
+        };
 
-      return {
-        flowId: params.flowId,
-        paymentRequestId: params.paymentRequestId,
-        eip712Payload: { domain, types, primaryType: "PermitTransferFrom", message },
-        cartHash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`,
-        tokenTotalRaw,
-        quoteExpiresAt,
-        tokenAddress: "0x19B861876D8075A11eC6c4596395b058fe8466C2",
-        tokenSymbol: "USDT",
-        tokenDecimals: 6,
-      };
+        return {
+          flowId: params.flowId,
+          paymentRequestId: params.paymentRequestId,
+          eip712Payload: { domain, types, primaryType: "PermitTransferFrom", message },
+          cartHash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`,
+          tokenTotalRaw,
+          quoteExpiresAt,
+          tokenAddress: HSP_DEFAULT_TESTNET_TOKEN_ADDRESS,
+          tokenSymbol: "USDT",
+          tokenDecimals: decimals,
+        };
+      }
+      throw new HSPNotConnectedError();
     }
 
     const result = await this.mcpClient.callTool({
@@ -341,9 +389,9 @@ export class HSPClientAdapter {
       cartHash: parsed.cart_hash,
       tokenTotalRaw: parsed.token_total_raw || tokenTotalRaw,
       quoteExpiresAt: parsed.quote_expires_at || quoteExpiresAt,
-      tokenAddress: parsed.token_address || "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+      tokenAddress: parsed.token_address || HSP_DEFAULT_TESTNET_TOKEN_ADDRESS,
       tokenSymbol: parsed.token_symbol || "USDT",
-      tokenDecimals: parsed.token_decimals || 6,
+      tokenDecimals: parsed.token_decimals || decimals,
       paymentObjects: parsed.payment_objects,
     };
   }
@@ -358,7 +406,10 @@ export class HSPClientAdapter {
     paymentObjects?: any;
   }): Promise<any> {
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      return { status: "finalized", flow_id: params.flowId };
+      if (this.config.allowSimulationForTesting) {
+        return { status: "finalized", flow_id: params.flowId };
+      }
+      throw new HSPNotConnectedError();
     }
     return this.mcpClient.callTool({
       name: "finalize_payment",
@@ -379,9 +430,10 @@ export class HSPClientAdapter {
     paymentRequestId: string;
   }): Promise<{ status: HSPStatus; txHash?: Hash }> {
     if (!this.config.isAllowlisted || !this.mcpClient) {
-      return {
-        status: "payment-submitted",
-      };
+      if (this.config.allowSimulationForTesting) {
+        return { status: "payment-submitted" };
+      }
+      throw new HSPNotConnectedError();
     }
 
     const result = await this.mcpClient.callTool({
@@ -409,7 +461,7 @@ export class HSPClientAdapter {
     if (!this.config.isAllowlisted || !this.mcpClient) {
       return {
         status: "payment-submitted",
-        details: { mode: "local-unconfirmed" },
+        details: { mode: "local-unconfirmed", note: "Allowlist pending confirmation" },
       };
     }
 

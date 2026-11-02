@@ -7,16 +7,29 @@ import { useApp } from "@/providers/AppContext";
 import { OperationMode } from "@/types/domain";
 import { Button } from "@/components/ui/Button";
 import { CopyableValue } from "@/components/ui/CopyableValue";
-import { HASHX_EIP712_DOMAIN } from "@/lib/crypto/eip712";
+import {
+  HASHX_EIP712_DOMAIN,
+  HASHX_EVIDENCE_REGISTRY_ADDRESS,
+  isEvidenceRegistryDeployed,
+  HSP_TESTNET_TOKEN_ADDRESS,
+  HSP_TESTNET_SPENDER_CONTRACT,
+} from "@/lib/crypto/eip712";
 import { cn } from "@/lib/utils";
 import { getExplorerAddressUrl } from "@/lib/formatters";
 
-const EVIDENCE_REGISTRY_TESTNET = "0x19B861876D8075A11eC6c4596395b058fe8466C2";
 const HASHX_API_URL = process.env.NEXT_PUBLIC_HASHX_API_URL || "http://localhost:8080";
 
 const NETWORKS: Record<number, { name: string; rpc: string; registry: string | null }> = {
-  133: { name: "HashKey Chain Testnet", rpc: "https://testnet.hsk.xyz", registry: EVIDENCE_REGISTRY_TESTNET },
-  177: { name: "HashKey Chain Mainnet", rpc: "https://mainnet.hsk.xyz", registry: null },
+  133: {
+    name: "HashKey Chain Testnet",
+    rpc: "https://testnet.hsk.xyz",
+    registry: HASHX_EVIDENCE_REGISTRY_ADDRESS,
+  },
+  177: {
+    name: "HashKey Chain Mainnet",
+    rpc: "https://mainnet.hsk.xyz",
+    registry: null,
+  },
 };
 
 export default function SettingsPage() {
@@ -122,9 +135,9 @@ export default function SettingsPage() {
 
         <SettingsRow
           label="Evidence Registry Contract"
-          description="IHashXEvidenceRegistry contract that anchors cryptographic receipt commitments."
+          description="IHashXEvidenceRegistry contract that anchors cryptographic receipt commitments on-chain."
         >
-          {network.registry ? (
+          {isEvidenceRegistryDeployed() && network.registry ? (
             <div className="font-mono text-xs">
               <CopyableValue
                 value={network.registry}
@@ -134,8 +147,52 @@ export default function SettingsPage() {
               />
             </div>
           ) : (
-            <span className="text-xs font-mono text-carbon-muted">Not deployed on this network</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-warning/80" />
+              <span className="text-xs font-mono text-warning font-semibold">Evidence Registry: Not deployed</span>
+            </div>
           )}
+        </SettingsRow>
+
+        <SettingsRow
+          label="Invoice EIP-712 Domain"
+          description="EIP-712 domain verifyingContract used for cryptographic invoice signing."
+        >
+          <div className="font-mono text-xs">
+            <CopyableValue
+              value={HASHX_EIP712_DOMAIN.verifyingContract}
+              displayText={`${HASHX_EIP712_DOMAIN.verifyingContract.slice(0, 10)}…${HASHX_EIP712_DOMAIN.verifyingContract.slice(-8)}`}
+              label="Copy EIP-712 verifying contract"
+              explorerUrl={getExplorerAddressUrl(HASHX_EIP712_DOMAIN.verifyingContract)}
+            />
+          </div>
+        </SettingsRow>
+
+        <SettingsRow
+          label="HSP Settlement Token (Testnet)"
+          description="USDT ERC-20 contract for HashKey Settlement Protocol payment authorizations."
+        >
+          <div className="font-mono text-xs">
+            <CopyableValue
+              value={HSP_TESTNET_TOKEN_ADDRESS}
+              displayText={`${HSP_TESTNET_TOKEN_ADDRESS.slice(0, 10)}…${HSP_TESTNET_TOKEN_ADDRESS.slice(-8)}`}
+              label="Copy HSP token contract"
+              explorerUrl={getExplorerAddressUrl(HSP_TESTNET_TOKEN_ADDRESS)}
+            />
+          </div>
+        </SettingsRow>
+
+        <SettingsRow
+          label="HSP Spender Contract"
+          description="Permit2 / Settlement router authorized to transfer tokens upon verified authorization."
+        >
+          <div className="font-mono text-xs">
+            <CopyableValue
+              value={HSP_TESTNET_SPENDER_CONTRACT}
+              displayText={`${HSP_TESTNET_SPENDER_CONTRACT.slice(0, 10)}…${HSP_TESTNET_SPENDER_CONTRACT.slice(-8)}`}
+              label="Copy HSP spender contract"
+            />
+          </div>
         </SettingsRow>
       </SettingsSection>
 

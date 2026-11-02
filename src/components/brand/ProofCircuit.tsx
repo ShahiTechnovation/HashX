@@ -205,8 +205,8 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
             </h3>
           </div>
           <div className="flex items-center gap-4 text-2xs font-mono text-foreground-secondary">
-            <span>● HashKey HSP Reconciler: Active</span>
-            <span>Latency: 142ms</span>
+            <span>● HashKey HSP Rail: Testnet QA</span>
+            <span>Adapter: Fail-Closed</span>
           </div>
         </div>
 

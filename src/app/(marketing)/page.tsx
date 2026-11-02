@@ -21,32 +21,34 @@ import { ProofCircuit } from "@/components/brand/ProofCircuit";
 export default function MarketingHomePage() {
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const pythonSnippet = `# 1. Instantiate HashX Verified Middleware Client
-from hashx import HashXTrustLayer
+  const pythonSnippet = `# Conceptual Agent Client Preview (Model Context Protocol Interface)
+# Production agents communicate via Streamable HTTP / SSE MCP transports
+from hashx_mcp import HashXTrustClient  # Conceptual client package
 
-client = HashXTrustLayer(
+client = HashXTrustClient(
     agent_id="agt_9941_autonomous",
-    settlement_rail="hashkey_hsp_mainnet",
+    settlement_rail="hashkey_chain_testnet_133",
     human_approval_threshold_usd=5000.00
 )
 
-# 2. Register Verifiable Service Delivery
-delivery_witness = client.mcp.submit_delivery(
+# 1. Register Verifiable Service Delivery
+delivery_witness = client.submit_delivery(
     task_id="tsk_matrix_computation_81",
     artifact_hash="bafybeicx4z7e9w849qm018a99k4z0029bca71092e01f01",
     witness_proof_type="deterministic_rpc_witness"
 )
 
-# 3. Request Settlement Release with Human Stage-2 Check
-payment_receipt = client.mcp.request_payment(
+# 2. Request Settlement Release (Enforces Human Stage-2 Authorization)
+payment_receipt = client.request_payment(
     invoice_id="inv_eip712_8a9f41c2",
     amount_usdc=14200.00,
     recipient="0x429A88c2195f38f1b901ca94892c902384f938f1",
     evidence_token=delivery_witness.token
 )
 
-assert payment_receipt.status == "HSP_SETTLED"
-# Verifiable Receipt Root Anchored: 0x4f12d8a0c...e08a`;
+# Settlement executed upon Stage-2 signature & HSP confirmation
+print(f"Settlement Status: {payment_receipt.status}")
+# Cryptographic Receipt Digest: 0x4f12d8a0c...e08a`;
 
   const copyCode = () => {
     navigator.clipboard.writeText(pythonSnippet);
@@ -101,8 +103,8 @@ assert payment_receipt.status == "HSP_SETTLED"
           {/* Right Telemetry & Actions */}
           <div className="flex items-center space-x-3">
             <div className="hidden sm:flex items-center space-x-2 px-2.5 py-1 border border-[#D9DCD7] bg-[#F4F2EB] text-[11px] font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#2DD4BF] animate-pulse" />
-              <span className="text-[#535D61] font-medium">HSP-Mainnet Live</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#345BEE]" />
+              <span className="text-[#535D61] font-medium">HashKey Testnet 133 · HSP QA</span>
             </div>
             <Link
               href="/app"
@@ -730,7 +732,7 @@ assert payment_receipt.status == "HSP_SETTLED"
                   <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
                   <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
                   <span className="w-2.5 h-2.5 bg-[#273137] rounded-full" />
-                  <span className="font-mono text-[11px] text-[#91A0A5] pl-2">hashx_mcp_client.py</span>
+                  <span className="font-mono text-[11px] text-[#91A0A5] pl-2">hashx_mcp_client.py (Conceptual Preview)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -751,7 +753,7 @@ assert payment_receipt.status == "HSP_SETTLED"
               </pre>
 
               <div className="mt-4 pt-3 border-t border-[#273137] flex justify-between items-center font-mono text-[11px]">
-                <span className="text-[#91A0A5]">RUNTIME: PYTHON 3.11+ / NODE 20+</span>
+                <span className="text-[#91A0A5]">CLIENT INTERFACE: CONCEPTUAL PREVIEW // MCP STREAMABLE HTTP</span>
                 <Link href="/app/developers" className="text-[#2DD4BF] hover:underline flex items-center space-x-1">
                   <span>Explore Developer Registry</span>
                   <ExternalLink className="w-3 h-3" />
@@ -796,7 +798,7 @@ assert payment_receipt.status == "HSP_SETTLED"
             <Link className="text-[#535D61] hover:text-[#111719] transition-colors" href="/app/demo">
               Proof Lab
             </Link>
-            <span className="text-[#2DD4BF] font-semibold">Status: HSP-Mainnet Live</span>
+            <span className="text-[#535D61] font-semibold">Status: HashKey Testnet 133 · HSP QA</span>
           </div>
         </div>
       </footer>

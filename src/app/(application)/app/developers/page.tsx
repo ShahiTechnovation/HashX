@@ -32,17 +32,26 @@ export default function DevelopersWorkspacePage() {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   const getPythonSnippet = (tool: MCPToolDef) => {
-    return `# HashX Python SDK (MCP Client)
-from hashx import HashXClient
+    return `# HashX Agent Integration (Standard MCP over HTTP JSON-RPC)
+# Planned SDK wrapper; currently connects via standard MCP JSON-RPC protocol
+import httpx
 
-client = HashXClient(base_url="${HASHX_API_URL}")
-
-# Call ${tool.name}
-result = client.call_tool(
-    name="${tool.name}",
-    arguments=${JSON.stringify(tool.requestSchema, null, 4)}
+response = httpx.post(
+    "${HASHX_API_URL}/mcp",
+    headers={"Content-Type": "application/json"},
+    json={
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "${tool.name}",
+            "arguments": ${JSON.stringify(tool.requestSchema, null, 4)}
+        }
+    }
 )
-print("Result:", result)
+
+result = response.json()
+print("Tool Execution Result:", result)
 `;
   };
 
@@ -358,8 +367,8 @@ console.log(response);
                   { id: "arguments" as ExampleTab, label: "Arguments JSON" },
                   { id: "envelope" as ExampleTab, label: "JSON-RPC 2.0" },
                   { id: "response" as ExampleTab, label: "Response Schema" },
-                  { id: "python" as ExampleTab, label: "Python SDK" },
-                  { id: "typescript" as ExampleTab, label: "TypeScript SDK" },
+                  { id: "python" as ExampleTab, label: "Python (MCP HTTP)" },
+                  { id: "typescript" as ExampleTab, label: "TypeScript (MCP SDK)" },
                 ].map((tab) => (
                   <button
                     key={tab.id}

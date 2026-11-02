@@ -123,3 +123,6 @@ desktop.ini
 
 # Tool caches
 .claude/
+
+# Vercel
+.vercel

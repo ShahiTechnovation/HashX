@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
         <div className="border-t border-carbon-border/70 pt-2 flex items-center justify-between text-[10px] font-mono text-carbon-muted">
           <span>NETWORK</span>
           <span className="text-carbon-text font-mono">
-            {chainId === 133 ? "TESTNET 133" : "MAINNET 133"}
+            {chainId === 133 ? "TESTNET 133" : chainId === 177 ? "MAINNET 177" : `CHAIN ${chainId}`}
           </span>
         </div>
         <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-carbon-muted">

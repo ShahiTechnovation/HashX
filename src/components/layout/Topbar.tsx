@@ -44,9 +44,14 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
     setMode,
     chainId,
     walletAddress,
+    walletType,
     isWalletConnected,
+    isWrongNetwork,
+    isConnecting,
+    walletError,
     connectWallet,
     disconnectWallet,
+    switchChain,
   } = useApp();
   const [walletOpen, setWalletOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -150,10 +155,17 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
 
       {/* Right: Telemetry & Controls */}
       <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
-        {/* Latency Telemetry */}
+        {/* Rail Telemetry */}
         <div className="hidden xl:flex items-center gap-1.5 text-carbon-muted">
-          <span>HSP Latency:</span>
-          <span className="text-success font-semibold">142ms</span>
+          <span>HSP QA Rail:</span>
+          <span
+            className={cn(
+              "font-semibold",
+              mode === "connected" ? "text-warning" : "text-primary"
+            )}
+          >
+            {mode === "connected" ? "Safe Mode (Allowlist Pending)" : "Simulation Fixture"}
+          </span>
         </div>
 
         <div className="hidden xl:block h-3.5 w-px bg-carbon-border" />
@@ -165,6 +177,19 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
             2-Stage Required
           </span>
         </div>
+
+        {/* Wrong Network Notice */}
+        {isWrongNetwork && (
+          <button
+            type="button"
+            onClick={() => switchChain(133)}
+            className="flex items-center gap-1.5 h-8 px-2.5 rounded bg-warning/10 border border-warning/30 text-warning text-xs hover:bg-warning/20 transition-colors font-mono"
+            title="Click to switch wallet network to HashKey Chain Testnet (Chain ID 133)"
+          >
+            <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+            Switch to Testnet 133
+          </button>
+        )}
 
         <div className="hidden md:block h-3.5 w-px bg-carbon-border" />
 
@@ -198,15 +223,26 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                 onClick={() => setWalletOpen(!walletOpen)}
                 aria-expanded={walletOpen}
                 aria-haspopup="menu"
-                className="flex items-center gap-2 h-8 px-2.5 rounded border border-primary/30 bg-primary/10 hover:bg-primary/15 text-xs text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className={cn(
+                  "flex items-center gap-2 h-8 px-2.5 rounded border text-xs transition-colors focus-visible:outline-none focus-visible:ring-1",
+                  walletType === "simulated"
+                    ? "border-warning/30 bg-warning/10 hover:bg-warning/15 text-warning focus-visible:ring-warning"
+                    : "border-primary/30 bg-primary/10 hover:bg-primary/15 text-primary focus-visible:ring-primary"
+                )}
               >
-                <span className="w-2 h-2 rounded-full bg-success" />
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    walletType === "simulated" ? "bg-warning" : "bg-success"
+                  )}
+                />
                 <span className="font-mono text-[11px] font-medium">
                   {formatAddress(walletAddress)}
                 </span>
                 <ChevronDown
                   className={cn(
-                    "w-3.5 h-3.5 text-primary/70 transition-transform",
+                    "w-3.5 h-3.5 transition-transform",
+                    walletType === "simulated" ? "text-warning/70" : "text-primary/70",
                     walletOpen && "rotate-180"
                   )}
                 />
@@ -222,10 +258,17 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                       <span className="text-xs font-medium text-carbon-text">
                         Approver Key
                       </span>
-                      <span className="text-[10px] text-success font-mono flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                        Connected EOA
-                      </span>
+                      {walletType === "simulated" ? (
+                        <span className="text-[10px] text-warning font-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                          Simulated (Demo)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-success font-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                          Connected EOA
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 rounded bg-carbon-void border border-carbon-border px-2.5 py-1.5">
                       <span className="font-mono text-2xs text-carbon-muted break-all">
@@ -245,7 +288,9 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                       </button>
                     </div>
                     <p className="mt-2 text-[11px] text-carbon-muted leading-relaxed font-sans">
-                      Authorizes commercial terms and HSP settlements. HashX never stores private keys.
+                      {walletType === "simulated"
+                        ? "Deterministic fixture wallet for safe evaluation. Connected Mode requires an actual browser wallet."
+                        : "Authorizes commercial terms and HSP settlements via your EIP-1193 wallet. HashX never stores private keys."}
                     </p>
                   </div>
                   <button
@@ -258,21 +303,21 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                     className="w-full flex items-center gap-2 px-3.5 h-9 text-xs text-carbon-muted hover:text-danger hover:bg-danger/10 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    Disconnect
+                    <span>Disconnect</span>
                   </button>
                 </div>
               )}
             </>
           ) : (
-            <Button
-              variant="primary"
-              size="sm"
+            <button
+              type="button"
               onClick={connectWallet}
-              className="h-8 font-mono text-xs gap-1.5 bg-primary text-white hover:bg-primary/90"
+              disabled={isConnecting}
+              className="flex items-center gap-1.5 h-8 px-3 rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-mono font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Wallet className="w-3.5 h-3.5" />
-              <span>Connect</span>
-            </Button>
+              <span>{isConnecting ? "Connecting…" : "Connect Wallet"}</span>
+            </button>
           )}
         </div>
 

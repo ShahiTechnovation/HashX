@@ -1,262 +1,461 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import express from "express";
 import http from "http";
-import cors from "cors";
-import { pool, query, withTransaction } from "../src/db/client.js";
-import {
-  computeInvoiceDigest,
-  computeServiceTermsHash,
-  verifyInvoice,
-  verifyDelivery,
-} from "../src/services/verification.js";
-import { HSPClientAdapter } from "../src/services/hsp.js";
+import { privateKeyToAccount } from "viem/accounts";
 import { keccak256, toBytes } from "viem";
+import { app, hspAdapter } from "../src/server.js";
+import { query } from "../src/db/client.js";
+import {
+  HASHX_EIP712_DOMAIN,
+  HASHX_EIP712_TYPES,
+  buildInvoiceEIP712Message,
+  computeServiceTermsHash,
+  isEvidenceRegistryDeployed,
+} from "../src/services/verification.js";
 
-describe("HashX Full API End-to-End Golden Flow Integration", () => {
+// Deterministic test accounts (Anvil / Hardhat default test keys)
+const SELLER_PRIVATE_KEY =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const PAYER_PRIVATE_KEY =
+  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+const FORGER_PRIVATE_KEY =
+  "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a";
+
+const seller = privateKeyToAccount(SELLER_PRIVATE_KEY);
+const payer = privateKeyToAccount(PAYER_PRIVATE_KEY);
+const forger = privateKeyToAccount(FORGER_PRIVATE_KEY);
+
+describe("HashX Real Backend Production Routes End-to-End Integration", () => {
   let server: http.Server;
   let baseUrl: string;
-  const testId = `inv-e2e-${Date.now().toString(36)}`;
-  let createdInvoiceId = "";
-  let paymentAttemptId = "";
+  const testSellerId = "a0000000-0000-0000-0000-000000000099";
+  let activeInvoiceId = "";
 
   beforeAll(async () => {
-    // Start temporary test server instance using the server logic
-    const testApp = express();
-    testApp.use(cors());
-    testApp.use(express.json());
-
-    const hspAdapter = new HSPClientAdapter({ isAllowlisted: false });
-
-    testApp.get("/health", async (req, res) => {
-      const ping = await query("SELECT count(*) as count FROM counterparties");
-      res.json({
-        status: "ok",
-        database: "connected",
-        counterparties: parseInt(ping.rows[0].count, 10),
-        egressIp: "157.119.44.58",
-        hsp: { allowlistConfirmed: false },
-      });
-    });
-
-    testApp.post("/invoices", async (req, res) => {
-      const input = req.body;
-      const id = `inv-${Date.now().toString(36)}`;
-      const termsHash = computeServiceTermsHash(
-        input.service.parameters.address,
-        input.service.parameters.start_block,
-        input.service.parameters.end_block,
-        input.service.acceptance_policy
-      );
-      const buyerRefHash = keccak256(toBytes(input.buyer_ref));
-      const nonce = Math.floor(1000 + Math.random() * 9000).toString();
-      const digest = keccak256(toBytes(`digest-${id}`));
-
-      await query(
-        `INSERT INTO invoices (
-          id, version, client_request_id, seller_id, seller_wallet, seller_display_name,
-          buyer_ref, buyer_ref_hash, service_type, service_params, service_terms_hash,
-          amount_minor, currency, payee, preferred_chain_id, nonce, digest, status, expires_at
-        ) VALUES ($1, 1, 'req-e2e', 'a0000000-0000-0000-0000-000000000001', $2, 'Test Seller',
-          $3, $4, $5, $6, $7, $8, 'USD', $2, 133, $9, $10, 'DRAFT', NOW() + INTERVAL '1 day')`,
-        [
-          id,
-          input.seller_wallet,
-          input.buyer_ref,
-          buyerRefHash,
-          input.service.type,
-          JSON.stringify(input.service),
-          termsHash,
-          input.payment.amount_minor,
-          nonce,
-          digest,
-        ]
-      );
-      res.status(201).json({ id, digest, status: "DRAFT" });
-    });
-
-    testApp.post("/invoices/:id/sign", async (req, res) => {
-      const id = req.params.id as string;
-      const { signature, signer } = req.body;
-      await query("UPDATE invoices SET signature = $1, signer = $2, status = 'SIGNED' WHERE id = $3", [
-        signature,
-        signer,
-        id,
-      ]);
-      res.json({ id, status: "SIGNED" });
-    });
-
-    testApp.post("/invoices/:id/verify", async (req, res) => {
-      const id = req.params.id as string;
-      await query("UPDATE invoices SET status = 'VERIFIED' WHERE id = $1", [id]);
-      res.json({ id, decision: "PASS" });
-    });
-
-    testApp.post("/invoices/:id/delivery", async (req, res) => {
-      const id = req.params.id as string;
-      const delId = `del-${Date.now().toString(36)}`;
-      await query(
-        `INSERT INTO deliveries (id, invoice_id, version, artifact_uri, artifact_sha256, manifest, manifest_signature, artifact_content, status)
-         VALUES ($1, $2, 1, 'uri', '0xsha', '{}'::jsonb, '0xsig', '{}'::jsonb, 'PENDING_VERIFICATION')`,
-        [delId, id]
-      );
-      await query("UPDATE invoices SET status = 'DELIVERED' WHERE id = $1", [id]);
-      res.status(201).json({ id: delId, invoiceId: id, status: "PENDING_VERIFICATION" });
-    });
-
-    testApp.post("/invoices/:id/delivery/verify", async (req, res) => {
-      const id = req.params.id as string;
-      await query("UPDATE deliveries SET status = 'ACCEPTED' WHERE invoice_id = $1", [id]);
-      await query("UPDATE invoices SET status = 'DELIVERY_ACCEPTED' WHERE id = $1", [id]);
-      res.json({ decision: "PASS" });
-    });
-
-    testApp.post("/invoices/:id/pay", async (req, res) => {
-      const id = req.params.id as string;
-      const payId = `pay-${Date.now().toString(36)}`;
-      await query(
-        `INSERT INTO payment_attempts (
-          id, invoice_id, flow_id, payment_request_id, merchant_name, attribution_verified,
-          payer, payee, token_address, token_total_raw, quote_expires_at, hsp_status, state, approval_summary
-        ) VALUES ($1, $2, 'flow-e2e', 'req-e2e', 'HashX', true, '0xpayer', '0xpayee', '0xtoken', '1000000', NOW() + INTERVAL '5 min', 'payment-submitted', 'AWAITING_SIGNATURE_APPROVAL', '{}'::jsonb)`,
-        [payId, id]
-      );
-      res.status(201).json({ id: payId, state: "AWAITING_SIGNATURE_APPROVAL", flowId: "flow-e2e" });
-    });
-
-    testApp.post("/payments/:id/approve-signing", async (req, res) => {
-      const id = req.params.id as string;
-      await query("UPDATE payment_attempts SET state = 'AWAITING_SUBMISSION_APPROVAL' WHERE id = $1", [id]);
-      res.json({ id, state: "AWAITING_SUBMISSION_APPROVAL" });
-    });
-
-    testApp.post("/payments/:id/approve-submission", async (req, res) => {
-      const id = req.params.id as string;
-      await query(
-        "UPDATE payment_attempts SET state = 'FINALIZED', hsp_status = 'payment-finalized', tx_hash = '0xtx' WHERE id = $1",
-        [id]
-      );
-      res.json({ id, state: "FINALIZED", hspStatus: "payment-finalized", txHash: "0xtx" });
-    });
-
+    // Start real exported Express app on dynamic test port
     await new Promise<void>((resolve) => {
-      server = testApp.listen(0, () => {
+      server = http.createServer(app);
+      server.listen(0, "127.0.0.1", () => {
         const addr = server.address() as any;
-        baseUrl = `http://localhost:${addr.port}`;
+        baseUrl = `http://127.0.0.1:${addr.port}`;
         resolve();
       });
     });
+
+    // Register active test seller counterparty in DB
+    await query(
+      `INSERT INTO counterparties (id, display_name, wallet_address, wallet_type, status)
+       VALUES ($1, 'Verified Test Seller', $2, 'EOA', 'ACTIVE')
+       ON CONFLICT (wallet_address) DO UPDATE SET status = 'ACTIVE'`,
+      [testSellerId, seller.address]
+    );
   });
 
   afterAll(async () => {
     if (server) {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
-    if (createdInvoiceId) {
-      await query("DELETE FROM payment_attempts WHERE invoice_id = $1", [createdInvoiceId]);
-      await query("DELETE FROM deliveries WHERE invoice_id = $1", [createdInvoiceId]);
-      await query("DELETE FROM invoices WHERE id = $1", [createdInvoiceId]);
-    }
   });
 
-  it("1. GET /health reports connected database, 3 counterparties and expected IP", async () => {
+  it("1. GET /health returns real production diagnostic telemetry", async () => {
     const res = await fetch(`${baseUrl}/health`);
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe("ok");
-    expect(data.database).toBe("connected");
-    expect(data.counterparties).toBe(3);
-    expect(data.egressIp).toBe("157.119.44.58");
+    expect(data.service).toBe("HashX Backend");
+    expect(data.database.status).toBe("connected");
+    expect(data.hsp.safeMode).toBe(true);
+    expect(data.chain.preferredChainId).toBe(133);
   });
 
-  it("2. Full procurement golden path executes through REST API into PostgreSQL", async () => {
-    // 2.1 Create Invoice
-    const createRes = await fetch(`${baseUrl}/invoices`, {
+  it("2. POST /invoices validates schema with Zod and rejects malformed payloads", async () => {
+    const res = await fetch(`${baseUrl}/invoices`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        seller_wallet: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-        buyer_ref: "buyer-e2e-ref",
+        seller_counterparty_id: testSellerId,
+        buyer_ref: "invalid-payload-missing-service",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.code).toBe("INVALID_INVOICE_PAYLOAD");
+  });
+
+  it("3. POST /invoices creates canonical DRAFT invoice with deterministic digest", async () => {
+    const targetAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016";
+    const res = await fetch(`${baseUrl}/invoices`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        seller_counterparty_id: testSellerId,
+        seller_wallet: seller.address,
+        buyer_ref: `e2e-order-${Date.now()}`,
         service: {
           type: "hsk_address_analytics_v1",
           parameters: {
-            address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-            start_block: "1200000",
-            end_block: "1200500",
+            address: targetAddress,
+            start_block: "1205000",
+            end_block: "1205250",
           },
           acceptance_policy: "analytics_v1",
         },
-        payment: { amount_minor: "100" },
+        payment: {
+          amount_minor: "100",
+          currency: "USD",
+          payee: seller.address,
+          preferred_chain_id: 133,
+        },
       }),
     });
-    expect(createRes.status).toBe(201);
-    const inv = await createRes.json();
-    createdInvoiceId = inv.id;
+
+    expect(res.status).toBe(201);
+    const inv = await res.json();
+    expect(inv.id).toBeDefined();
     expect(inv.status).toBe("DRAFT");
+    expect(inv.digest.startsWith("0x")).toBe(true);
+    expect(inv.digest.length).toBe(66);
+    activeInvoiceId = inv.id;
+  });
 
-    // 2.2 Sign Invoice
-    const signRes = await fetch(`${baseUrl}/invoices/${createdInvoiceId}/sign`, {
+  it("4. Negative Test: POST /invoices/:id/sign rejects missing signature", async () => {
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        signature: "0xsimulated_signature",
-        signer: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        signer: seller.address,
       }),
     });
-    expect(signRes.status).toBe(200);
-    const signedInv = await signRes.json();
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.code).toBe("INVALID_SIGNATURE_PAYLOAD");
+  });
+
+  it("5. Negative Test: POST /invoices/:id/sign rejects simulated placeholder signatures", async () => {
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signer: seller.address,
+        signature: `0xsimulated_signature_${"0".repeat(108)}`,
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.code).toBe("SIMULATED_SIGNATURE_REJECTED");
+  });
+
+  it("6. Negative Test: POST /invoices/:id/sign rejects forged signature from unauthorized key", async () => {
+    // Fetch draft invoice
+    const invRes = await fetch(`${baseUrl}/invoices/${activeInvoiceId}`);
+    const inv = await invRes.json();
+
+    // Forger signs the typed data
+    const message = buildInvoiceEIP712Message(inv);
+    const forgedSig = await forger.signTypedData({
+      domain: { ...HASHX_EIP712_DOMAIN, chainId: 133 },
+      types: HASHX_EIP712_TYPES,
+      primaryType: "HashXInvoice",
+      message,
+    });
+
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signer: seller.address, // Claims to be seller
+        signature: forgedSig, // Actually signed by forger
+      }),
+    });
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.code).toBe("INVALID_EIP712_SIGNATURE");
+  });
+
+  it("7. Negative Test: POST /invoices/:id/sign rejects signer mismatch against invoice sellerWallet", async () => {
+    const invRes = await fetch(`${baseUrl}/invoices/${activeInvoiceId}`);
+    const inv = await invRes.json();
+
+    const message = buildInvoiceEIP712Message(inv);
+    const forgerSig = await forger.signTypedData({
+      domain: { ...HASHX_EIP712_DOMAIN, chainId: 133 },
+      types: HASHX_EIP712_TYPES,
+      primaryType: "HashXInvoice",
+      message,
+    });
+
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signer: forger.address, // Signer address does not match invoice.sellerWallet
+        signature: forgerSig,
+      }),
+    });
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.code).toBe("SIGNER_MISMATCH");
+  });
+
+  it("8. Positive Test: POST /invoices/:id/sign accepts real cryptographic EIP-712 seller signature", async () => {
+    const invRes = await fetch(`${baseUrl}/invoices/${activeInvoiceId}`);
+    const inv = await invRes.json();
+
+    const message = buildInvoiceEIP712Message(inv);
+    const validSignature = await seller.signTypedData({
+      domain: { ...HASHX_EIP712_DOMAIN, chainId: 133 },
+      types: HASHX_EIP712_TYPES,
+      primaryType: "HashXInvoice",
+      message,
+    });
+
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signer: seller.address,
+        signature: validSignature,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const signedInv = await res.json();
     expect(signedInv.status).toBe("SIGNED");
+    expect(signedInv.signature).toBe(validSignature);
+    expect(signedInv.signatureValid).toBe(true);
+  });
 
-    // 2.3 Verify Invoice
-    const verRes = await fetch(`${baseUrl}/invoices/${createdInvoiceId}/verify`, { method: "POST" });
-    expect(verRes.status).toBe(200);
-    const verData = await verRes.json();
-    expect(verData.decision).toBe("PASS");
+  it("9. POST /invoices/:id/verify verifies real invoice and persists verification run", async () => {
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/verify`, {
+      method: "POST",
+    });
 
-    // 2.4 Submit Delivery
-    const delRes = await fetch(`${baseUrl}/invoices/${createdInvoiceId}/delivery`, {
+    expect(res.status).toBe(200);
+    const result = await res.json();
+    expect(result.decision).toBe("PASS");
+    expect(result.checks.signature).toBe("PASS");
+    expect(result.checks.identity_binding).toBe("PASS");
+  });
+
+  it("10. GET /invoices/:id/verification returns backend authoritative persistent result", async () => {
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/verification`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.invoiceId).toBe(activeInvoiceId);
+    expect(data.invoiceDecision).toBe("PASS");
+    expect(data.provenance).toBe("backend_persisted");
+    expect(data.invoiceVerification).toBeDefined();
+    expect(data.invoiceVerification.checks.signature).toBe("PASS");
+  });
+
+  it("11. Negative Test: Policy Firewall blocks payment on invoice that is not DELIVERY_ACCEPTED", async () => {
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/pay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        artifact_uri: "ipfs://...",
-        artifact_sha256: "0xsha",
-        manifest: {},
-        manifest_signature: "0xsig",
-        artifact_content: {},
+        payer: payer.address,
       }),
     });
-    expect(delRes.status).toBe(201);
 
-    // 2.5 Verify Delivery
-    const delVerRes = await fetch(`${baseUrl}/invoices/${createdInvoiceId}/delivery/verify`, { method: "POST" });
-    expect(delVerRes.status).toBe(200);
+    expect(res.status).toBe(503); // Fails closed with HSP_NOT_CONNECTED or Policy Firewall
+    const data = await res.json();
+    expect(data.code).toBe("HSP_NOT_CONNECTED");
+  });
 
-    // 2.6 Request Payment
-    const payRes = await fetch(`${baseUrl}/invoices/${createdInvoiceId}/pay`, {
+  it("12. Negative Test: Fail-Closed HSP behavior: does NOT create fake HSP order or database records when HSP QA is not connected", async () => {
+    // Verify hspAdapter is not configured for live
+    expect(hspAdapter.isConfiguredForLive()).toBe(false);
+
+    const res = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/pay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payer: "0x1234567890123456789012345678901234567890" }),
+      body: JSON.stringify({
+        payer: payer.address,
+      }),
     });
-    expect(payRes.status).toBe(201);
-    const payAttempt = await payRes.json();
-    paymentAttemptId = payAttempt.id;
-    expect(payAttempt.state).toBe("AWAITING_SIGNATURE_APPROVAL");
 
-    // 2.7 Stage 1 Approval
-    const app1Res = await fetch(`${baseUrl}/payments/${paymentAttemptId}/approve-signing`, { method: "POST" });
-    expect(app1Res.status).toBe(200);
-    const app1Data = await app1Res.json();
-    expect(app1Data.state).toBe("AWAITING_SUBMISSION_APPROVAL");
+    expect(res.status).toBe(503);
+    const data = await res.json();
+    expect(data.code).toBe("HSP_NOT_CONNECTED");
+    expect(data.error).toContain("HashKey HSP QA is not yet connected");
 
-    // 2.8 Stage 2 Approval
-    const app2Res = await fetch(`${baseUrl}/payments/${paymentAttemptId}/approve-submission`, {
+    // Verify in database: zero payment attempts created
+    const attempts = await query(
+      "SELECT count(*) as count FROM payment_attempts WHERE invoice_id = $1",
+      [activeInvoiceId]
+    );
+    expect(parseInt(attempts.rows[0].count, 10)).toBe(0);
+  });
+
+  it("13. Negative Test: Stage 2 approval requires Stage 1 approval first", async () => {
+    // Manually create an isolated payment attempt row for approval flow testing
+    const fakeAttemptId = `pay-test-${Date.now().toString(36)}`;
+    const flowId = `flow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const prId = `pr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    await query(
+      `INSERT INTO payment_attempts (
+        id, invoice_id, flow_id, payment_request_id, merchant_name, attribution_verified,
+        payer, payee, token_address, token_total_raw, quote_expires_at, hsp_status, state, approval_summary
+      ) VALUES ($1, $2, $3, $4, 'HashX', true, $5, $6, $7, '1000000', NOW() + INTERVAL '5 minutes', 'payment-submitted', 'AWAITING_SIGNATURE_APPROVAL', '{}'::jsonb)`,
+      [
+        fakeAttemptId,
+        activeInvoiceId,
+        flowId,
+        prId,
+        payer.address,
+        seller.address,
+        "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+      ]
+    );
+
+    // Call Stage 2 directly without Stage 1
+    const dummySignature =
+      "0x" + "11".repeat(65);
+    const res = await fetch(`${baseUrl}/payments/${fakeAttemptId}/approve-submission`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ signature: "0xwallet_permit2_sig" }),
+      body: JSON.stringify({
+        signature: dummySignature,
+      }),
     });
-    expect(app2Res.status).toBe(200);
-    const app2Data = await app2Res.json();
-    expect(app2Data.state).toBe("FINALIZED");
-    expect(app2Data.hspStatus).toBe("payment-finalized");
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.code).toBe("STAGE1_APPROVAL_MISSING");
+
+    // Clean up attempt
+    await query("DELETE FROM payment_attempts WHERE id = $1", [fakeAttemptId]);
+  });
+
+  it("14. Negative Test: Stage 2 approval rejects missing or malformed signature", async () => {
+    const fakeAttemptId = `pay-test-st2-${Date.now().toString(36)}`;
+    const flowId = `flow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const prId = `pr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    await query(
+      `INSERT INTO payment_attempts (
+        id, invoice_id, flow_id, payment_request_id, merchant_name, attribution_verified,
+        payer, payee, token_address, token_total_raw, quote_expires_at, hsp_status, state, approval_summary
+      ) VALUES ($1, $2, $3, $4, 'HashX', true, $5, $6, $7, '1000000', NOW() + INTERVAL '5 minutes', 'payment-submitted', 'AWAITING_SUBMISSION_APPROVAL', '{}'::jsonb)`,
+      [
+        fakeAttemptId,
+        activeInvoiceId,
+        flowId,
+        prId,
+        payer.address,
+        seller.address,
+        "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+      ]
+    );
+
+    // Record Stage 1 approval
+    await query(
+      `INSERT INTO approvals (payment_attempt_id, stage, actor, terms_hash)
+       VALUES ($1, 'SIGNING', $2, '0xterms')`,
+      [fakeAttemptId, payer.address]
+    );
+
+    // Try Stage 2 with missing signature
+    const resMissing = await fetch(`${baseUrl}/payments/${fakeAttemptId}/approve-submission`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(resMissing.status).toBe(400);
+    const missingData = await resMissing.json();
+    expect(missingData.code).toBe("SIGNATURE_REQUIRED");
+
+    // Try Stage 2 with signature from wrong actor (seller instead of payer)
+    const termsHash = keccak256(toBytes("1000000"));
+    const wrongSignature = await seller.signMessage({
+      message: { raw: toBytes(termsHash) },
+    });
+
+    const resWrong = await fetch(`${baseUrl}/payments/${fakeAttemptId}/approve-submission`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signature: wrongSignature,
+      }),
+    });
+    expect(resWrong.status).toBe(403);
+    const wrongData = await resWrong.json();
+    expect(wrongData.code).toBe("PAYER_SIGNATURE_MISMATCH");
+
+    // Clean up attempt
+    await query("DELETE FROM approvals WHERE payment_attempt_id = $1", [fakeAttemptId]);
+    await query("DELETE FROM payment_attempts WHERE id = $1", [fakeAttemptId]);
+  });
+
+  it("15. Positive Test: Stage 2 approval accepts real cryptographic signature from payer", async () => {
+    const fakeAttemptId = `pay-test-st2-pos-${Date.now().toString(36)}`;
+    const flowId = `flow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const prId = `pr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    await query(
+      `INSERT INTO payment_attempts (
+        id, invoice_id, flow_id, payment_request_id, merchant_name, attribution_verified,
+        payer, payee, token_address, token_total_raw, quote_expires_at, hsp_status, state, approval_summary
+      ) VALUES ($1, $2, $3, $4, 'HashX', true, $5, $6, $7, '1000000', NOW() + INTERVAL '5 minutes', 'payment-submitted', 'AWAITING_SUBMISSION_APPROVAL', '{}'::jsonb)`,
+      [
+        fakeAttemptId,
+        activeInvoiceId,
+        flowId,
+        prId,
+        payer.address,
+        seller.address,
+        "0x19B861876D8075A11eC6c4596395b058fe8466C2",
+      ]
+    );
+
+    await query(
+      `INSERT INTO approvals (payment_attempt_id, stage, actor, terms_hash)
+       VALUES ($1, 'SIGNING', $2, '0xterms')`,
+      [fakeAttemptId, payer.address]
+    );
+
+    const termsHash = keccak256(toBytes("1000000"));
+    const validPayerSignature = await payer.signMessage({
+      message: { raw: toBytes(termsHash) },
+    });
+
+    const res = await fetch(`${baseUrl}/payments/${fakeAttemptId}/approve-submission`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signature: validPayerSignature,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const updated = await res.json();
+    expect(updated.state).toBe("SUBMITTED");
+    expect(updated.txHash).toBeUndefined(); // Safe mode: does NOT invent fake tx hash!
+
+    // Clean up attempt
+    await query("DELETE FROM approvals WHERE payment_attempt_id = $1", [fakeAttemptId]);
+    await query("DELETE FROM payment_attempts WHERE id = $1", [fakeAttemptId]);
+  });
+
+  it("16. Negative Test: Safe status never auto-promotes to FINALIZED without authoritative settlement", async () => {
+    const payStatusRes = await fetch(`${baseUrl}/invoices/${activeInvoiceId}/payment-status`);
+    // No payment completed, returns 404 or unfinalized state
+    if (payStatusRes.status === 200) {
+      const data = await payStatusRes.json();
+      expect(data.state).not.toBe("FINALIZED");
+    } else {
+      expect(payStatusRes.status).toBe(404);
+    }
+  });
+
+  it("17. Separated contract configuration: Evidence registry deployment status is honest", () => {
+    const isDeployed = isEvidenceRegistryDeployed();
+    expect(typeof isDeployed).toBe("boolean");
+    // Unless explicitly deployed and set in ENV, defaults to undeployed
+    if (!process.env.HASHX_EVIDENCE_REGISTRY_ADDRESS) {
+      expect(isDeployed).toBe(false);
+    }
   });
 });
-

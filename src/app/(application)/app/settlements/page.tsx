@@ -129,7 +129,7 @@ export default function SettlementExplorerIndexPage() {
             </span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-xl font-display font-bold text-primary">
-                {counts.inflight || 7}
+                {counts.inflight}
               </span>
               <span className="text-[10px] text-primary bg-primary/10 px-1 rounded border border-primary/20">
                 Awaiting Epoch
@@ -143,7 +143,7 @@ export default function SettlementExplorerIndexPage() {
             </span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-xl font-display font-bold text-warning">
-                {counts.safe || 3}
+                {counts.safe}
               </span>
               <span className="text-[10px] text-warning bg-warning/10 px-1 rounded border border-warning/20">
                 Not Finalized
@@ -157,7 +157,7 @@ export default function SettlementExplorerIndexPage() {
             </span>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-xl font-display font-bold text-success">
-                {counts.finalized || 42}
+                {counts.finalized}
               </span>
               <span className="text-[10px] text-success bg-success/10 px-1 rounded border border-success/20">
                 100% Attested
@@ -167,12 +167,15 @@ export default function SettlementExplorerIndexPage() {
 
           <div className="bg-carbon-void border border-carbon-border p-3 rounded">
             <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-              HSP Engine Latency
+              HSP Engine Status
             </span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xl font-display font-bold text-success">142ms</span>
-              <span className="text-[10px] text-success flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-success" /> Healthy
+              <span className={cn("text-base font-display font-bold", mode === "connected" ? "text-amber-400" : "text-success")}>
+                {mode === "connected" ? "Safe Mode (QA Pending)" : "Simulated Engine"}
+              </span>
+              <span className={cn("text-[10px] flex items-center gap-1", mode === "connected" ? "text-amber-400" : "text-success")}>
+                <span className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-amber-400" : "bg-success")} />
+                {mode === "connected" ? "Fail-Closed" : "142ms (Sim)"}
               </span>
             </div>
           </div>

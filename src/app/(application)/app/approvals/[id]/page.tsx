@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { createWalletClient, custom, keccak256, toBytes } from "viem";
 import { useApp } from "@/providers/AppContext";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt } from "@/types/domain";
@@ -43,7 +44,7 @@ export default function ApprovalDetailPage() {
   const params = useParams();
   const attemptId = params?.id as string;
   const router = useRouter();
-  const { mode, triggerRefresh } = useApp();
+  const { mode, triggerRefresh, walletAddress, isWalletConnected, connectWallet } = useApp();
 
   const [attempt, setAttempt] = useState<PaymentAttempt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,7 +150,33 @@ export default function ApprovalDetailPage() {
     setIsProcessing(true);
     setActionError(null);
     try {
-      const updated = await client.approveSubmission(attempt.id);
+      let signature: `0x${string}` | undefined;
+
+      if (mode === "connected") {
+        if (!isWalletConnected || !walletAddress) {
+          throw new Error("Wallet not connected. Connect your payer EIP-1193 wallet to authorize payment submission.");
+        }
+        if (walletAddress.toLowerCase() !== attempt.payer.toLowerCase()) {
+          throw new Error(
+            `Connected wallet (${walletAddress}) does not match authorized payer (${attempt.payer}). Switch to payer wallet in MetaMask.`
+          );
+        }
+        if (typeof window === "undefined" || !(window as any).ethereum) {
+          throw new Error("No EIP-1193 browser wallet detected.");
+        }
+
+        const walletClient = createWalletClient({
+          transport: custom((window as any).ethereum),
+        });
+
+        const termsHash = keccak256(toBytes(attempt.tokenTotalRaw));
+        signature = await walletClient.signMessage({
+          account: walletAddress as `0x${string}`,
+          message: { raw: toBytes(termsHash) },
+        });
+      }
+
+      const updated = await client.approveSubmission(attempt.id, signature);
       setAttempt(updated);
       setJustSubmitted(true);
       triggerRefresh();

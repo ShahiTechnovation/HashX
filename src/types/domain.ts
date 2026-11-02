@@ -295,11 +295,13 @@ export interface HashXClient {
   approveSubmission(paymentAttemptId: string, signature?: Hash): Promise<PaymentAttempt>;
   getPaymentStatus(invoiceId: string): Promise<PaymentAttempt>;
   getReceipt(invoiceId: string): Promise<VerifiableReceipt>;
+  getInvoiceVerification(invoiceId: string): Promise<CombinedVerificationResult | null>;
 }
 
 export interface CreateInvoiceInput {
   client_request_id?: string;
   seller_counterparty_id: string;
+  seller_wallet?: Address;
   buyer_ref: string;
   service: ServiceDefinition;
   payment: CommercialPaymentTerms;

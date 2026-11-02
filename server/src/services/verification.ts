@@ -40,15 +40,32 @@ export function getRpcClient(chainId: number) {
   return chainId === 177 ? publicMainnetClient : publicTestnetClient;
 }
 
-export const HASHX_EVIDENCE_REGISTRY_ADDRESS = getAddress(
+// Invoice EIP-712 Domain Verifying Contract
+export const HASHX_EIP712_VERIFYING_CONTRACT: Address = getAddress(
   "0x19b861876D8075A11EC6C4596395B058fe8466c2"
 );
+
+// On-Chain Evidence Registry Contract (Separated from EIP-712 domain and token)
+export const HASHX_EVIDENCE_REGISTRY_ADDRESS: Address | null = process.env.HASHX_EVIDENCE_REGISTRY_ADDRESS
+  ? getAddress(process.env.HASHX_EVIDENCE_REGISTRY_ADDRESS)
+  : null;
+
+export function isEvidenceRegistryDeployed(): boolean {
+  return Boolean(
+    HASHX_EVIDENCE_REGISTRY_ADDRESS &&
+    HASHX_EVIDENCE_REGISTRY_ADDRESS !== "0x0000000000000000000000000000000000000000"
+  );
+}
+
+// HSP Payment Token & Settlement Contracts (Distinct from Evidence Registry)
+export const HSP_TESTNET_TOKEN_ADDRESS: Address = "0x19B861876D8075A11eC6c4596395b058fe8466C2";
+export const HSP_TESTNET_SPENDER_CONTRACT: Address = "0x6969696969696969696969696969696969696969";
 
 export const HASHX_EIP712_DOMAIN = {
   name: "HashX Global",
   version: "1",
   chainId: 133,
-  verifyingContract: HASHX_EVIDENCE_REGISTRY_ADDRESS,
+  verifyingContract: HASHX_EIP712_VERIFYING_CONTRACT,
 } as const;
 
 export const HASHX_EIP712_TYPES = {

@@ -4,7 +4,7 @@
 [![React](https://img.shields.io/badge/React-19.0-blue)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)](https://www.typescriptlang.org/)
 [![HashKey Chain](https://img.shields.io/badge/HashKey_Chain-EVM_133_%2F_177-purple)](https://www.hashkey.id/)
-[![Tests](https://img.shields.io/badge/Tests-23_Passed-success)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-79_Passed-success)](https://vitest.dev/)
 [![A11y](https://img.shields.io/badge/Accessibility-WCAG_2.2_AA-green)](https://www.w3.org/WAI/standards-guidelines/wcag/)
 
 > **HashX** is a verification-first agent-to-agent commerce protocol built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
@@ -40,11 +40,11 @@ Commercial Intent
 ## 🚀 Key Implemented Features
 
 ### 1. Marketing Platform (`/`)
-- High-contrast fintech storytelling inspired by Spectram.
+- High-contrast fintech storytelling with Mineral Light editorial aesthetic.
 - Interactive 6-stage lifecycle animation.
 - Unsafe vs Verification-First agentic commerce risk comparison.
 - Three core pillars: **Verify**, **Authorize**, **Settle**.
-- Developer MCP integration section with live code samples.
+- Developer MCP integration section with conceptual and typed MCP code samples.
 
 ### 2. Commercial Invoice Workspace (`/app/invoices`)
 - Compact tabular view of commercial obligations with filtering by status, search, and sorting.
@@ -53,7 +53,7 @@ Commercial Intent
   - Step 2: Locked service definition (`hsk_address_analytics_v1`, block range).
   - Step 3: Exact commercial terms (USD minor units, payee wallet, validity window).
   - Step 4: Review agreement and EIP-712 typed structured data.
-  - Step 5: Seller wallet cryptographic signature.
+  - Step 5: Real seller wallet cryptographic signature (viem EIP-1193 connector).
 - Invoice Detail (`/app/invoices/[id]`):
   - Immutable signed commercial terms.
   - Interactive service fulfillment deliverable submitter with syntax-highlighted JSON viewer.
@@ -78,17 +78,17 @@ Commercial Intent
   7. `sample_transaction_proofs`
   8. `freshness`
 - Expandable evidence cards with **Expected vs Actual** values and reason codes (`SIGNATURE_INVALID`, `TX_COUNT_MISMATCH`, `ARTIFACT_TAMPERED`, `BLOCK_RANGE_MISMATCH`, `SELLER_UNBOUND`, `INVOICE_EXPIRED`, etc.).
-- Strict payment action disabling whenever policy checks fail.
+- Strict backend-authoritative verification runs linked directly to database records.
 
 ### 4. Two-Stage Human Financial Authorization (`/app/approvals` & `/app/approvals/[id]`)
 - **Stage 1 (Pre-Signing)**: Displays exact merchant attribution, payer, payee, token contract, raw integer token units (`token_total_raw`), human-readable amount, and 5-minute quote expiration timer before wallet signing.
-- **Stage 2 (Pre-Submission)**: Re-displays verified terms after signing; requires a deliberate second click to submit. No silent auto-broadcast!
+- **Stage 2 (Pre-Submission)**: Re-displays verified terms after signing; requires a deliberate second cryptographic signature from the payer before broadcast.
 - **Quote Expiry Handling**: Disabled actions with repreparation notice upon quote expiration.
 
 ### 5. Settlement Explorer (`/app/settlements` & `/app/settlements/[id]`)
 - Preserves all authoritative HSP identifiers: `payment_attempt_id`, `flow_id`, `payment_request_id`, `attribution_verified`, `token_total_raw`.
 - Strict semantic mapping: `payment-safe` is labeled **On-Chain Safe (Unfinalized)** and is **never** presented as finalized until irreversible finality is reached.
-- 15-second status polling simulator and event audit timeline.
+- Fail-closed HSP adapter: Returns typed `HSP_NOT_CONNECTED` when HSP allowlisting is pending.
 
 ### 6. Verifiable Commercial Receipts (`/app/receipts` & `/app/receipts/[id]`)
 - Document layout linking the signed invoice, seller identity, fulfillment telemetry digest, human approval record, and HashKey Chain settlement transaction.
@@ -109,39 +109,52 @@ Commercial Intent
 
 ## 🧪 Automated Test Verification
 
-The repository includes comprehensive unit and integration test suites:
+The repository includes comprehensive unit, integration, and smart contract test suites:
 
 ```bash
-# Run tests with vitest
-pnpm test
+# Run all frontend, backend, and smart contract tests
+pnpm test:all
 ```
 
-### Actual Test Results
+### Actual Test Suite Execution Results
 ```text
  ✓ tests/unit/formatters.test.ts (7 tests)
+ ✓ server/tests/hsp_safe_mode.test.ts (5 tests)
  ✓ tests/unit/eip712.test.ts (6 tests)
- ✓ tests/unit/idempotency.test.ts (1 test)
  ✓ tests/unit/verification.test.ts (9 tests)
+ ✓ tests/unit/idempotency.test.ts (1 test)
+ ✓ server/tests/delivery_verification.test.ts (5 tests)
+ ✓ server/tests/db_idempotency_integration.test.ts (2 tests)
+ ✓ server/tests/eip712_mutation.test.ts (5 tests)
+ ✓ server/tests/api_e2e_integration.test.ts (17 tests)
 
- Test Files  4 passed (4)
-      Tests  23 passed (23)
+ Test Files  9 passed (9)
+      Tests  57 passed (57)
+
+ HashXEvidenceRegistry — Hardhat EVM Execution Tests
+      ✓ 22 passing (1s)
+
+ Total Automated Tests: 79 passed (0 failures)
 ```
 
 ### TypeScript Strict Mode
 ```bash
-# Run typecheck
+# Frontend typecheck
 pnpm typecheck
-# Result: 0 errors
+# Backend build
+pnpm --prefix server build
+# Result: 0 errors across monorepo
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 - **Framework**: Next.js 15.2 (App Router), React 19, TypeScript Strict Mode
-- **Styling**: Tailwind CSS, Obsidian × Electric Violet custom tokens
-- **Cryptography & EVM**: `viem` (EIP-712 typed structured data, keccak256, address checksumming)
+- **Backend**: Node.js, Express, PostgreSQL, Zod runtime validation, rate-limiting
+- **Styling**: Tailwind CSS, Carbon Control Room × Mineral Light design tokens
+- **Cryptography & EVM**: `viem` (EIP-712 typed structured data, keccak256, address checksumming, EIP-1193 connectors)
 - **Icons**: Lucide React
-- **Testing**: Vitest, JSDOM, React Testing Library
+- **Testing**: Vitest, Hardhat, JSDOM, React Testing Library
 - **Package Manager**: `pnpm`
 
 ---
@@ -152,6 +165,7 @@ pnpm typecheck
 - [Design System & Accessibility](docs/design-system.md)
 - [Demo Guide & Reproduction Walkthrough](docs/demo-guide.md)
 - [Deployment & Environment Configuration](docs/deployment.md)
+- [Production Integrity Sprint Audit Report](docs/PRODUCTION_INTEGRITY_REPORT.md)
 
 ---
 
@@ -160,4 +174,4 @@ pnpm typecheck
 2. **Deterministic RPC Recomputation**: Digital work claims are verified against HashKey Chain node data, not LLM opinions.
 3. **Idempotent Payment Rails**: Multiple concurrent requests never create duplicate financial obligations.
 4. **Honest Settlement States**: `payment-safe` is never misrepresented as finalized.
-
+5. **Fail-Closed Failover**: When external infrastructure (HSP QA) is unconfirmed, payment operations reject cleanly rather than fabricating synthetic states.

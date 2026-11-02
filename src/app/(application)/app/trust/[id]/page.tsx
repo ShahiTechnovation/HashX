@@ -61,7 +61,7 @@ export default function TrustInspectorPage() {
   const params = useParams();
   const invoiceId = params?.id as string;
   const router = useRouter();
-  const { mode } = useApp();
+  const { mode, walletAddress, isWalletConnected } = useApp();
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
@@ -85,17 +85,41 @@ export default function TrustInspectorPage() {
         if (isMounted) setInvoice(inv);
 
         if (inv) {
-          const invResult = runInvoiceVerification(inv);
-          if (isMounted) setInvoiceVerification(invResult);
-
           const del = await client.getDeliveryByInvoiceId(inv.id);
           if (isMounted) setDelivery(del);
 
-          if (del) {
-            const delResult = runDeliveryVerification(inv, del);
-            if (isMounted) setDeliveryVerification(delResult);
-          } else if (isMounted) {
-            setDeliveryVerification(null);
+          if (mode === "connected") {
+            // In Connected Mode, authoritative verification must come from backend persistent records
+            const verification = await client.getInvoiceVerification(inv.id);
+            if (isMounted && verification?.invoiceVerification) {
+              setInvoiceVerification(verification.invoiceVerification);
+              setDeliveryVerification(verification.deliveryVerification || null);
+            } else if (isMounted) {
+              // Trigger authoritative backend verification if not yet recorded
+              try {
+                await client.verifyInvoice({ invoice_id: inv.id });
+                if (del) await client.verifyDelivery({ invoice_id: inv.id });
+                const fresh = await client.getInvoiceVerification(inv.id);
+                if (fresh) {
+                  setInvoiceVerification(fresh.invoiceVerification);
+                  setDeliveryVerification(fresh.deliveryVerification || null);
+                }
+              } catch {
+                setInvoiceVerification(null);
+                setDeliveryVerification(null);
+              }
+            }
+          } else {
+            // In Demo Mode, use local deterministic verification engine with adversarial fixtures
+            const invResult = runInvoiceVerification(inv);
+            if (isMounted) setInvoiceVerification(invResult);
+
+            if (del) {
+              const delResult = runDeliveryVerification(inv, del);
+              if (isMounted) setDeliveryVerification(delResult);
+            } else if (isMounted) {
+              setDeliveryVerification(null);
+            }
           }
         }
       } catch (err) {
@@ -160,9 +184,18 @@ export default function TrustInspectorPage() {
     setIsRequestingPayment(true);
     setRequestError(null);
     try {
+      if (mode === "connected" && (!isWalletConnected || !walletAddress)) {
+        throw new Error("Connect your payer wallet (EIP-1193) before requesting payment execution.");
+      }
+
+      const activePayer =
+        mode === "connected" && walletAddress
+          ? walletAddress
+          : ("0x742d35Cc6634C0532925a3b844Bc454e4438f44e" as `0x${string}`);
+
       const attempt = await client.requestPayment({
         invoice_id: invoice.id,
-        payer: "0x1234567890123456789012345678901234567890",
+        payer: activePayer,
         merchant_name: "HashX",
       });
       router.push(`/app/approvals/${attempt.id}`);
@@ -174,9 +207,29 @@ export default function TrustInspectorPage() {
     }
   };
 
-  const handleRerun = () => {
-    setInvoiceVerification(runInvoiceVerification(invoice));
-    setDeliveryVerification(delivery ? runDeliveryVerification(invoice, delivery) : null);
+  const handleRerun = async () => {
+    if (!invoice) return;
+    setIsLoading(true);
+    try {
+      if (mode === "connected") {
+        await client.verifyInvoice({ invoice_id: invoice.id });
+        if (delivery) {
+          await client.verifyDelivery({ invoice_id: invoice.id });
+        }
+        const updated = await client.getInvoiceVerification(invoice.id);
+        if (updated) {
+          setInvoiceVerification(updated.invoiceVerification);
+          setDeliveryVerification(updated.deliveryVerification || null);
+        }
+      } else {
+        setInvoiceVerification(runInvoiceVerification(invoice));
+        setDeliveryVerification(delivery ? runDeliveryVerification(invoice, delivery) : null);
+      }
+    } catch (err: any) {
+      console.error("Re-verification failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Raw signature extraction
