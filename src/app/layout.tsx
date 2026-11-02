@@ -12,6 +12,11 @@ export const metadata: Metadata = {
     default: "HashX — The Trust Layer for Agent Payments",
     template: "%s · HashX",
   },
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/apple-icon.png",
+  },
   description:
     "HashX verifies commercial intent, authenticates structured invoices, validates objective fulfillment, enforces two-stage human authorization, reconciles HSP settlement, and anchors evidence for verifiable receipts.",
   keywords: [

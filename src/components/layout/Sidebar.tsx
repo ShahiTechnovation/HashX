@@ -168,9 +168,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
           href="/app"
           className="h-16 px-5 flex items-center gap-3 border-b border-carbon-border group hover:bg-carbon-panel/20 transition-colors"
         >
-          <div className="w-8 h-8 rounded bg-primary/15 border border-primary/40 flex items-center justify-center text-primary font-mono font-bold text-sm tracking-tighter">
-            HX
-          </div>
+          <img
+            src="/logo.png"
+            alt="HashX"
+            className="w-8 h-8 object-contain shrink-0 drop-shadow-md select-none transition-transform group-hover:scale-105"
+          />
           <div>
             <div className="font-display font-bold text-carbon-text tracking-tight text-sm leading-tight flex items-center gap-1.5">
               HashX

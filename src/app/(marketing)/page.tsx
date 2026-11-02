@@ -64,11 +64,11 @@ print(f"Settlement Status: {payment_receipt.status}")
           {/* Brand Cluster with Architectural Monogram */}
           <div className="flex items-center space-x-4">
             <Link className="flex items-center space-x-3 group" href="/">
-              <div className="w-7 h-7 border border-[#111719] flex items-center justify-center relative bg-[#FBFAF6]">
-                <span className="absolute w-[1px] h-full bg-[#111719]" />
-                <span className="absolute h-[1px] w-full bg-[#111719]" />
-                <span className="w-2.5 h-2.5 border border-[#345BEE] bg-[#FBFAF6] z-10" />
-              </div>
+              <img
+                src="/logo.png"
+                alt="HashX"
+                className="w-8 h-8 object-contain shrink-0 select-none transition-transform group-hover:scale-105 drop-shadow-sm"
+              />
               <span className="font-display text-lg tracking-tight text-[#111719] uppercase font-semibold">
                 HashX
               </span>
@@ -769,10 +769,11 @@ print(f"Settlement Status: {payment_receipt.status}")
         <div className="w-full px-5 sm:px-8 lg:px-12 py-10 max-w-[1360px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
-              <div className="w-5 h-5 border border-[#111719] flex items-center justify-center relative bg-[#FBFAF6]">
-                <span className="absolute w-[1px] h-full bg-[#111719]" />
-                <span className="absolute h-[1px] w-full bg-[#111719]" />
-              </div>
+              <img
+                src="/logo.png"
+                alt="HashX"
+                className="w-6 h-6 object-contain shrink-0 select-none drop-shadow-sm"
+              />
               <span className="font-display text-sm text-[#111719] uppercase tracking-wide font-semibold">
                 HashX
               </span>
