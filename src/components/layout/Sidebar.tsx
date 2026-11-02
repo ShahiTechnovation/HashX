@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/providers/AppContext";
+import { findNetwork } from "@shared/networks";
 
 interface SidebarProps {
   onCloseMobile?: () => void;
@@ -73,18 +74,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
           {pendingApprovalsCount} Pending
         </span>
       ) : (
-        <span className="text-[9px] font-mono text-carbon-muted">Quorum</span>
+        <span className="text-[9px] font-mono text-carbon-muted">2-stage</span>
       ),
     },
     {
-      name: "Settlement (HSP)",
+      name: "Settlements",
       href: "/app/settlements",
       icon: ArrowLeftRight,
       badge: (
-        <span className="text-[9px] font-mono text-success font-semibold flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
-          Active
-        </span>
+        <span className="text-[9px] font-mono text-carbon-muted">{mode === "connected" ? "Sepolia" : "Simulated"}</span>
       ),
     },
     {
@@ -106,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
       href: "/app/developers",
       icon: Terminal,
       badge: (
-        <span className="text-[9px] font-mono text-success font-semibold">8 RPC</span>
+        <span className="text-[9px] font-mono text-carbon-muted">9 tools</span>
       ),
     },
   ];
@@ -177,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
             <div className="font-display font-bold text-carbon-text tracking-tight text-sm leading-tight flex items-center gap-1.5">
               HashX
               <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-carbon-panel text-carbon-muted border border-carbon-border">
-                v2.4
+                v2
               </span>
             </div>
             <div className="text-[10px] font-mono uppercase tracking-wider text-carbon-muted">
@@ -207,22 +205,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
       <div className="p-3 m-3 rounded bg-carbon-void/90 border border-carbon-border space-y-2">
         <div className="flex items-center justify-between text-[11px] font-mono">
           <span className="text-carbon-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
-            HashKey HSP
+            <span className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-success" : "bg-warning")}></span>
+            Mode
           </span>
-          <span className="text-success font-semibold text-[10px]">CONNECTED</span>
+          <span className={cn("font-semibold text-[10px]", mode === "connected" ? "text-success" : "text-warning")}>
+            {mode === "connected" ? "CONNECTED" : "DEMO · SIMULATED"}
+          </span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono">
           <span className="text-carbon-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-            Payment Signer
+            <span className="w-1.5 h-1.5 rounded-full bg-carbon-muted"></span>
+            HashKey HSP
           </span>
-          <span className="text-carbon-text text-[10px]">READY</span>
+          <span className="text-carbon-muted text-[10px]">{mode === "connected" ? "NOT CONNECTED" : "SIMULATED"}</span>
         </div>
         <div className="border-t border-carbon-border/70 pt-2 flex items-center justify-between text-[10px] font-mono text-carbon-muted">
           <span>NETWORK</span>
           <span className="text-carbon-text font-mono">
-            {chainId === 133 ? "TESTNET 133" : chainId === 177 ? "MAINNET 177" : `CHAIN ${chainId}`}
+            {findNetwork(chainId)?.shortName ?? `Unsupported chain ${chainId}`}
           </span>
         </div>
         <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-carbon-muted">
@@ -237,7 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, className }) =>
             href="/"
             className="hover:text-carbon-text flex items-center gap-1 transition-colors"
           >
-            <span>hashx.global</span>
+            <span>Home</span>
             <ArrowUpRight className="w-2.5 h-2.5" />
           </Link>
         </div>

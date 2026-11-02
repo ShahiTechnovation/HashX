@@ -1,3 +1,9 @@
+/**
+ * DEMO MODE ONLY — simulated, in-browser fixtures.
+ * Every address, hash, transaction, amount, and settlement state below is illustrative.
+ * None of these records exist on any blockchain, and the 0x19B8… token address is a
+ * placeholder, not a verified HashKey deployment. Connected mode never reads this file.
+ */
 import {
   Counterparty,
   Invoice,

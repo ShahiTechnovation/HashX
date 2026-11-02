@@ -62,7 +62,7 @@ export const CopyableValue: React.FC<CopyableValueProps> = ({
           href={explorerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="View on HashKey Chain Explorer"
+          aria-label="View on block explorer"
           onClick={(e) => e.stopPropagation()}
           className="shrink-0 p-0.5 rounded text-foreground-muted opacity-50 group-hover/copy:opacity-100 hover:text-foreground hover:bg-surface-3 transition focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
         >

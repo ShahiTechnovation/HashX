@@ -1,8 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getAddress } from "viem";
 import { Address, OperationMode } from "@/types/domain";
+import { findNetwork, isPublicNetwork, SEPOLIA_CHAIN_ID } from "@shared/networks";
+import { LiveApi } from "@/lib/live/api";
+import type { LiveSession } from "@/lib/live/types";
+import { getEthereum, signSiwe, switchWalletChain } from "@/lib/live/wallet";
 
 export type WalletType = "eoa" | "simulated" | null;
 
@@ -23,134 +27,161 @@ interface AppContextType {
   pendingApprovalsCount: number;
   refreshKey: number;
   triggerRefresh: () => void;
+  /** Connected mode: authenticated SIWE session for the connected wallet (null until signed in). */
+  session: LiveSession | null;
+  isSigningIn: boolean;
+  signIn: () => Promise<void>;
+  signOut: () => Promise<void>;
+  /** Connected mode API client; always sends the session bearer token. */
+  liveApi: LiveApi;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Deterministic simulated demo wallet for isolated demo mode
+// Clearly labelled simulated wallet used only in demo mode.
 const DEMO_SIMULATED_WALLET: Address = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+const SESSION_KEY = "hashx:session";
+const INITIAL_MODE: OperationMode = process.env.NEXT_PUBLIC_OPERATION_MODE === "connected" ? "connected" : "demo";
+
+function loadSession(): LiveSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as LiveSession;
+    return new Date(s.expiresAt).getTime() > Date.now() ? s : null;
+  } catch {
+    return null;
+  }
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setModeState] = useState<OperationMode>("demo");
-  const [chainId, setChainId] = useState<number>(133); // HashKey Chain Testnet default
-  const [walletAddress, setWalletAddress] = useState<Address | null>(DEMO_SIMULATED_WALLET);
-  const [walletType, setWalletType] = useState<WalletType>("simulated");
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [mode, setModeState] = useState<OperationMode>(INITIAL_MODE);
+  const [chainId, setChainId] = useState<number>(INITIAL_MODE === "connected" ? SEPOLIA_CHAIN_ID : 133);
+  const [walletAddress, setWalletAddress] = useState<Address | null>(INITIAL_MODE === "demo" ? DEMO_SIMULATED_WALLET : null);
+  const [walletType, setWalletType] = useState<WalletType>(INITIAL_MODE === "demo" ? "simulated" : null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
-  const [isWrongNetwork, setIsWrongNetwork] = useState<boolean>(false);
-  const [pendingApprovalsCount] = useState<number>(1);
-  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [session, setSession] = useState<LiveSession | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
-  // When switching between Demo and Connected mode:
-  // In Connected Mode, NEVER present a fake wallet! Must start as null unless real EIP-1193 connected.
-  const setMode = useCallback((newMode: OperationMode) => {
-    setModeState(newMode);
-    setWalletError(null);
-    if (newMode === "connected") {
-      if (walletType === "simulated") {
-        setWalletAddress(null);
-        setWalletType(null);
-      }
-    } else if (newMode === "demo") {
-      if (!walletAddress) {
-        setWalletAddress(DEMO_SIMULATED_WALLET);
-        setWalletType("simulated");
-      }
-    }
-  }, [walletAddress, walletType]);
+  useEffect(() => setSession(loadSession()), []);
 
-  // EIP-1193 Chain Switching
-  const switchChain = useCallback(async (targetChainId: number) => {
-    if (typeof window === "undefined" || !(window as any).ethereum) {
-      setChainId(targetChainId);
-      setIsWrongNetwork(targetChainId !== 133 && targetChainId !== 177);
-      return;
-    }
-
-    const ethereum = (window as any).ethereum;
-    const hexChainId = `0x${targetChainId.toString(16)}`;
-
+  const persistSession = useCallback((s: LiveSession | null) => {
+    setSession(s);
     try {
-      await ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: hexChainId }],
-      });
-      setChainId(targetChainId);
-      setIsWrongNetwork(false);
-      setWalletError(null);
-    } catch (switchError: any) {
-      // 4902 error code indicates chain has not been added to wallet
-      if (switchError.code === 4902 && targetChainId === 133) {
-        try {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0x85",
-                chainName: "HashKey Chain Testnet",
-                nativeCurrency: { name: "HashKey EcoPoints", symbol: "HSK", decimals: 18 },
-                rpcUrls: ["https://testnet.hsk.xyz"],
-                blockExplorerUrls: ["https://testnet-explorer.hsk.xyz"],
-              },
-            ],
-          });
-          setChainId(133);
-          setIsWrongNetwork(false);
-          setWalletError(null);
-        } catch (addError: any) {
-          setWalletError(addError.message || "Failed to add HashKey Chain Testnet");
-        }
-      } else {
-        setWalletError(switchError.message || "Failed to switch Ethereum chain");
-      }
+      if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      else sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* storage unavailable */
     }
   }, []);
 
-  // EIP-1193 Wallet Connection
+  const liveApi = useMemo(
+    () =>
+      new LiveApi(
+        () => {
+          const s = loadSession();
+          return s?.token ?? null;
+        },
+        () => persistSession(null)
+      ),
+    [persistSession]
+  );
+
+  // A session is only valid for the wallet that created it.
+  useEffect(() => {
+    if (session && walletAddress && session.address.toLowerCase() !== walletAddress.toLowerCase()) persistSession(null);
+  }, [session, walletAddress, persistSession]);
+
+  // Pending human approvals count (connected mode: real backend data; demo: fixture count of 1).
+  useEffect(() => {
+    if (mode !== "connected") {
+      setPendingApprovalsCount(1);
+      return;
+    }
+    if (!session) {
+      setPendingApprovalsCount(0);
+      return;
+    }
+    let cancelled = false;
+    liveApi
+      .listPayments()
+      .then((ps) => {
+        if (cancelled) return;
+        setPendingApprovalsCount(
+          ps.filter(
+            (p) => p.payer.toLowerCase() === session.address.toLowerCase() && ["AWAITING_SIGNATURE_APPROVAL", "AWAITING_SUBMISSION_APPROVAL", "AUTHORIZED"].includes(p.state)
+          ).length
+        );
+      })
+      .catch(() => !cancelled && setPendingApprovalsCount(0));
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, session, liveApi, refreshKey]);
+
+  const isWrongNetwork = mode === "connected" ? !isPublicNetwork(chainId) : !findNetwork(chainId);
+
+  const setMode = useCallback(
+    (newMode: OperationMode) => {
+      setModeState(newMode);
+      setWalletError(null);
+      if (newMode === "connected") {
+        if (walletType === "simulated") {
+          setWalletAddress(null);
+          setWalletType(null);
+        }
+      } else if (!walletAddress) {
+        setWalletAddress(DEMO_SIMULATED_WALLET);
+        setWalletType("simulated");
+      }
+    },
+    [walletAddress, walletType]
+  );
+
+  const switchChain = useCallback(async (target: number) => {
+    if (!findNetwork(target)) {
+      setWalletError(`Unsupported chain ${target}`);
+      return;
+    }
+    if (!getEthereum()) {
+      setChainId(target);
+      return;
+    }
+    try {
+      await switchWalletChain(target);
+      setChainId(target);
+      setWalletError(null);
+    } catch (err: any) {
+      setWalletError(err?.message || "Failed to switch network");
+    }
+  }, []);
+
   const connectWallet = useCallback(async () => {
     setWalletError(null);
     setIsConnecting(true);
-
-    if (mode === "demo") {
-      // In Demo Mode, if no browser wallet, provide clearly labelled simulated wallet
-      if (typeof window === "undefined" || !(window as any).ethereum) {
+    const ethereum = getEthereum();
+    if (!ethereum) {
+      if (mode === "demo") {
         setWalletAddress(DEMO_SIMULATED_WALLET);
         setWalletType("simulated");
-        setIsConnecting(false);
-        return;
+      } else {
+        setWalletError("No EIP-1193 wallet detected. Install MetaMask or another browser wallet.");
       }
-    }
-
-    // In Connected Mode (or Demo Mode with browser wallet):
-    if (typeof window === "undefined" || !(window as any).ethereum) {
-      setWalletError("MetaMask or EIP-1193 compatible wallet not detected. Please install a browser wallet.");
       setIsConnecting(false);
       return;
     }
-
-    const ethereum = (window as any).ethereum;
-
     try {
-      const accounts = (await ethereum.request({
-        method: "eth_requestAccounts",
-      })) as string[];
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts authorized by user");
-      }
-
-      const activeAddress = getAddress(accounts[0]);
-      setWalletAddress(activeAddress);
+      const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
+      if (!accounts?.length) throw new Error("No accounts authorized by user");
+      setWalletAddress(getAddress(accounts[0]));
       setWalletType("eoa");
-
-      // Verify chain
-      const hexChain = (await ethereum.request({ method: "eth_chainId" })) as string;
-      const parsedChain = parseInt(hexChain, 16);
-      setChainId(parsedChain);
-      setIsWrongNetwork(parsedChain !== 133 && parsedChain !== 177);
+      setChainId(parseInt((await ethereum.request({ method: "eth_chainId" })) as string, 16));
     } catch (err: any) {
-      console.warn("[AppContext] Wallet connection failed:", err);
-      setWalletError(err.message || "Wallet connection rejected");
+      setWalletError(err?.message || "Wallet connection rejected");
       if (mode === "connected") {
         setWalletAddress(null);
         setWalletType(null);
@@ -160,54 +191,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [mode]);
 
+  const signIn = useCallback(async () => {
+    if (!walletAddress || walletType !== "eoa") {
+      setWalletError("Connect a browser wallet before signing in.");
+      return;
+    }
+    setIsSigningIn(true);
+    setWalletError(null);
+    try {
+      const { nonce } = await liveApi.nonce();
+      const signInChain = isPublicNetwork(chainId) ? chainId : SEPOLIA_CHAIN_ID;
+      const { message, signature } = await signSiwe(walletAddress, nonce, signInChain);
+      const res = await liveApi.verifySiwe(message, signature);
+      persistSession({ token: res.token, address: res.address, expiresAt: res.expiresAt, counterpartyId: res.counterpartyId, displayName: res.displayName });
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      setWalletError(err?.message || "Sign-in failed");
+    } finally {
+      setIsSigningIn(false);
+    }
+  }, [walletAddress, walletType, chainId, liveApi, persistSession]);
+
+  const signOut = useCallback(async () => {
+    try {
+      if (session) await liveApi.logout();
+    } catch {
+      /* session may already be expired */
+    }
+    persistSession(null);
+    setRefreshKey((k) => k + 1);
+  }, [session, liveApi, persistSession]);
+
   const disconnectWallet = useCallback(() => {
     setWalletAddress(null);
     setWalletType(null);
     setWalletError(null);
-  }, []);
+    persistSession(null);
+  }, [persistSession]);
 
-  const triggerRefresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
+  const triggerRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
-  // Listen to EIP-1193 account & chain change events
   useEffect(() => {
-    if (typeof window === "undefined" || !(window as any).ethereum) return;
-    const ethereum = (window as any).ethereum;
-
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (!accounts || accounts.length === 0) {
+    const ethereum = getEthereum();
+    if (!ethereum?.on) return;
+    const onAccounts = (accounts: string[]) => {
+      if (!accounts?.length) {
         if (mode === "connected") {
           setWalletAddress(null);
           setWalletType(null);
+          persistSession(null);
         }
-      } else {
-        try {
-          const formatted = getAddress(accounts[0]);
-          setWalletAddress(formatted);
-          setWalletType("eoa");
-          setWalletError(null);
-        } catch {
-          setWalletAddress(accounts[0] as Address);
-          setWalletType("eoa");
-        }
+        return;
+      }
+      try {
+        setWalletAddress(getAddress(accounts[0]));
+        setWalletType("eoa");
+        setWalletError(null);
+      } catch {
+        setWalletError("Wallet returned an invalid address");
       }
     };
-
-    const handleChainChanged = (hexChain: string) => {
-      const parsedChain = parseInt(hexChain, 16);
-      setChainId(parsedChain);
-      setIsWrongNetwork(parsedChain !== 133 && parsedChain !== 177);
-    };
-
-    ethereum.on?.("accountsChanged", handleAccountsChanged);
-    ethereum.on?.("chainChanged", handleChainChanged);
-
+    const onChain = (hex: string) => setChainId(parseInt(hex, 16));
+    ethereum.on("accountsChanged", onAccounts);
+    ethereum.on("chainChanged", onChain);
     return () => {
-      ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
-      ethereum.removeListener?.("chainChanged", handleChainChanged);
+      ethereum.removeListener?.("accountsChanged", onAccounts);
+      ethereum.removeListener?.("chainChanged", onChain);
     };
-  }, [mode]);
+  }, [mode, persistSession]);
 
   return (
     <AppContext.Provider
@@ -228,6 +279,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pendingApprovalsCount,
         refreshKey,
         triggerRefresh,
+        session,
+        isSigningIn,
+        signIn,
+        signOut,
+        liveApi,
       }}
     >
       {children}
@@ -237,8 +293,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export function useApp() {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useApp must be used within an AppProvider");
-  }
+  if (!context) throw new Error("useApp must be used within an AppProvider");
   return context;
 }

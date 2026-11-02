@@ -16,6 +16,7 @@ import {
   Activity,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveSettlements } from "@/components/live/payments/LiveSettlements";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt } from "@/types/domain";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -25,7 +26,13 @@ import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp } from "@/lib/formatters";
 import { SettlementGroup, getSettlementGroup } from "@/components/settlements/settlement-utils";
 
-export default function SettlementExplorerIndexPage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function SettlementsPage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveSettlements /> : <DemoSettlementExplorerIndexPage />;
+}
+
+function DemoSettlementExplorerIndexPage() {
   const router = useRouter();
   const { mode, refreshKey, triggerRefresh } = useApp();
   const [paymentAttempts, setPaymentAttempts] = useState<PaymentAttempt[]>([]);

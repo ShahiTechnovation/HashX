@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend — typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_OPERATION_MODE: demo
+
+  contracts:
+    name: Contracts — compile & Hardhat tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: contracts/pnpm-lock.yaml
+      - run: pnpm --prefix contracts install --frozen-lockfile
+      - run: pnpm --prefix contracts test
+
+  backend:
+    name: Backend — typecheck, migrations, unit + integration (PostgreSQL + local EVM)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hashx
+          POSTGRES_PASSWORD: hashx_ci_only
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hashx" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://hashx:hashx_ci_only@127.0.0.1:5432/hashx_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            server/pnpm-lock.yaml
+            contracts/pnpm-lock.yaml
+      - run: pnpm --prefix server install --frozen-lockfile
+      - run: pnpm --prefix contracts install --frozen-lockfile
+      - run: pnpm --prefix server typecheck
+      - run: pnpm --prefix server build
+      # Starts a local Hardhat EVM, resets hashx_test, applies migrations, runs all suites.
+      # The read-only Sepolia RPC test is skipped unless SEPOLIA_RPC_URL_TEST is provided.
+      - run: pnpm --prefix server test
+        env:
+          SEPOLIA_RPC_URL_TEST: ${{ secrets.SEPOLIA_RPC_URL_TEST }}

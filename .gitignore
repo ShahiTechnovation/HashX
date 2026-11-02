@@ -127,3 +127,7 @@ desktop.ini
 # Vercel
 .vercel
 .vercel
+
+# Local-only deployment records (public-network records under deployments/ are committed)
+deployments/localhost.json
+deployments/hardhat.json

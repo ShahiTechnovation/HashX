@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { createWalletClient, custom, keccak256, toBytes } from "viem";
 import { useApp } from "@/providers/AppContext";
+import { LiveApprovalDetail } from "@/components/live/payments/LiveApprovalDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt } from "@/types/domain";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +41,15 @@ import {
 } from "@/components/approvals/approval-primitives";
 import { humanMatchesRaw, rawToExactDecimal, splitHumanAmount } from "@/components/approvals/amount-utils";
 
-export default function ApprovalDetailPage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function ApprovalDetailRoute() {
+  const params = useParams();
+  const id = params?.id as string;
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveApprovalDetail id={id} /> : <DemoApprovalDetailPage />;
+}
+
+function DemoApprovalDetailPage() {
   const params = useParams();
   const attemptId = params?.id as string;
   const router = useRouter();

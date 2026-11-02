@@ -1,12 +1,15 @@
 /**
  * MCP tool catalog shown on the Developers page.
  *
- * HashX tools are the commercial contracts agents call. HSP tools are the
- * settlement rail HashX calls server-side over MCP Streamable HTTP; agents
- * never call them directly.
+ * Source of truth: server/src/mcp/server.ts (MCP_TOOL_NAMES) and the service functions it
+ * calls (server/src/services/commerce.ts, payments.ts). Exactly nine tools are exposed at
+ * POST /mcp (MCP Streamable HTTP, stateless, JSON responses). There is intentionally no
+ * approval, authorization, or transaction-reporting tool.
+ *
+ * Example arguments below are illustrative placeholders, not real records.
  */
 
-export type ToolGroup = "hashx" | "hsp";
+export type ToolGroup = "invoice" | "delivery" | "payment";
 
 export interface ToolParam {
   name: string;
@@ -19,407 +22,240 @@ export interface MCPToolDef {
   name: string;
   group: ToolGroup;
   mutates: boolean;
-  authorization: string;
-  /** Idempotency key, or null when the call is naturally idempotent (read-only). */
-  idempotencyKey: string | null;
+  /** Agent-credential scope the backend requires for this tool. */
+  scope: string;
+  /** Which participant may call it successfully. */
+  caller: string;
   description: string;
-  /** REST binding on the HashX backend, if any. */
-  httpBinding?: string;
+  /** Equivalent HTTP route on the HashX backend (same service function). */
+  httpBinding: string;
   params: ToolParam[];
-  requestSchema: object;
-  responseSchema: object;
+  /** Illustrative arguments (placeholders). */
+  exampleArguments: Record<string, unknown>;
+  /** Shape of the JSON text content the tool returns (field list, not real data). */
+  resultShape: Record<string, unknown>;
 }
+
+export const MCP_ENDPOINT_PATH = "/mcp";
+
+export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
+  invoice: "Invoices",
+  delivery: "Delivery evidence",
+  payment: "Payment requests & receipts",
+};
+
+const INVOICE_ID: ToolParam = { name: "invoice_id", type: "string", required: true, description: "HashX invoice identifier (inv_…)" };
+const SIG: ToolParam = { name: "signature", type: "0x-hex (65 bytes)", required: true, description: "EIP-712 signature produced by the seller wallet" };
+
+const PLACEHOLDER_ID = "inv_<id returned by create_invoice>";
+const PLACEHOLDER_SIG = "0x<130 hex chars from the seller wallet>";
 
 export const HASHX_TOOLS: MCPToolDef[] = [
   {
     name: "create_invoice",
-    group: "hashx",
+    group: "invoice",
     mutates: true,
-    authorization: "Seller / Integrator",
-    idempotencyKey: "client_request_id",
+    scope: "invoices:write",
+    caller: "Seller (the agent owner's wallet becomes the seller)",
+    description:
+      "Create a protocol-v2 invoice where the calling agent's owner wallet is the seller. Idempotent on client_request_id. Returns EIP-712 typed data the seller wallet must sign (HashX never signs).",
     httpBinding: "POST /invoices",
-    description: "Creates an unsigned structured commercial invoice bound to a service definition.",
     params: [
-      { name: "client_request_id", type: "uuid", required: false, description: "Idempotency key. Replays return the original invoice." },
-      { name: "seller_counterparty_id", type: "uuid", required: true, description: "Registered seller counterparty the invoice is bound to." },
-      { name: "buyer_ref", type: "string", required: true, description: "Buyer job reference. Hashed into the signed payload." },
-      { name: "service.type", type: "enum", required: true, description: "Service definition. Currently hsk_address_analytics_v1." },
-      { name: "service.parameters.address", type: "address", required: true, description: "HashKey Chain address the analytics cover." },
-      { name: "service.parameters.start_block", type: "uint64 string", required: true, description: "First block of the requested range (inclusive)." },
-      { name: "service.parameters.end_block", type: "uint64 string", required: true, description: "Last block of the requested range (inclusive)." },
-      { name: "service.acceptance_policy", type: "enum", required: true, description: "Objective acceptance policy. Currently analytics_v1." },
-      { name: "payment.currency", type: "enum", required: true, description: "Invoice currency. USD." },
-      { name: "payment.amount_minor", type: "integer string", required: true, description: "Price in minor units (cents). Never a float." },
-      { name: "payment.payee", type: "address", required: true, description: "Wallet that receives settlement." },
-      { name: "payment.preferred_chain_id", type: "integer", required: true, description: "Settlement chain. 133 testnet, 177 mainnet." },
-      { name: "expires_at", type: "RFC 3339", required: true, description: "Invoice expiry. Verification fails after this instant." },
+      { name: "client_request_id", type: "string (8–128, [A-Za-z0-9._:-])", required: true, description: "Idempotency key; same key + same body replays, different body → 409 IDEMPOTENCY_KEY_REUSED" },
+      { name: "buyer_wallet", type: "address", required: true, description: "Buyer wallet; must differ from the seller" },
+      { name: "buyer_ref", type: "string (1–255)", required: true, description: "Free-text reference, hashed into the signed terms" },
+      { name: "service", type: "object", required: true, description: "type evm_address_analytics_v1, delivery_chain_id, parameters { address, start_block, end_block }, acceptance_policy exact_recompute_v1" },
+      { name: "payment", type: "object", required: true, description: "rail (sepolia-usdc | hashkey-hsp), settlement_chain_id, amount_raw (integer string), payee, optional token_address" },
+      { name: "expires_in_seconds", type: "integer (300–2592000)", required: false, description: "Invoice validity window" },
     ],
-    requestSchema: {
-      client_request_id: "uuid",
-      seller_counterparty_id: "uuid",
-      buyer_ref: "string",
+    exampleArguments: {
+      client_request_id: "agent-example-0001",
+      buyer_wallet: "0x<buyer wallet>",
+      buyer_ref: "Address analytics for blocks 7000000–7000020",
       service: {
-        type: "hsk_address_analytics_v1",
-        parameters: {
-          address: "0x...",
-          start_block: "uint64-string",
-          end_block: "uint64-string",
-        },
-        acceptance_policy: "analytics_v1",
+        type: "evm_address_analytics_v1",
+        delivery_chain_id: 11155111,
+        parameters: { address: "0x<subject address>", start_block: "7000000", end_block: "7000020" },
+        acceptance_policy: "exact_recompute_v1",
       },
-      payment: {
-        currency: "USD",
-        amount_minor: "100",
-        payee: "0x...",
-        preferred_chain_id: 133,
-      },
-      expires_at: "RFC3339",
+      payment: { rail: "sepolia-usdc", settlement_chain_id: 11155111, amount_raw: "2500000", payee: "0x<seller wallet>" },
+      expires_in_seconds: 86400,
     },
-    responseSchema: {
-      invoice_id: "uuid",
-      invoice_version: 1,
-      status: "DRAFT",
-      typed_data: {},
-      invoice_digest: "0x...",
-      created_at: "RFC3339",
-    },
+    resultShape: { invoice: "LiveInvoice (status DRAFT)", typedData: "EIP-712 typed data for the seller wallet to sign", idempotentReplay: "boolean" },
   },
   {
     name: "sign_invoice",
-    group: "hashx",
+    group: "invoice",
     mutates: true,
-    authorization: "Seller wallet (EOA)",
-    idempotencyKey: "invoice_id + version",
+    scope: "invoices:write",
+    caller: "Seller",
+    description: "Attach the seller wallet's EIP-712 signature to a DRAFT invoice. The signature must recover to the seller wallet over the stored terms.",
     httpBinding: "POST /invoices/:id/sign",
-    description: "Attaches a validated EIP-712 signature from the seller wallet to the invoice.",
-    params: [
-      { name: "invoice_id", type: "uuid", required: true, description: "Invoice to sign." },
-      { name: "signature", type: "bytes (65)", required: false, description: "EIP-712 signature over the invoice digest." },
-      { name: "signer", type: "address", required: false, description: "Expected signer. Must recover from the signature." },
-    ],
-    requestSchema: {
-      invoice_id: "uuid",
-      signature: "0x65-byte-signature",
-      signer: "0x...",
-    },
-    responseSchema: {
-      invoice_id: "uuid",
-      status: "SIGNED",
-      signature_valid: true,
-      signer: "0x...",
-      signed_digest: "0x...",
-    },
+    params: [INVOICE_ID, SIG],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID, signature: PLACEHOLDER_SIG },
+    resultShape: { id: "string", status: "SIGNED", signer: "address", digest: "0x…" },
   },
   {
     name: "verify_invoice",
-    group: "hashx",
-    mutates: false,
-    authorization: "Buyer / Integrator",
-    idempotencyKey: null,
+    group: "invoice",
+    mutates: true,
+    scope: "verification:run",
+    caller: "Seller or buyer",
+    description: "Run fail-closed invoice verification: signature, identity binding, expiry, replay, and settlement terms. Persists a verification run.",
     httpBinding: "POST /invoices/:id/verify",
-    description: "Validates schema, EIP-712 signature, seller identity binding, expiry, and replay nonce.",
+    params: [INVOICE_ID],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID },
+    resultShape: { decision: "PASS | FAIL | PENDING", payable: "boolean", checks: "Record<check, status>", reasonCodes: "string[]", inputDigest: "0x…" },
+  },
+  {
+    name: "prepare_delivery",
+    group: "delivery",
+    mutates: false,
+    scope: "deliveries:write",
+    caller: "Seller",
+    description: "Compute the canonical artifact SHA-256 and the EIP-712 delivery manifest the seller wallet must sign. Does not store anything.",
+    httpBinding: "POST /invoices/:id/delivery/prepare",
     params: [
-      { name: "invoice_id", type: "uuid", required: true, description: "Invoice to verify." },
-      { name: "expected_seller_id", type: "uuid", required: false, description: "Fails identity_binding if the bound seller differs." },
-      { name: "expected_buyer_ref", type: "string", required: false, description: "Fails terms_consistent if the buyer reference differs." },
+      INVOICE_ID,
+      { name: "artifact_uri", type: "string (1–512)", required: true, description: "Where the artifact is published" },
+      { name: "artifact_content", type: "object", required: true, description: "The delivered analytics result (canonicalized and hashed)" },
     ],
-    requestSchema: {
-      invoice_id: "uuid",
-      expected_seller_id: "uuid",
-      expected_buyer_ref: "string",
-    },
-    responseSchema: {
-      decision: "PASS",
-      checks: {
-        schema: "PASS",
-        signature: "PASS",
-        identity_binding: "PASS",
-        expiry: "PASS",
-        nonce_unused: "PASS",
-        terms_consistent: "PASS",
-      },
-      invoice_digest: "0x...",
-      reason_codes: [],
-    },
+    exampleArguments: { invoice_id: PLACEHOLDER_ID, artifact_uri: "https://example.com/artifact.json", artifact_content: { "…": "result computed for the invoice's block range" } },
+    resultShape: { manifest: "object", artifactSha256: "0x…", canonicalArtifact: "string", typedData: "EIP-712 manifest typed data" },
   },
   {
     name: "submit_delivery",
-    group: "hashx",
+    group: "delivery",
     mutates: true,
-    authorization: "Seller agent",
-    idempotencyKey: "invoice_id + delivery_version",
+    scope: "deliveries:write",
+    caller: "Seller",
+    description:
+      "Submit a delivery artifact with its seller-signed manifest. Requires a VERIFIED (or DELIVERY_REJECTED) invoice; reused manifests are rejected (409 EVIDENCE_REUSED). Commitments are re-verified independently by verify_delivery.",
     httpBinding: "POST /invoices/:id/delivery",
-    description: "Submits a digital artifact reference and signed manifest binding delivery to the invoice.",
     params: [
-      { name: "invoice_id", type: "uuid", required: true, description: "Invoice being fulfilled." },
-      { name: "artifact_uri", type: "uri", required: true, description: "Location of the delivered artifact." },
-      { name: "artifact_sha256", type: "hex", required: true, description: "SHA-256 of the artifact bytes." },
-      { name: "manifest", type: "object", required: true, description: "hashx.delivery.analytics.v1 manifest binding seller, parameters, and artifact hash." },
-      { name: "manifest_signature", type: "bytes", required: true, description: "Seller signature over the manifest." },
-      { name: "artifact_content", type: "object", required: true, description: "hashx.analytics.v1 payload, recomputed during verification." },
+      INVOICE_ID,
+      { name: "artifact_uri", type: "string (1–512)", required: true, description: "Same URI used in prepare_delivery" },
+      { name: "artifact_content", type: "object", required: true, description: "Same content used in prepare_delivery" },
+      { name: "manifest", type: "object", required: true, description: "Manifest returned by prepare_delivery" },
+      { name: "manifest_signature", type: "0x-hex (65 bytes)", required: true, description: "Seller wallet EIP-712 signature over the manifest" },
     ],
-    requestSchema: {
-      invoice_id: "uuid",
-      artifact_uri: "s3://...",
-      artifact_sha256: "hex",
-      manifest: {
-        schema: "hashx.delivery.analytics.v1",
-        seller: "0x...",
-        generated_at: "RFC3339",
-        service_parameters_hash: "0x...",
-        artifact_sha256: "hex",
-      },
-      manifest_signature: "0x...",
-    },
-    responseSchema: {
-      delivery_id: "uuid",
-      status: "PENDING_VERIFICATION",
-      submitted_at: "RFC3339",
-    },
+    exampleArguments: { invoice_id: PLACEHOLDER_ID, artifact_uri: "https://example.com/artifact.json", artifact_content: { "…": "…" }, manifest: { "…": "from prepare_delivery" }, manifest_signature: PLACEHOLDER_SIG },
+    resultShape: { id: "string", version: "number", status: "PENDING_VERIFICATION", artifactSha256: "0x…" },
   },
   {
     name: "verify_delivery",
-    group: "hashx",
-    mutates: false,
-    authorization: "Buyer / System verifier",
-    idempotencyKey: null,
+    group: "delivery",
+    mutates: true,
+    scope: "verification:run",
+    caller: "Seller or buyer",
+    description: "Independently recompute delivery facts from the backend's configured RPC. RPC failures produce PENDING, never PASS.",
     httpBinding: "POST /invoices/:id/delivery/verify",
-    description: "Recomputes deterministic analytics facts against HashKey Chain RPC.",
-    params: [
-      { name: "invoice_id", type: "uuid", required: true, description: "Invoice whose delivery is verified." },
-      { name: "delivery_id", type: "uuid", required: false, description: "Specific delivery. Defaults to the latest." },
-    ],
-    requestSchema: {
-      invoice_id: "uuid",
-      delivery_id: "uuid",
-    },
-    responseSchema: {
-      decision: "PASS",
-      verifier: "analytics_v1.0.0",
-      checks: {
-        manifest_signature: "PASS",
-        artifact_hash: "PASS",
-        schema: "PASS",
-        requested_address: "PASS",
-        block_range: "PASS",
-        transaction_count: "PASS",
-        sample_transaction_proofs: "PASS",
-        freshness: "PASS",
-      },
-      evidence_digest: "0x...",
-      reason_codes: [],
-    },
+    params: [INVOICE_ID],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID },
+    resultShape: { decision: "PASS | FAIL | PENDING", checks: "Record<check, status>", evidenceDigest: "0x…", observedBlock: "string", chainId: "number" },
   },
   {
     name: "request_payment",
-    group: "hashx",
+    group: "payment",
     mutates: true,
-    authorization: "Buyer agent",
-    idempotencyKey: "invoice_id",
-    httpBinding: "POST /invoices/:id/pay",
-    description: "Enforces payment eligibility and prepares the HSP payment order idempotently.",
-    params: [
-      { name: "invoice_id", type: "uuid", required: true, description: "Verified, fulfilled invoice to pay. An active attempt is returned, not duplicated." },
-      { name: "payer", type: "address", required: true, description: "Wallet that will sign the payment permit." },
-      { name: "merchant_name", type: "string", required: false, description: "Merchant name for HSP attribution." },
-    ],
-    requestSchema: {
-      invoice_id: "uuid",
-      payer: "0x...",
-      merchant_name: "HashX",
-    },
-    responseSchema: {
-      payment_attempt_id: "uuid",
-      state: "AWAITING_SIGNATURE_APPROVAL",
-      flow_id: "...",
-      payment_request_id: "...",
-      pay_to: "0x...",
-      payer: "0x...",
-      token_total_raw: "...",
-      quote_expires_at: "RFC3339",
-      eip712: {},
-      approval_summary: {},
-    },
+    scope: "payments:request",
+    caller: "Buyer",
+    description:
+      "Create the immutable payment obligation for a fully verified invoice. Does NOT approve or pay: a human must complete Stage 1 and Stage 2 with their own wallet in the HashX app. At most one live attempt per invoice.",
+    httpBinding: "POST /invoices/:id/payments",
+    params: [INVOICE_ID, { name: "idempotency_key", type: "string (8–128)", required: false, description: "Optional idempotency key" }],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID },
+    resultShape: { attempt: "LivePayment (state AWAITING_SIGNATURE_APPROVAL)", idempotentReplay: "boolean", humanApprovalRequired: true },
   },
   {
     name: "get_payment_status",
-    group: "hashx",
+    group: "payment",
     mutates: false,
-    authorization: "Buyer / Seller",
-    idempotencyKey: null,
+    scope: "payments:read",
+    caller: "Seller or buyer",
+    description: "Latest payment attempt for an invoice, including on-chain reconciliation state (SUBMITTED → INCLUDED → CONFIRMED → FINALIZED, or a failure state).",
     httpBinding: "GET /invoices/:id/payment-status",
-    description: "Polls the HSP reconciler for authoritative payment progression and the HashKey Chain tx hash.",
-    params: [{ name: "invoice_id", type: "uuid", required: true, description: "Invoice whose payment to query. Poll ~15s while processing." }],
-    requestSchema: {
-      invoice_id: "uuid",
-    },
-    responseSchema: {
-      payment_attempt_id: "uuid",
-      hsp_status: "payment-processing",
-      flow_id: "...",
-      payment_request_id: "...",
-      attribution_verified: true,
-      tx_hash: null,
-      last_queried_at: "RFC3339",
-    },
+    params: [INVOICE_ID],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID },
+    resultShape: { id: "string", state: "LivePaymentState", txHash: "0x… | undefined", confirmations: "number", failureCode: "string | null" },
   },
   {
     name: "get_receipt",
-    group: "hashx",
+    group: "payment",
     mutates: false,
-    authorization: "Authorized participant",
-    idempotencyKey: null,
+    scope: "payments:read",
+    caller: "Seller or buyer",
+    description: "Verifiable hashx.receipt.v2 document, issued only after the settlement transfer is independently verified on-chain (CONFIRMED). Returns an error before then.",
     httpBinding: "GET /invoices/:id/receipt",
-    description: "Retrieves the verifiable proof linking commercial intent, fulfillment, and HSP settlement.",
-    params: [{ name: "invoice_id", type: "uuid", required: true, description: "Settled invoice. Available only after payment-finalized." }],
-    requestSchema: {
-      invoice_id: "uuid",
-    },
-    responseSchema: {
-      receipt_version: "1",
-      invoice_digest: "0x...",
-      seller: "0x...",
-      buyer_ref: "...",
-      delivery_evidence_digest: "0x...",
-      payment: {
-        hspStatus: "payment-finalized",
-        flow_id: "...",
-        payment_request_id: "...",
-        tx_hash: "0x...",
-        payer: "0x...",
-        payee: "0x...",
-        token_total_raw: "...",
-      },
-      evidence_registry_tx: "0x...",
-    },
+    params: [INVOICE_ID],
+    exampleArguments: { invoice_id: PLACEHOLDER_ID },
+    resultShape: { id: "string", receiptDigest: "0x…", txHash: "0x…", chainId: 11155111, document: "hashx.receipt.v2 JSON" },
   },
 ];
 
-const HSP_AUTH = "HashX backend (merchant key, allowlisted IP)";
-const flowParams: ToolParam[] = [
-  { name: "flow_id", type: "string", required: true, description: "HSP flow identifier returned by create_order." },
-  { name: "payment_request_id", type: "string", required: true, description: "HSP payment request identifier." },
-];
+/** HTTP endpoints verified against docs/api-contracts.md and server/src/app.ts. */
+export interface HttpEndpoint {
+  method: string;
+  path: string;
+  auth: string;
+  notes: string;
+}
 
-/** Argument shapes mirror the HashX backend's HSP adapter (server/src/services/hsp.ts). */
-export const HSP_TOOLS: MCPToolDef[] = [
+export const HTTP_ENDPOINT_GROUPS: Array<{ title: string; endpoints: HttpEndpoint[] }> = [
   {
-    name: "get_chain_config",
-    group: "hsp",
-    mutates: false,
-    authorization: HSP_AUTH,
-    idempotencyKey: null,
-    description: "Returns settlement token, decimals, and permit protocol for a chain.",
-    params: [{ name: "chain_id", type: "integer", required: true, description: "HashKey Chain ID (133 testnet, 177 mainnet)." }],
-    requestSchema: { chain_id: 133 },
-    responseSchema: { chain_name: "HashKey Chain Testnet", token_address: "0x...", token_symbol: "USDT", token_decimals: 6, protocol: "permit2" },
-  },
-  {
-    name: "create_order",
-    group: "hsp",
-    mutates: true,
-    authorization: HSP_AUTH,
-    idempotencyKey: "invoice_id (guarded by request_payment)",
-    description: "Opens an HSP payment order for a verified invoice.",
-    params: [
-      { name: "merchant_name", type: "string", required: true, description: "Attributed merchant." },
-      { name: "pay_to", type: "address", required: true, description: "Payee wallet." },
-      { name: "payer", type: "address", required: true, description: "Payer wallet." },
-      { name: "currency", type: "enum", required: true, description: "Order currency. USD." },
-      { name: "amount_minor", type: "integer string", required: true, description: "Amount in minor units." },
-      { name: "preferred_chain_id", type: "integer", required: true, description: "Settlement chain." },
-      { name: "reference_id", type: "string", required: true, description: "HashX invoice ID. Binds the order to the invoice." },
+    title: "Authentication & identity",
+    endpoints: [
+      { method: "GET", path: "/auth/nonce", auth: "none (rate-limited)", notes: "Single-use SIWE nonce, 5 min TTL" },
+      { method: "POST", path: "/auth/verify", auth: "none (rate-limited)", notes: "{ message, signature } (EIP-4361) → { token, expiresAt, address, counterpartyId, displayName }" },
+      { method: "GET", path: "/auth/session", auth: "any", notes: "Current identity" },
+      { method: "POST", path: "/auth/logout", auth: "wallet session", notes: "Revokes the session" },
+      { method: "POST", path: "/counterparties/me", auth: "wallet session", notes: "{ display_name }" },
+      { method: "POST / GET", path: "/agent-credentials", auth: "wallet session", notes: "Mint (secret returned once; only SHA-256 stored) / list" },
+      { method: "DELETE", path: "/agent-credentials/:id", auth: "wallet session", notes: "Revoke" },
     ],
-    requestSchema: {
-      merchant_name: "HashX",
-      pay_to: "0x...",
-      payer: "0x...",
-      currency: "USD",
-      amount_minor: "100",
-      preferred_chain_id: 133,
-      reference_id: "inv-...",
-    },
-    responseSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-...", payment_url: "https://...", status: "created" },
   },
   {
-    name: "get_order",
-    group: "hsp",
-    mutates: false,
-    authorization: HSP_AUTH,
-    idempotencyKey: null,
-    description: "Reads the current state of an HSP order.",
-    params: flowParams,
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-..." },
-    responseSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-...", status: "ready" },
-  },
-  {
-    name: "estimate_fee",
-    group: "hsp",
-    mutates: false,
-    authorization: HSP_AUTH,
-    idempotencyKey: null,
-    description: "Estimates the network fee shown on the approval summary.",
-    params: flowParams,
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-..." },
-    responseSchema: { estimated_fee_usd: "$0.00 USD" },
-  },
-  {
-    name: "prepare_payment",
-    group: "hsp",
-    mutates: true,
-    authorization: HSP_AUTH,
-    idempotencyKey: "flow_id + payment_request_id",
-    description: "Returns the exact EIP-712 permit payload and a short-lived quote for human approval.",
-    params: [...flowParams, { name: "payer", type: "address", required: true, description: "Wallet that will sign the permit." }],
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-...", payer: "0x..." },
-    responseSchema: {
-      eip712: {},
-      cart_hash: "0x...",
-      token_total_raw: "1000000",
-      quote_expires_at: "RFC3339",
-      token_address: "0x...",
-      token_symbol: "USDT",
-      token_decimals: 6,
-      payment_objects: {},
-    },
-  },
-  {
-    name: "finalize_payment",
-    group: "hsp",
-    mutates: true,
-    authorization: HSP_AUTH,
-    idempotencyKey: "flow_id + payment_request_id",
-    description: "Attaches the payer's signed permit after pre-signing approval.",
-    params: [
-      ...flowParams,
-      { name: "signature", type: "bytes", required: true, description: "Payer signature over the prepared permit." },
-      { name: "payment_objects", type: "object", required: false, description: "Opaque objects returned by prepare_payment." },
+    title: "Invoices",
+    endpoints: [
+      { method: "GET", path: "/invoices", auth: "invoices:read", notes: "Invoices where caller is seller or buyer" },
+      { method: "POST", path: "/invoices", auth: "seller · invoices:write", notes: "201 invoice + typedData; idempotent on client_request_id" },
+      { method: "GET", path: "/invoices/:id", auth: "participant", notes: "Non-participants get 404" },
+      { method: "GET", path: "/invoices/:id/typed-data", auth: "participant", notes: "{ digest, typedData }" },
+      { method: "POST", path: "/invoices/:id/sign", auth: "seller", notes: "{ signature } → DRAFT → SIGNED" },
+      { method: "POST", path: "/invoices/:id/verify", auth: "participant · verification:run", notes: "Verification run (PASS / FAIL / PENDING)" },
+      { method: "GET", path: "/invoices/:id/verification", auth: "participant", notes: "Authoritative eligibility summary" },
     ],
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-...", signature: "0x...", payment_objects: {} },
-    responseSchema: { status: "finalized", flow_id: "hsp-flow-..." },
   },
   {
-    name: "submit_payment",
-    group: "hsp",
-    mutates: true,
-    authorization: HSP_AUTH,
-    idempotencyKey: "flow_id + payment_request_id",
-    description: "Broadcasts the signed payment after pre-submission approval.",
-    params: flowParams,
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-..." },
-    responseSchema: { status: "payment-submitted", tx_hash: "0x..." },
+    title: "Deliveries",
+    endpoints: [
+      { method: "POST", path: "/invoices/:id/delivery/prepare", auth: "seller", notes: "{ artifact_uri, artifact_content } → manifest + typedData" },
+      { method: "POST", path: "/invoices/:id/delivery", auth: "seller", notes: "Submit artifact + signed manifest" },
+      { method: "GET", path: "/invoices/:id/delivery · /deliveries", auth: "participant", notes: "Latest / all visible" },
+      { method: "POST", path: "/invoices/:id/delivery/verify", auth: "participant", notes: "Independent RPC recomputation; RPC problems → PENDING" },
+    ],
   },
   {
-    name: "query_payment",
-    group: "hsp",
-    mutates: false,
-    authorization: HSP_AUTH,
-    idempotencyKey: null,
-    description: "Authoritative payment status. Used for reconciliation and timeout recovery.",
-    params: flowParams,
-    requestSchema: { flow_id: "hsp-flow-...", payment_request_id: "hsp-pr-..." },
-    responseSchema: { status: "payment-finalized", tx_hash: "0x..." },
+    title: "Payments (two-stage human authorization)",
+    endpoints: [
+      { method: "POST", path: "/invoices/:id/payments", auth: "buyer · payments:request", notes: "Creates attempt AWAITING_SIGNATURE_APPROVAL" },
+      { method: "POST", path: "/payments/:id/approve-terms", auth: "human payer session only", notes: "Stage 1: { authorization_digest }" },
+      { method: "POST", path: "/payments/:id/authorize", auth: "human payer session only", notes: "Stage 2: EIP-712 HashXPaymentAuthorization signature → transferInstructions" },
+      { method: "POST", path: "/payments/:id/transaction", auth: "human payer session only", notes: "{ tx_hash } from the payer's wallet broadcast" },
+      { method: "POST", path: "/payments/:id/reconcile", auth: "participant", notes: "Run independent on-chain verification now" },
+      { method: "POST", path: "/payments/:id/cancel", auth: "human payer", notes: "Pre-submission only" },
+      { method: "GET", path: "/payments · /payments/:id · /invoices/:id/payment-status", auth: "participant", notes: "" },
+    ],
+  },
+  {
+    title: "Receipts, health & stats",
+    endpoints: [
+      { method: "GET", path: "/receipts · /receipts/:id · /invoices/:id/receipt", auth: "participant", notes: "hashx.receipt.v2 document incl. receiptDigest" },
+      { method: "GET", path: "/receipts/:id/export", auth: "participant", notes: "Downloadable JSON for offline verification" },
+      { method: "GET", path: "/health", auth: "none", notes: "Liveness only" },
+      { method: "GET", path: "/ready", auth: "none", notes: "200 ready / 503 degraded: database, chains, token validation, registry, HSP status" },
+      { method: "GET", path: "/stats", auth: "any", notes: "Caller-scoped counts of real persisted records" },
+      { method: "POST", path: "/mcp", auth: "agent credential or wallet session", notes: "MCP Streamable HTTP (stateless, JSON responses); GET/DELETE → 405" },
+    ],
   },
 ];
-
-export const HSP_MCP_ENDPOINT = "https://qa-hsp.hashkey.com/mcp";

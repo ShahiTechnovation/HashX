@@ -16,13 +16,20 @@ import {
   Receipt,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveReceipts } from "@/components/live/receipts/LiveReceipts";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { VerifiableReceipt } from "@/types/domain";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp } from "@/lib/formatters";
 
-export default function ReceiptsIndexPage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function ReceiptsPage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveReceipts /> : <DemoReceiptsIndexPage />;
+}
+
+function DemoReceiptsIndexPage() {
   const router = useRouter();
   const { mode, refreshKey, triggerRefresh } = useApp();
   const [receipts, setReceipts] = useState<VerifiableReceipt[]>([]);

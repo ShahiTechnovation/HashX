@@ -10,7 +10,12 @@ import {
 } from "viem";
 import { Address, Hash, Invoice } from "@/types/domain";
 
-// Invoice EIP-712 Domain Verifying Contract
+/**
+ * DEMO MODE ONLY — protocol v1 EIP-712 helpers used by the simulated in-browser client.
+ * The verifying-contract address below is a historical placeholder, NOT a verified deployment.
+ * Connected mode uses the protocol-v2 schemas in shared/protocol.ts exclusively.
+ */
+// Invoice EIP-712 Domain Verifying Contract (demo placeholder)
 export const HASHX_EIP712_VERIFYING_CONTRACT: Address = getAddress(
   "0x19b861876D8075A11EC6C4596395B058fe8466c2"
 );
@@ -28,9 +33,6 @@ export function isEvidenceRegistryDeployed(): boolean {
   );
 }
 
-// HSP Payment Token & Settlement Contracts (Distinct from Evidence Registry)
-export const HSP_TESTNET_TOKEN_ADDRESS: Address = "0x19B861876D8075A11eC6c4596395b058fe8466C2";
-export const HSP_TESTNET_SPENDER_CONTRACT: Address = "0x6969696969696969696969696969696969696969";
 
 export const HASHX_EIP712_DOMAIN = {
   name: "HashX Global",

@@ -1,5 +1,12 @@
 # HashXV1 — Demo Guide & Judge Walkthrough
 
+
+> **These walkthroughs use demo mode (simulated, in-browser fixtures).** Scenario data, block numbers,
+> transaction counts and hashes are illustrative; no backend or blockchain is contacted. The same attacks are
+> exercised against the real backend and a real local EVM in `server/tests/` (e.g. `golden_path.test.ts`,
+> `delivery_verification.test.ts`, `settlement_failures.test.ts`). For a real Sepolia run see
+> [END_TO_END_DEMO.md](END_TO_END_DEMO.md).
+
 This guide details how to reproduce and inspect the four core demonstration journeys in HashX.
 
 All scenarios can be directly accessed and verified interactively in the web application at `/app/demo`.

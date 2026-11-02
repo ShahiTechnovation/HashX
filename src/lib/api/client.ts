@@ -30,6 +30,7 @@ import {
 import { computeInvoiceDigest, computeServiceTermsHash, stringToBytes32 } from "@/lib/crypto/eip712";
 import { keccak256, toBytes } from "viem";
 
+/** SIMULATED: in-memory fixtures for demo mode only. Hashes generated here are illustrative, never real. */
 class DemoModeClient implements HashXClient {
   private invoices: Invoice[] = [...ALL_INITIAL_INVOICES];
   private deliveries: Delivery[] = [...ALL_INITIAL_DELIVERIES];
@@ -322,111 +323,28 @@ class DemoModeClient implements HashXClient {
   }
 }
 
-class ConnectedModeClient implements HashXClient {
-  private baseUrl = process.env.NEXT_PUBLIC_HASHX_API_URL || "http://localhost:8080";
-
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    try {
-      const res = await fetch(`${this.baseUrl}${endpoint}`, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`HashX API Error (${res.status}): ${errorText || res.statusText}`);
-      }
-
-      return res.json();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Network error";
-      throw new Error(`Connected Backend Unavailable: ${message}. Ensure persistent backend with allowlisted egress IP is active.`);
-    }
-  }
-
-  async getInvoices(): Promise<Invoice[]> {
-    return this.request<Invoice[]>("/invoices");
-  }
-
-  async getInvoiceById(id: string): Promise<Invoice | null> {
-    return this.request<Invoice | null>(`/invoices/${id}`);
-  }
-
-  async getDeliveries(): Promise<Delivery[]> {
-    return this.request<Delivery[]>("/deliveries");
-  }
-
-  async getDeliveryByInvoiceId(invoiceId: string): Promise<Delivery | null> {
-    return this.request<Delivery | null>(`/invoices/${invoiceId}/delivery`);
-  }
-
-  async getPaymentAttempts(): Promise<PaymentAttempt[]> {
-    return this.request<PaymentAttempt[]>("/payments");
-  }
-
-  async getPaymentAttemptById(id: string): Promise<PaymentAttempt | null> {
-    return this.request<PaymentAttempt | null>(`/payments/${id}`);
-  }
-
-  async getReceipts(): Promise<VerifiableReceipt[]> {
-    return this.request<VerifiableReceipt[]>("/receipts");
-  }
-
-  async createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
-    return this.request<Invoice>("/invoices", { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async signInvoice(input: SignInvoiceInput): Promise<Invoice> {
-    return this.request<Invoice>(`/invoices/${input.invoice_id}/sign`, { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async verifyInvoice(input: VerifyInvoiceInput): Promise<InvoiceVerificationResult> {
-    return this.request<InvoiceVerificationResult>(`/invoices/${input.invoice_id}/verify`, { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async submitDelivery(input: SubmitDeliveryInput): Promise<Delivery> {
-    return this.request<Delivery>(`/invoices/${input.invoice_id}/delivery`, { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async verifyDelivery(input: VerifyDeliveryInput): Promise<DeliveryVerificationResult> {
-    return this.request<DeliveryVerificationResult>(`/invoices/${input.invoice_id}/delivery/verify`, { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async requestPayment(input: RequestPaymentInput): Promise<PaymentAttempt> {
-    return this.request<PaymentAttempt>(`/invoices/${input.invoice_id}/pay`, { method: "POST", body: JSON.stringify(input) });
-  }
-
-  async approveSigning(paymentAttemptId: string): Promise<PaymentAttempt> {
-    return this.request<PaymentAttempt>(`/payments/${paymentAttemptId}/approve-signing`, { method: "POST" });
-  }
-
-  async approveSubmission(paymentAttemptId: string, signature?: string): Promise<PaymentAttempt> {
-    return this.request<PaymentAttempt>(`/payments/${paymentAttemptId}/approve-submission`, {
-      method: "POST",
-      body: JSON.stringify({ signature }),
-    });
-  }
-
-  async getPaymentStatus(invoiceId: string): Promise<PaymentAttempt> {
-    return this.request<PaymentAttempt>(`/invoices/${invoiceId}/payment-status`);
-  }
-
-  async getReceipt(invoiceId: string): Promise<VerifiableReceipt> {
-    return this.request<VerifiableReceipt>(`/invoices/${invoiceId}/receipt`);
-  }
-
-  async getInvoiceVerification(invoiceId: string): Promise<CombinedVerificationResult | null> {
-    return this.request<CombinedVerificationResult | null>(`/invoices/${invoiceId}/verification`);
-  }
-}
-
 // Singleton instances
 export const demoClient = new DemoModeClient();
-export const connectedClient = new ConnectedModeClient();
 
-export function getClient(mode: "demo" | "connected" = "demo"): HashXClient {
-  return mode === "connected" ? connectedClient : demoClient;
+/**
+ * Demo-mode (simulated, in-browser) client. Connected mode never uses this: it talks to the
+ * real backend through the authenticated `liveApi` (src/lib/live/api.ts), and the former
+ * unauthenticated ConnectedModeClient was removed.
+ */
+export function getClient(_mode: "demo" | "connected" = "demo"): HashXClient {
+  return demoClient;
 }
+
+/**
+ * Fail-loud stub kept for backwards compatibility: any leftover call path that tries to reach the
+ * backend without the authenticated liveApi throws instead of silently using fixtures or sending
+ * unauthenticated requests.
+ */
+export const connectedClient: HashXClient = new Proxy({} as HashXClient, {
+  get(_target, prop) {
+    return () =>
+      Promise.reject(
+        new Error(`connectedClient.${String(prop)} is disabled: connected mode must use the authenticated liveApi.`)
+      );
+  },
+});

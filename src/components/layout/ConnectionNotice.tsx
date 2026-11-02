@@ -4,8 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useApp } from "@/providers/AppContext";
 import { Callout } from "@/components/ui/Callout";
 import { Button } from "@/components/ui/Button";
-
-const API_URL = process.env.NEXT_PUBLIC_HASHX_API_URL || "http://localhost:8080";
+import { API_URL } from "@/lib/live/api";
 
 /**
  * In connected mode, pages never fall back to demo fixtures — so when the

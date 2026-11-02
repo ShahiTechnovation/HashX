@@ -26,6 +26,7 @@ import {
   Layers,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveTrustInspector } from "@/components/live/trust/LiveTrustInspector";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import {
   Invoice,
@@ -57,7 +58,7 @@ import {
   runDeliveryVerification,
 } from "@/components/trust/evaluate";
 
-export default function TrustInspectorPage() {
+function DemoTrustInspectorPage() {
   const params = useParams();
   const invoiceId = params?.id as string;
   const router = useRouter();
@@ -412,9 +413,9 @@ export default function TrustInspectorPage() {
                   Domain Separator
                 </div>
                 <div className="text-carbon-text truncate">
-                  name: <span className="text-primary font-semibold">"HashX Global"</span>
+                  name: <span className="text-primary font-semibold">&quot;HashX Global&quot;</span>
                 </div>
-                <div className="text-carbon-text">version: "1" • chainId: {chainId}</div>
+                <div className="text-carbon-text">version: &quot;1&quot; • chainId: {chainId}</div>
                 <div className="text-carbon-muted truncate">
                   verifying: <span className="text-carbon-text">0x71C0...948A</span>
                 </div>
@@ -988,4 +989,11 @@ function InspectorSkeleton({ invoiceId }: { invoiceId: string }) {
       </div>
     </div>
   );
+}
+
+export default function TrustInspectorPage() {
+  const { mode } = useApp();
+  const params = useParams();
+  const invoiceId = params?.id as string;
+  return mode === "connected" ? <LiveTrustInspector id={invoiceId} /> : <DemoTrustInspectorPage />;
 }

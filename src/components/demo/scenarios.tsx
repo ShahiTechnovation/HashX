@@ -83,7 +83,7 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         title: "Payment gate stays closed",
-        description: "No HSP order is created and no approval is requested.",
+        description: "No payment attempt is created and no approval is requested.",
         state: "pending",
       },
     ],
@@ -103,7 +103,7 @@ export const SCENARIOS: Scenario[] = [
     claim: "Deliver plausible but fabricated data, correctly signed, and collect payment for it.",
     control: {
       name: "Objective fulfillment check",
-      detail: `HashX queries HashKey Chain RPC (chain ${fake.payment.preferred_chain_id}) for the same address and range and recomputes the count independently of the seller.`,
+      detail: `HashX recomputes the count for the same address and range from chain RPC, independently of the seller. In this simulation the RPC result is a fixture (chain ${fake.payment.preferred_chain_id}).`,
     },
     expected: { code: "TX_COUNT_MISMATCH", text: "Fulfillment rejected. Payment ineligible." },
     steps: [
@@ -134,10 +134,10 @@ export const SCENARIOS: Scenario[] = [
     kind: "Settlement",
     title: "Duplicate replay",
     summary: "request_payment called again on a live order.",
-    lead: "A buyer bot on a flaky connection retries request_payment for an invoice that already has an HSP order in flight. Without a guard, each retry would create a new order and pay twice.",
+    lead: "A buyer bot on a flaky connection retries request_payment for an invoice that already has a payment attempt in flight. Without a guard, each retry would create a new attempt and could pay twice.",
     outcome: { label: "Deduplicated", tone: "warning", Icon: Repeat2 },
     claimLabel: "The fault",
-    claim: "Retry or race request_payment until a second HSP order is created for the same invoice.",
+    claim: "Retry or race request_payment until a second payment attempt is created for the same invoice.",
     control: {
       name: "Idempotent payment attempts",
       detail: "request_payment is keyed by invoice. While a non-terminal attempt exists, HashX returns it instead of creating a new order.",
@@ -146,8 +146,8 @@ export const SCENARIOS: Scenario[] = [
       text: `The same attempt (${FIXTURE_PAYMENT_ATTEMPT_EXISTING.id}) comes back on every call. Zero duplicate orders.`,
     },
     steps: [
-      { title: "First request creates the attempt", description: `HSP flow ${FIXTURE_PAYMENT_ATTEMPT_EXISTING.flowId} opened.`, state: "done" },
-      { title: "Order processing on HSP", description: "Settlement is in flight and not yet final.", state: "done" },
+      { title: "First request creates the attempt", description: `Simulated flow ${FIXTURE_PAYMENT_ATTEMPT_EXISTING.flowId} opened.`, state: "done" },
+      { title: "Settlement in flight", description: "Simulated: in flight and not yet final.", state: "done" },
       { title: "Duplicate request arrives", description: "Same invoice, same payer, no new terms.", state: "warning" },
       { title: "Existing attempt returned", description: "No second quote, signature, or order.", state: "done" },
       { title: "One settlement continues", description: "Exactly one payment can reach finality.", state: "current" },
@@ -161,16 +161,16 @@ export const SCENARIOS: Scenario[] = [
     group: "Reference run",
     kind: "End to end",
     title: "Golden path",
-    summary: "Every gate clears; receipt anchored.",
-    lead: "The full lifecycle with nothing wrong: intent, signed invoice, objective fulfillment, two-stage human approval, HSP settlement to finality, and a verifiable receipt.",
+    summary: "Every gate clears; receipt issued (simulated).",
+    lead: "A simulated walkthrough of the full lifecycle with nothing wrong: intent, signed invoice, objective fulfillment, two-stage human approval, settlement to finality, and a receipt. Hashes are illustrative; run the real Sepolia golden path in connected mode.",
     outcome: { label: "Settled", tone: "success", Icon: ShieldCheck },
     claimLabel: "The claim",
     claim: "A buyer agent purchases a $1.00 address analytics report from a registered seller agent.",
     control: {
       name: "All gates, in order",
-      detail: "Invoice integrity, fulfillment verification, human authorization twice, HSP reconciliation, and evidence anchoring.",
+      detail: "Invoice integrity, fulfillment verification, human authorization twice, and settlement reconciliation (simulated).",
     },
-    expected: { text: "Finalized on HashKey Chain. Receipt issued with invoice and evidence digests." },
+    expected: { text: "Simulated finality. Receipt issued with invoice and evidence digests (illustrative values)." },
     steps: [
       { title: "Buyer agent requests analytics", state: "done" },
       { title: "Seller creates structured invoice", state: "done" },
@@ -179,13 +179,13 @@ export const SCENARIOS: Scenario[] = [
       { title: "HashX verifies invoice terms", state: "done" },
       { title: "HashX recomputes fulfillment over RPC", state: "done" },
       { title: "Payment eligibility unlocked", state: "done" },
-      { title: "HSP payment prepared and quoted", state: "done" },
+      { title: "Payment obligation prepared", state: "done" },
       { title: "Human stage 1 approves exact terms", state: "done" },
-      { title: "Wallet signs exact HSP payload", state: "done" },
+      { title: "Wallet signs exact payment authorization", state: "done" },
       { title: "Human stage 2 approves submission", state: "done" },
-      { title: "Payment broadcast to HashKey Chain", state: "done" },
-      { title: "HSP settlement finalized", description: "Irreversible.", state: "done" },
-      { title: "Verifiable receipt anchored", description: FIXTURE_RECEIPT_GOLDEN.id, state: "done" },
+      { title: "Payment broadcast (simulated)", state: "done" },
+      { title: "Settlement finalized (simulated)", state: "done" },
+      { title: "Receipt issued (simulated)", description: FIXTURE_RECEIPT_GOLDEN.id, state: "done" },
     ],
     primary: { href: `/app/receipts/${FIXTURE_RECEIPT_GOLDEN.id}`, label: "Inspect golden receipt" },
     secondary: [
@@ -211,8 +211,8 @@ const CONTROLS: Array<{ label: string; marks: Record<ScenarioId, Mark> }> = [
   { label: "Invoice integrity", marks: { A: "catch", B: "pass", C: "pass", D: "pass" } },
   { label: "Fulfillment", marks: { A: "none", B: "catch", C: "pass", D: "pass" } },
   { label: "Human authorization", marks: { A: "none", B: "none", C: "pass", D: "pass" } },
-  { label: "Idempotent settlement", marks: { A: "none", B: "none", C: "dedupe", D: "pass" } },
-  { label: "Evidence anchoring", marks: { A: "none", B: "none", C: "none", D: "pass" } },
+  { label: "Idempotent payment request", marks: { A: "none", B: "none", C: "dedupe", D: "pass" } },
+  { label: "Receipt issuance", marks: { A: "none", B: "none", C: "none", D: "pass" } },
 ];
 
 const MARK: Record<Mark, { Icon?: LucideIcon; cls: string; sr: string }> = {

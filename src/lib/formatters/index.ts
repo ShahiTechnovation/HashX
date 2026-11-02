@@ -1,4 +1,5 @@
 import { HSPStatus, InvoiceStatus, PaymentAttemptState } from "@/types/domain";
+import { explorerAddressUrl, explorerTxUrl, findNetwork, HASHKEY_TESTNET_CHAIN_ID } from "@shared/networks";
 
 /**
  * Formats minor units (cents) into human-readable USD display string.
@@ -253,19 +254,20 @@ export function getHSPStatusMeta(status: HSPStatus): {
 }
 
 /**
- * Returns canonical HashKey Chain Testnet block explorer transaction URL.
+ * HashKey Chain Testnet (133) explorer URLs, resolved from shared/networks so the
+ * explorer host is configured in exactly one place. Used by demo-mode views; connected
+ * views call explorerTxUrl/explorerAddressUrl with the record's own chain ID.
  */
+const DEMO_EXPLORER_CHAIN_ID = HASHKEY_TESTNET_CHAIN_ID;
+const DEMO_EXPLORER_BASE = findNetwork(DEMO_EXPLORER_CHAIN_ID)?.explorerUrl ?? "";
+
 export function getExplorerTxUrl(txHash: string): string {
-  if (!txHash) return "https://testnet-explorer.hskchain.net";
-  return `https://testnet-explorer.hskchain.net/tx/${txHash}`;
+  if (!txHash) return DEMO_EXPLORER_BASE;
+  return explorerTxUrl(DEMO_EXPLORER_CHAIN_ID, txHash) ?? DEMO_EXPLORER_BASE;
 }
 
-/**
- * Returns canonical HashKey Chain Testnet block explorer address URL.
- */
+/** HashKey Chain Testnet (133) explorer address URL via shared/networks. */
 export function getExplorerAddressUrl(address: string): string {
-  if (!address) return "https://testnet-explorer.hskchain.net";
-  return `https://testnet-explorer.hskchain.net/address/${address}`;
+  if (!address) return DEMO_EXPLORER_BASE;
+  return explorerAddressUrl(DEMO_EXPLORER_CHAIN_ID, address) ?? DEMO_EXPLORER_BASE;
 }
-
-

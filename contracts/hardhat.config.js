@@ -15,8 +15,9 @@ module.exports = {
     settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: "paris" },
   },
   networks: {
-    // Mirror real chains: failed transactions are mined (status 0) rather than throwing in the node.
-    hardhat: { chainId: 31337, throwOnTransactionFailures: false },
+    // HARDHAT_MIRROR_CHAIN=true (set by the backend test harness) mirrors real chains: failed transactions
+    // are mined with status 0 instead of throwing. Contract unit tests keep Hardhat's default (throw).
+    hardhat: { chainId: 31337, throwOnTransactionFailures: process.env.HARDHAT_MIRROR_CHAIN !== "true" },
     localhost: { url: process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545", chainId: 31337 },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",

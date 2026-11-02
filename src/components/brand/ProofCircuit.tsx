@@ -61,7 +61,8 @@ export interface ProofCircuitProps {
 /**
  * The Signature HashX Proof Circuit Component System.
  * Visualizes the dual-rail convergence:
- * Commercial Intent Rail + Chain Evidence Rail -> Human Authorization Gate -> HSP Settlement
+ * Commercial Intent Rail + Chain Evidence Rail -> Human Authorization Gate -> On-chain Settlement
+ * ILLUSTRATIVE: renders example values only; it never displays live records.
  * Supports the Diverter Rail when verification fails.
  */
 export const ProofCircuit: React.FC<ProofCircuitProps> = ({
@@ -176,7 +177,7 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
               <span className="w-2 h-2 rounded-full bg-success" />
               <div>
                 <span className="font-mono text-2xs font-bold text-success block">
-                  HASHKEY HSP SETTLEMENT
+                  ON-CHAIN SETTLEMENT (ILLUSTRATIVE)
                 </span>
                 <span className="font-mono text-[10px] text-foreground-secondary">
                   Settlement Reconciled to Actual Finality
@@ -184,7 +185,7 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
               </div>
             </div>
             <span className="font-mono text-[12px] font-semibold text-foreground px-2 py-0.5 bg-surface-2 border border-border">
-              FINALIZED RECEIPT COMMITTED
+              RECEIPT ONLY AFTER VERIFIED TRANSFER
             </span>
           </div>
         </div>
@@ -205,7 +206,7 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
             </h3>
           </div>
           <div className="flex items-center gap-4 text-2xs font-mono text-foreground-secondary">
-            <span>● HashKey HSP Rail: Testnet QA</span>
+            <span>● Illustrative example — simulated counts</span>
             <span>Adapter: Fail-Closed</span>
           </div>
         </div>
@@ -251,10 +252,10 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
           {/* Gate 4 */}
           <div className="p-3 border border-border bg-surface-2/60 relative">
             <div className="flex justify-between items-center text-2xs font-mono mb-1">
-              <span className="text-primary font-bold">04 // HSP ESCROW</span>
+              <span className="text-primary font-bold">04 // SETTLEMENT</span>
               <span className="text-foreground font-semibold">{pipelineCounts.inFlight ?? 7}</span>
             </div>
-            <p className="text-2xs text-foreground font-medium truncate">HSP Rail In Flight</p>
+            <p className="text-2xs text-foreground font-medium truncate">Transfer in flight</p>
             <div className="mt-2 text-[10px] font-mono text-primary flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Reconciling
             </div>
@@ -428,11 +429,11 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex justify-between items-center text-2xs font-mono">
-              <span className="font-semibold text-foreground-secondary">05 // HSP SETTLEMENT</span>
+              <span className="font-semibold text-foreground-secondary">05 // SETTLEMENT</span>
               <span className="text-foreground-muted">{isFailed ? "HALTED" : "STANDBY"}</span>
             </div>
             <p className="text-[11px] text-foreground-muted truncate">
-              HashKey settlement engine non-custodial transfer.
+              Payer-wallet transfer, independently verified (non-custodial).
             </p>
           </div>
         </div>
@@ -440,4 +441,3 @@ export const ProofCircuit: React.FC<ProofCircuitProps> = ({
     </div>
   );
 };
-

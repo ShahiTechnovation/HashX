@@ -43,6 +43,7 @@ async function startHardhat() {
   execFileSync(process.execPath, [HARDHAT_CLI, "compile", "--quiet"], { cwd: CONTRACTS_DIR, stdio: "pipe" });
   node = spawn(process.execPath, [HARDHAT_CLI, "node", "--port", String(LOCAL_RPC_PORT), "--hostname", "127.0.0.1"], {
     cwd: CONTRACTS_DIR,
+    env: { ...process.env, HARDHAT_MIRROR_CHAIN: "true" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   await new Promise<void>((resolve, reject) => {

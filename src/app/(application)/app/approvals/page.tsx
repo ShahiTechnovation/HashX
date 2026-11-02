@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveApprovals } from "@/components/live/payments/LiveApprovals";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt } from "@/types/domain";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -30,7 +31,13 @@ import {
 
 type Filter = "ALL" | "PENDING" | "COMPLETED";
 
-export default function ApprovalsQueuePage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function ApprovalsPage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveApprovals /> : <DemoApprovalsQueuePage />;
+}
+
+function DemoApprovalsQueuePage() {
   const router = useRouter();
   const { mode, refreshKey, triggerRefresh } = useApp();
   const [paymentAttempts, setPaymentAttempts] = useState<PaymentAttempt[]>([]);

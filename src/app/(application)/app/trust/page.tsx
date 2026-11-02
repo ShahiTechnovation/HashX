@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveTrustList } from "@/components/live/trust/LiveTrustList";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { Delivery, Invoice, VerificationDecision, VerificationReasonCode } from "@/types/domain";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -30,7 +31,7 @@ import { evaluatePaymentEligibility } from "@/lib/verification/engine";
 
 type VerdictFilter = "ALL" | VerificationDecision;
 
-export default function TrustIndexPage() {
+function DemoTrustIndexPage() {
   const router = useRouter();
   const { mode, refreshKey, triggerRefresh } = useApp();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -128,7 +129,7 @@ export default function TrustIndexPage() {
         <div>
           <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-carbon-muted">
             <span>FORENSICS</span>
-            <span>//</span>
+            <span>{"//"}</span>
             <span className="text-carbon-text">CRYPTOGRAPHIC AUDIT</span>
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-carbon-text mt-0.5">
@@ -384,4 +385,9 @@ export default function TrustIndexPage() {
       </section>
     </div>
   );
+}
+
+export default function TrustIndexPage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveTrustList /> : <DemoTrustIndexPage />;
 }

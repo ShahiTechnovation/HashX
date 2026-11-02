@@ -48,7 +48,7 @@ export default function DemoCenterPage() {
       setDuplicateAttemptsTriggered(n);
       setReplayCalls((calls) => [...calls, { n, attemptId: attempt.id, flowId: attempt.flowId }]);
       setDuplicateResult(
-        `Idempotency invariant enforced: returned existing payment attempt ${attempt.id} (flow ${attempt.flowId}). No duplicate HSP order was created.`
+        `Simulated: returned existing payment attempt ${attempt.id} (flow ${attempt.flowId}). No duplicate attempt was created.`
       );
     } catch (err: unknown) {
       console.error(err);
@@ -78,7 +78,7 @@ export default function DemoCenterPage() {
               <span className="text-carbon-border">/</span>
               <span>PROOF LAB</span>
               <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">ADVERSARIAL TESTBENCH v2.4</span>
+              <span className="text-primary font-semibold">ADVERSARIAL SCENARIOS</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase flex items-center gap-2.5">
               <span>HashX Interactive Proof Lab</span>
@@ -87,29 +87,57 @@ export default function DemoCenterPage() {
               </span>
             </h1>
             <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              Deterministic verification gauntlet for zero-trust agent commerce. Intercepts signature replay, payee tampering, and phantom fulfillment.
+              Simulated walkthroughs of the checks HashX runs against payee tampering, fake fulfillment, and duplicate payment requests. Runs entirely in your browser.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="px-2.5 py-1 rounded bg-carbon-panel text-success border border-carbon-border flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              <span>Simulated Enclave Armed</span>
+            <span className="px-2.5 py-1 rounded bg-carbon-panel text-carbon-muted border border-carbon-border flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-carbon-muted" />
+              <span>Simulation only</span>
             </span>
           </div>
         </div>
 
         {/* Hazard Banner */}
-        <div className="mt-4 p-2.5 bg-warning/10 border-l-4 border-warning flex items-center justify-between gap-3 text-xs font-mono text-warning">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
-            <span>
-              <strong>SIMULATED TELEMETRY ENGINE // DEMONSTRATION DATA ONLY // ZERO CAPITAL AT RISK</strong>
-              <span className="hidden sm:inline"> — Running formal adversarial gauntlet against local test vectors.</span>
+        <div role="note" className="mt-4 p-3 bg-warning/10 border-l-4 border-warning flex items-start gap-2 text-xs font-mono text-warning">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+          <span>
+            <strong className="text-sm">Simulated scenarios — no real transactions, hashes are illustrative.</strong>
+            <span className="block text-warning/80 mt-0.5">
+              Every invoice, signature, transaction hash, amount, and settlement state on this page is a local fixture. Nothing is sent to a
+              backend or a blockchain.
+            </span>
+          </span>
+        </div>
+      </section>
+
+      {/* Real golden path entry */}
+      <section className="bg-carbon-nav border border-primary/40 rounded p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="font-bold text-carbon-text uppercase tracking-wider">Run the real Sepolia golden path</span>
+            <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 text-[10px]">
+              {mode === "connected" ? "CONNECTED MODE" : "REQUIRES CONNECTED MODE"}
             </span>
           </div>
-          <span className="text-[10px] text-warning/80 hidden md:inline">TESTNET 133</span>
+          <p className="text-xs text-carbon-muted max-w-3xl leading-relaxed">
+            Create, sign, verify, deliver, approve, and settle a real invoice against the HashX backend on Ethereum Sepolia (testnet). You need:
+            connected mode with a running backend, two browser wallets (seller and buyer), Sepolia ETH for gas, and Circle test USDC in the buyer
+            wallet (faucet:{" "}
+            <a href="https://faucet.circle.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">
+              faucet.circle.com
+            </a>
+            ). Test tokens have no monetary value.
+          </p>
         </div>
+        <Link
+          href="/app/invoices/new"
+          className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-white text-xs font-mono font-semibold flex items-center gap-1.5 shrink-0 self-start lg:self-auto"
+        >
+          <span>Create a real invoice</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </section>
 
       {/* 2. Scenario Matrix (4 Interactive Cards) */}
@@ -118,7 +146,7 @@ export default function DemoCenterPage() {
           <span className="font-bold text-carbon-text uppercase tracking-wider">
             THREAT VECTORS &amp; TEST GAUNTLETS
           </span>
-          <span className="text-[11px]">SELECT SCENARIO TO LOAD PROOF CIRCUIT</span>
+          <span className="text-[11px]">SIMULATED · SELECT A SCENARIO</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
@@ -146,7 +174,7 @@ export default function DemoCenterPage() {
             <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
               <div className="flex justify-between">
                 <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">$14,200.00 USDC</span>
+                <span className="text-carbon-text font-bold">Illustrative</span>
               </div>
               <div className="flex justify-between">
                 <span>GATE:</span>
@@ -179,7 +207,7 @@ export default function DemoCenterPage() {
             <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
               <div className="flex justify-between">
                 <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">$8,500.00 USDC</span>
+                <span className="text-carbon-text font-bold">Illustrative</span>
               </div>
               <div className="flex justify-between">
                 <span>GATE:</span>
@@ -212,7 +240,7 @@ export default function DemoCenterPage() {
             <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
               <div className="flex justify-between">
                 <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">$22,000.00 USDC</span>
+                <span className="text-carbon-text font-bold">Illustrative</span>
               </div>
               <div className="flex justify-between">
                 <span>GATE:</span>
@@ -240,16 +268,16 @@ export default function DemoCenterPage() {
               04 // LEGITIMATE GOLDEN PATH
             </div>
             <p className="text-[11px] text-carbon-muted line-clamp-2 mb-3">
-              All 7 gates clear: EIP-712 signed, RPC witnessed, human authorized, HSP settled &amp; receipt anchored.
+              All gates clear: EIP-712 signed, delivery recomputed, human authorized, settlement and receipt simulated.
             </p>
             <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
               <div className="flex justify-between">
-                <span>SETTLED:</span>
-                <span className="text-success font-bold">$14,200.00 USDC</span>
+                <span>SIM AMOUNT:</span>
+                <span className="text-success font-bold">Illustrative</span>
               </div>
               <div className="flex justify-between">
                 <span>OUTCOME:</span>
-                <span className="text-success font-semibold">ALL 7 GATES PASSED</span>
+                <span className="text-success font-semibold">ALL GATES PASSED (SIM)</span>
               </div>
             </div>
           </div>
@@ -306,7 +334,7 @@ export default function DemoCenterPage() {
                 <span className="text-[10px] text-carbon-muted">Idempotency Guard</span>
               </div>
               <p className="text-carbon-muted">
-                Trigger duplicate payment attempts with the identical EIP-712 payload. Notice how HashX returns the original idempotent record without generating duplicate debits.
+                Trigger duplicate request_payment calls for the same invoice (simulated in the browser). The idempotency guard returns the original attempt instead of creating a duplicate.
               </p>
               <div className="flex items-center gap-2">
                 <button

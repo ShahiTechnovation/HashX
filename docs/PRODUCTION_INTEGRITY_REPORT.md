@@ -1,3 +1,9 @@
+> **SUPERSEDED — kept for history only.** This report described the previous sprint and overstated
+> several properties of that code: `requireAuth` only checked for the *presence* of headers (and was
+> bypassed for loopback/`localhost` requests), no rate limiting existed, delivery verification fell back to
+> seller-claimed counts on RPC failure, and Stage 2 signed only the token amount. See
+> [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md) for the verified baseline audit and current status.
+
 # HashX — Production Integrity Audit & Sprint Report
 **Date:** November 2, 2026  
 **Repository:** `P:\HashX`  

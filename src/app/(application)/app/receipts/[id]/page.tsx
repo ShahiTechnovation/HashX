@@ -18,13 +18,22 @@ import {
   Layers,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveReceiptDetail } from "@/components/live/receipts/LiveReceiptDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { VerifiableReceipt, Invoice, Delivery, PaymentAttempt } from "@/types/domain";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp, getExplorerTxUrl } from "@/lib/formatters";
 
-export default function ReceiptDetailPage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function ReceiptDetailRoute() {
+  const params = useParams();
+  const id = params?.id as string;
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveReceiptDetail id={id} /> : <DemoReceiptDetailPage />;
+}
+
+function DemoReceiptDetailPage() {
   const params = useParams();
   const receiptId = params?.id as string;
   const { mode } = useApp();

@@ -1,62 +1,50 @@
-# HashXV1 — System Architecture
+# HashX Architecture
 
-## 1. Overview
-**HashX** is the Trust Layer for Agent Payments, built around **HashKey Chain** and **HSP (HashKey Settlement Protocol)**.
+HashX is a trust layer between agents that request payment and humans whose funds pay.
 
-In an autonomous agent ecosystem, an AI agent should never authorize payment merely because another agent sends a payment request. HashX enforces a strict commercial pipeline:
-1. **Commercial Intent**: Structured agreement creation.
-2. **EIP-712 Signature**: Seller authorizes the terms using cryptographic typed structured data.
-3. **Invoice Verification**: Pre-fulfillment checks for schema, signature, expiry, counterparty binding, and replay nonce.
-4. **Service Delivery**: Objective digital deliverable (`hashx.analytics.v1`) and signed manifest submitted.
-5. **Deterministic Fulfillment Verification**: Direct recomputation of transaction telemetry against HashKey Chain RPC (chain ID 133 / 177).
-6. **Payment Eligibility Gating**: Payment actions remain completely blocked unless both invoice and delivery checks pass.
-7. **Two-Stage Human Authorization**:
-   - Stage 1: Explicit review and wallet signing of the exact prepared HSP EIP-712 payload (showing raw token amount, payer, payee, token contract, and quote expiration).
-   - Stage 2: Deliberate second approval before broadcast and submission to HSP.
-8. **HSP Settlement & Reconciliation**: Polling until terminal state with strict distinction between `payment-safe` (on-chain unfinalized) and `payment-finalized`.
-9. **Verifiable Receipt**: Cryptographic proof linking the commercial agreement, fulfillment evidence, and on-chain commitment registry.
+## Pipeline
 
 ```
-Commercial Intent
-      │
-      ▼
-EIP-712 Signed Invoice
-      │
-      ▼
-Invoice Verification (6 Checks)
-      │
-      ▼
-Service Delivery (JSON Artifact + Manifest)
-      │
-      ▼
-Deterministic Verification (8 Checks via RPC)
-      │
-      ▼
-Payment Eligibility Gated
-      │
-      ▼
-Human Approval 1 (Sign Exact HSP Payload)
-      │
-      ▼
-Human Approval 2 (Deliberate Submission)
-      │
-      ▼
-HSP Settlement Reconciler (payment-safe != payment-finalized)
-      │
-      ▼
-Verifiable Receipt & On-Chain Commitment
+Seller (wallet or seller agent via MCP)
+  → POST /invoices                         protocol-v2 terms, random nonce, idempotent client_request_id
+  → seller wallet signs EIP-712 HashXInvoice
+  → POST /invoices/:id/verify              signature, identity binding, expiry, replay, settlement terms
+  → seller computes artifact, signs EIP-712 HashXDeliveryManifest
+  → POST /invoices/:id/delivery/verify     SHA-256 of canonical bytes + independent, bounded RPC recomputation
+Buyer
+  → POST /invoices/:id/payments            immutable obligation (EIP-712 HashXPaymentAuthorization)
+  → Stage 1 (human): approve exact digest
+  → Stage 2 (human wallet): sign the authorization
+  → buyer wallet broadcasts USDC.transfer(payee, amount) on Sepolia; reports tx hash
+Backend reconciler
+  → receipt status, token contract, Transfer(payer→payee, amount) log, canonical block, confirmations
+  → CONFIRMED → hashx.receipt.v2 (independently verifiable) → FINALIZED
 ```
 
-## 2. Security Boundaries & Zero-Custody Rule
-- **No Raw Private Keys**: HashX never handles, persists, or transmits raw private keys. All signing occurs through user or agent wallet boundaries.
-- **Frontend Usability vs Security Enforcement**: Frontend button disabling is a UX affordance. The deterministic policy code and backend verification engine remain authoritative.
-- **Idempotency Invariant**: Repeated payment requests return the existing active payment attempt rather than creating duplicate orders.
-- **HSP Rate Quote Expiry**: Quotes expire after 5 minutes. Expired quotes cannot be submitted; a fresh quote must be prepared.
+## Components
 
-## 3. HashKey Chain & Contract Architecture
-- **Testnet**: Chain ID `133`, RPC: `https://testnet.hsk.xyz`
-- **Mainnet**: Chain ID `177`, RPC: `https://mainnet.hsk.xyz`
-- **EIP-712 Domain Verifying Contract**: `0x19B861876D8075A11eC6c4596395b058fe8466C2` (Canonical domain contract for invoice structured data)
-- **Evidence Registry Contract**: Separate on-chain anchor registry. Marked **Not deployed** until verified deployment to HashKey Testnet (`EVIDENCE_REGISTRY_ADDRESS_TESTNET`).
-- **HSP Testnet Token Contract**: `0x55d398326f99059fF775485246999027B3197955`
-- **HSP Spender Contract**: Distinct gateway spender authorized by the payer for settlement.
+| Layer | Path | Responsibility |
+|---|---|---|
+| Shared protocol | `shared/protocol.ts` | canonical JSON, artifact hashing, EIP-712 schemas, analytics algorithm, receipt digest |
+| Network config | `shared/networks.ts` | Sepolia 11155111 / HashKey 133 / HashKey 177 (independent), Circle Sepolia USDC, explorers, rails |
+| API | `server/src/app.ts` | middleware (request IDs, CORS, headers, rate limits), routes, `/health`, `/ready` |
+| Auth | `server/src/auth/auth.ts` | SIWE, sessions, agent credentials, guards |
+| Services | `server/src/services/commerce.ts`, `payments.ts` | invoices, deliveries, eligibility, two-stage authorization, reconciliation, receipts |
+| Verification | `server/src/services/verification.ts` | fail-closed invoice/delivery engines |
+| Chain access | `server/src/chain/readers.ts` | chain-ID-validated, timeout-bounded RPC readers |
+| Settlement adapters | `server/src/settlement/sepoliaUsdc.ts`, `hspAdapter.ts` | direct Sepolia USDC (live) · HashKey HSP (fail-closed) |
+| Agents | `server/src/mcp/server.ts` | MCP Streamable HTTP, 9 tools over the same services |
+| Persistence | `server/migrations/*.sql`, `server/src/db/migrate.ts` | versioned schema + invariants as unique indexes |
+| Contract | `contracts/src/HashXEvidenceRegistry.sol` | optional public commitments (issuer-namespaced, write-once) |
+| Frontend (connected) | `src/lib/live/*`, `src/components/live/*` | authenticated API client, wallet signing/broadcast, live views |
+| Frontend (demo) | `src/lib/api/client.ts`, `src/mocks/*` | simulated in-browser fixtures (labelled) |
+
+## Rails
+
+| Rail | Chain | Status |
+|---|---|---|
+| `sepolia-usdc` | Ethereum Sepolia 11155111, Circle test USDC `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` | Implemented; settlement verified independently |
+| `hashkey-hsp` | HashKey Testnet 133 | Adapter present, fail-closed, not connected |
+| — | HashKey Mainnet 177 | Payments disabled |
+
+See [SECURITY_MODEL.md](SECURITY_MODEL.md) and [SEPOLIA_INTEGRATION.md](SEPOLIA_INTEGRATION.md).

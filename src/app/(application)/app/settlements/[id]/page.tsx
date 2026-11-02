@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveSettlementDetail } from "@/components/live/payments/LiveSettlementDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt, VerifiableReceipt } from "@/types/domain";
 import { Button } from "@/components/ui/Button";
@@ -28,7 +29,15 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp, getExplorerTxUrl, getHSPStatusMeta } from "@/lib/formatters";
 
-export default function SettlementDetailPage() {
+/** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
+export default function SettlementDetailRoute() {
+  const params = useParams();
+  const id = params?.id as string;
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveSettlementDetail id={id} /> : <DemoSettlementDetailPage />;
+}
+
+function DemoSettlementDetailPage() {
   const params = useParams();
   const attemptId = params?.id as string;
   const { mode } = useApp();

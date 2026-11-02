@@ -20,6 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveInvoiceList } from "@/components/live/invoices/LiveInvoiceList";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { Invoice, InvoiceStatus } from "@/types/domain";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -38,7 +39,7 @@ const SCOPES: Array<{ value: Scope; label: string; statuses: InvoiceStatus[] | n
   { value: "blocked", label: "Quarantined", statuses: ["REJECTED", "DELIVERY_REJECTED"] },
 ];
 
-export default function InvoicesListPage() {
+function DemoInvoicesPage() {
   const router = useRouter();
   const { mode, refreshKey, triggerRefresh } = useApp();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -415,4 +416,9 @@ export default function InvoicesListPage() {
       </div>
     </div>
   );
+}
+
+export default function InvoicesPage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveInvoiceList /> : <DemoInvoicesPage />;
 }

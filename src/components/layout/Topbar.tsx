@@ -11,13 +11,12 @@ import {
   Check,
   Wallet,
   Layers,
-  Activity,
-  ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/providers/AppContext";
 import { formatAddress } from "@/lib/formatters";
-import { Button } from "@/components/ui/Button";
+import { PUBLIC_NETWORKS, SEPOLIA_CHAIN_ID, findNetwork } from "@shared/networks";
 
 interface TopbarProps {
   onOpenMobileMenu: () => void;
@@ -52,7 +51,13 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
     connectWallet,
     disconnectWallet,
     switchChain,
+    session,
+    signIn,
+    signOut,
+    isSigningIn,
   } = useApp();
+  const network = findNetwork(chainId);
+  const isPublic = PUBLIC_NETWORKS.some((n) => n.chainId === chainId);
   const [walletOpen, setWalletOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -104,20 +109,32 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
         <div className="hidden lg:flex items-center gap-2 bg-carbon-nav px-2.5 py-1 rounded border border-carbon-border text-xs">
           <Layers className="w-3.5 h-3.5 text-primary" />
           <span className="font-display font-semibold text-carbon-text tracking-tight">
-            Autonomous Treasury Alpha
+            {mode === "connected" ? "Connected · live backend" : "Demo · simulated"}
           </span>
         </div>
 
-        {/* Reconciler Environment Pill */}
-        <div className="hidden sm:flex items-center gap-1.5 pl-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="font-mono text-[11px] uppercase tracking-wider text-carbon-muted">
-            ENV:{" "}
-            <span className="text-carbon-text font-medium">
-              {chainId === 133 ? "TESTNET RECONCILER" : "MAINNET RECONCILER"}
-            </span>
-          </span>
-        </div>
+        {/* Network selector (shared/networks PUBLIC_NETWORKS) */}
+        <label className="hidden sm:flex items-center gap-1.5 pl-1">
+          <span className={cn("inline-block w-2 h-2 rounded-full", network?.isTestnet ? "bg-warning" : "bg-danger")} />
+          <span className="sr-only">Wallet network</span>
+          <select
+            value={isPublic ? chainId : ""}
+            onChange={(e) => void switchChain(Number(e.target.value))}
+            className="bg-transparent font-mono text-[11px] uppercase tracking-wider text-carbon-text focus:outline-none cursor-pointer"
+            title={mode === "demo" ? "Demo mode: network selection is simulated" : "Switch wallet network"}
+          >
+            {!isPublic && (
+              <option value="" disabled>
+                Unsupported chain {chainId}
+              </option>
+            )}
+            {PUBLIC_NETWORKS.map((n) => (
+              <option key={n.chainId} value={n.chainId} className="bg-carbon-panel normal-case">
+                {n.shortName} · {n.chainId}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {/* Mobile / Secondary Breadcrumb */}
         <nav
@@ -157,14 +174,9 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
       <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
         {/* Rail Telemetry */}
         <div className="hidden xl:flex items-center gap-1.5 text-carbon-muted">
-          <span>HSP QA Rail:</span>
-          <span
-            className={cn(
-              "font-semibold",
-              mode === "connected" ? "text-warning" : "text-primary"
-            )}
-          >
-            {mode === "connected" ? "Safe Mode (Allowlist Pending)" : "Simulation Fixture"}
+          <span>Settlement:</span>
+          <span className={cn("font-semibold", mode === "connected" ? "text-carbon-text" : "text-primary")}>
+            {mode === "connected" ? "Sepolia Test USDC · HSP not connected" : "Simulated"}
           </span>
         </div>
 
@@ -172,7 +184,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
 
         {/* Quorum Notice */}
         <div className="hidden md:flex items-center gap-1.5 text-carbon-muted">
-          <span>Quorum:</span>
+          <span>Approval:</span>
           <span className="text-warning font-semibold bg-warning/10 px-1.5 py-0.5 rounded border border-warning/20 text-[11px]">
             2-Stage Required
           </span>
@@ -182,12 +194,12 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
         {isWrongNetwork && (
           <button
             type="button"
-            onClick={() => switchChain(133)}
+            onClick={() => switchChain(SEPOLIA_CHAIN_ID)}
             className="flex items-center gap-1.5 h-8 px-2.5 rounded bg-warning/10 border border-warning/30 text-warning text-xs hover:bg-warning/20 transition-colors font-mono"
-            title="Click to switch wallet network to HashKey Chain Testnet (Chain ID 133)"
+            title="Unsupported network. Switch wallet to Ethereum Sepolia Testnet (chain 11155111)"
           >
             <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-            Switch to Testnet 133
+            Switch to Sepolia
           </button>
         )}
 
@@ -209,10 +221,35 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                   : "text-carbon-muted hover:text-carbon-text"
               )}
             >
-              {m}
+              {m === "demo" ? (mode === "demo" ? "Demo · simulated" : "Demo") : "Connected"}
             </button>
           ))}
         </div>
+
+        {/* Session (connected mode only) */}
+        {mode === "connected" && walletType === "eoa" && walletAddress &&
+          (session ? (
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="hidden sm:flex items-center gap-1.5 h-8 px-2.5 rounded border border-success/30 bg-success/10 text-success text-[11px] hover:bg-success/15 transition-colors"
+              title="Signed in with Ethereum. Click to sign out."
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              Signed in · Sign out
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void signIn()}
+              disabled={isSigningIn}
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-medium transition-colors disabled:opacity-50"
+              title="Sign a one-time SIWE message. Signing in never authorizes a payment."
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              {isSigningIn ? "Signing in…" : "Sign in"}
+            </button>
+          ))}
 
         {/* Wallet Connector / Badge */}
         <div className="relative" ref={menuRef}>
@@ -256,7 +293,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                   <div className="px-3.5 pt-3 pb-3 border-b border-carbon-border">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-carbon-text">
-                        Approver Key
+                        Wallet
                       </span>
                       {walletType === "simulated" ? (
                         <span className="text-[10px] text-warning font-mono flex items-center gap-1">
@@ -289,8 +326,10 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                     </div>
                     <p className="mt-2 text-[11px] text-carbon-muted leading-relaxed font-sans">
                       {walletType === "simulated"
-                        ? "Deterministic fixture wallet for safe evaluation. Connected Mode requires an actual browser wallet."
-                        : "Authorizes commercial terms and HSP settlements via your EIP-1193 wallet. HashX never stores private keys."}
+                        ? "Simulated demo wallet — cannot sign real transactions. Connected mode requires a real browser wallet."
+                        : session
+                          ? "Signed in with Ethereum. Your wallet signs invoices and payment authorizations itself; HashX never stores private keys."
+                          : "Connected browser wallet, not signed in. Sign in (SIWE) to use the HashX backend. HashX never stores private keys."}
                     </p>
                   </div>
                   <button
