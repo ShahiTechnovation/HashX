@@ -20,7 +20,7 @@ export default function GlobalError({
   return (
     <main className="min-h-screen bg-background flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-md text-center animate-fade-in">
-        <LogoMark className="mx-auto w-7 h-7 text-foreground" />
+        <LogoMark size={32} className="mx-auto" />
         <p className="eyebrow mt-8">Something went wrong</p>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-[-0.025em] text-foreground">
           This view couldn&apos;t be loaded

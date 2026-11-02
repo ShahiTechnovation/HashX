@@ -3,23 +3,18 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ChevronRight,
-  RefreshCw,
-  FileCheck2,
-  Search,
-  ExternalLink,
-  Download,
-  Printer,
-  CheckCircle2,
-  ShieldCheck,
-  Receipt,
-} from "lucide-react";
+import { ChevronRight, RefreshCw, Receipt } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveReceipts } from "@/components/live/receipts/LiveReceipts";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { VerifiableReceipt } from "@/types/domain";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { SearchInput } from "@/components/ui/Field";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { SimulatedBadge } from "@/components/live/common";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp } from "@/lib/formatters";
 
@@ -74,107 +69,66 @@ function DemoReceiptsIndexPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header & Actions Strip */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-              <span>Console</span>
-              <span className="text-carbon-border">/</span>
-              <span>Verifiable Receipts</span>
-              <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">Attestation Registry</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase">
-              Verifiable Cryptographic Receipts
-            </h1>
-            <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              Self-contained proof certificates binding signed intent, verified fulfillment, and finalized HSP settlement.
-            </p>
-          </div>
+      <PageHeader
+        eyebrow="Settlement records"
+        title="Receipts"
+        badges={<SimulatedBadge />}
+        description="Each receipt binds the signed invoice, the verified delivery evidence, the payer's authorization, and the settlement it was issued against."
+        meta={<MetaItem label="Receipts">{isLoading && receipts.length === 0 ? "—" : receipts.length}</MetaItem>}
+        actions={
+          <Button variant="secondary" size="sm" onClick={triggerRefresh} disabled={isLoading}>
+            <RefreshCw className={cn(isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        }
+      />
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={triggerRefresh}
-              disabled={isLoading}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
-              <span>Sync</span>
-            </button>
-          </div>
+      <Panel>
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p className="text-[13px] text-foreground-secondary">
+            {searchQuery ? `${filteredReceipts.length} of ${receipts.length} receipts` : "All receipts"}
+          </p>
+          <SearchInput
+            wrapperClassName="w-full sm:w-80"
+            aria-label="Search receipts"
+            placeholder="Search by receipt, invoice, or seller"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        {/* Telemetry Strip */}
-        <div className="mt-4 pt-3 border-t border-carbon-border/70 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs font-mono text-carbon-muted">
-          <div>
-            Total Receipts Minted: <span className="text-carbon-text font-bold">{receipts.length}</span>
-          </div>
-          <span>•</span>
-          <div>
-            Settlement Finality: <span className="text-success font-semibold">100% Attested</span>
-          </div>
-          <span>•</span>
-          <div>
-            Standard: <span className="text-carbon-text">HashX Verifiable Receipt v1</span>
-          </div>
-          <span>•</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            <span className="text-success font-medium">Chain Anchored</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Receipts Ledger */}
-      <section className="border border-carbon-border rounded bg-carbon-nav overflow-hidden">
-        {/* Search */}
-        <div className="p-3.5 border-b border-carbon-border flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-carbon-panel/60">
-          <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted">
-            <Receipt className="w-4 h-4 text-primary" />
-            <span>Immutable Receipt Ledger</span>
-          </div>
-
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-carbon-muted" />
-            <input
-              type="text"
-              placeholder="Search by Receipt ID, invoice, or seller..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-carbon-void pl-8 pr-3 py-1.5 rounded text-xs font-mono text-carbon-text border border-carbon-border focus:border-primary focus:outline-none placeholder:text-carbon-muted/60"
-            />
-          </div>
-        </div>
-
-        {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-mono text-xs">
+          <table className="table-base min-w-[760px]">
             <thead>
-              <tr className="bg-carbon-void/80 text-[10px] uppercase tracking-wider text-carbon-muted border-b border-carbon-border">
-                <th className="py-3 px-4 font-semibold">RECEIPT ID</th>
-                <th className="py-3 px-4 font-semibold">INVOICE &amp; CREDITOR</th>
-                <th className="py-3 px-4 font-semibold text-right">DISBURSEMENT</th>
-                <th className="py-3 px-4 font-semibold">EVIDENCE ANCHOR</th>
-                <th className="py-3 px-4 font-semibold text-center">FINALITY</th>
-                <th className="py-3 px-4 font-semibold text-right">CERTIFICATE</th>
+              <tr>
+                <th>Receipt</th>
+                <th>Seller</th>
+                <th className="text-right">Amount</th>
+                <th>Evidence digest</th>
+                <th>Settlement</th>
+                <th className="w-10"><span className="sr-only">Open</span></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-carbon-border">
+            <tbody>
               {isLoading && receipts.length === 0 ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="p-4">
-                      <div className="h-4 rounded bg-carbon-panel animate-pulse" />
+                    <td colSpan={6}>
+                      <div className="h-4 rounded bg-surface-3" />
                     </td>
                   </tr>
                 ))
               ) : filteredReceipts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center">
+                  <td colSpan={6} className="p-0">
                     <EmptyState
-                      title="No verifiable receipts found"
-                      description="Receipts are minted automatically once an obligation reaches finalized settlement."
+                      icon={<Receipt className="h-[18px] w-[18px]" />}
+                      title={searchQuery ? "No receipts match your search" : "No receipts yet"}
+                      description={
+                        searchQuery
+                          ? "Try a receipt ID, invoice ID, or seller name."
+                          : "Receipts are issued automatically once an obligation reaches finalized settlement."
+                      }
                     />
                   </td>
                 </tr>
@@ -183,62 +137,41 @@ function DemoReceiptsIndexPage() {
                   <tr
                     key={rcpt.id}
                     onClick={() => router.push(`/app/receipts/${rcpt.id}`)}
-                    className="hover:bg-carbon-panel/40 transition-colors cursor-pointer group"
+                    className="group cursor-pointer hover:bg-surface-2/60"
                   >
-                    <td className="py-3.5 px-4">
+                    <td>
                       <Link
                         href={`/app/receipts/${rcpt.id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="font-bold text-carbon-text group-hover:text-primary transition-colors flex items-center gap-1"
+                        className="whitespace-nowrap font-mono text-xs text-foreground hover:text-primary-light hover:underline"
                       >
-                        <span>{rcpt.id}</span>
+                        {rcpt.id}
                       </Link>
-                      <div className="text-[10px] text-carbon-muted">
+                      <div className="mt-0.5 whitespace-nowrap text-xs text-foreground-muted tabular-nums">
                         {formatTimestamp(rcpt.issuedAt).replace(" UTC", "")}
                       </div>
                     </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="text-carbon-text font-medium truncate max-w-[160px]">
-                        {rcpt.sellerDisplayName || "Seller Agent"}
-                      </div>
-                      <div className="text-[10px] text-carbon-muted">
-                        Invoice: #{rcpt.invoiceId}
-                      </div>
+                    <td>
+                      <div className="max-w-[220px] truncate text-foreground">{rcpt.sellerDisplayName || "Seller agent"}</div>
+                      <div className="mt-0.5 font-mono text-xs text-foreground-muted">{rcpt.invoiceId}</div>
                     </td>
-
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="font-bold text-success">
-                        {rcpt.payment.humanAmount}
-                      </div>
-                      <div className="text-[10px] text-carbon-muted">
-                        {rcpt.payment.tokenSymbol}
-                      </div>
+                    <td className="text-right">
+                      <div className="font-medium tabular-nums text-foreground">{rcpt.payment.humanAmount}</div>
+                      <div className="mt-0.5 font-mono text-xs text-foreground-muted">{rcpt.payment.tokenTotalRaw} raw</div>
                     </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="text-carbon-muted text-[11px] truncate max-w-[160px]">
-                        {rcpt.deliveryEvidenceDigest.slice(0, 16)}...
-                      </div>
-                      <div className="text-[10px] text-success">SHA-256 Validated</div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-success/15 text-success border border-success/30">
-                        <CheckCircle2 className="w-3 h-3" />
-                        SETTLED &amp; FINALIZED
+                    <td>
+                      <span className="font-mono text-xs text-foreground-secondary" title={rcpt.deliveryEvidenceDigest}>
+                        {formatAddress(rcpt.deliveryEvidenceDigest, 8)}
                       </span>
                     </td>
-
-                    <td className="py-3.5 px-4 text-right">
-                      <Link
-                        href={`/app/receipts/${rcpt.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
-                      >
-                        <span>View Certificate</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </Link>
+                    <td>
+                      <StatusBadge status={rcpt.payment.hspStatus} type="hsp" size="sm" />
+                    </td>
+                    <td className="text-right">
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="ml-auto h-4 w-4 text-foreground-muted opacity-0 transition-opacity group-hover:opacity-100"
+                      />
                     </td>
                   </tr>
                 ))
@@ -246,7 +179,7 @@ function DemoReceiptsIndexPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }

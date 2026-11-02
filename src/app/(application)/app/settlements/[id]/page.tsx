@@ -3,31 +3,27 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  ChevronDown,
-  FileJson2,
-  Lock,
-  Receipt,
-  RefreshCw,
-  Stamp,
-  CheckCircle2,
-  Clock,
-  Layers,
-  ExternalLink,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronDown, Clock, FileJson2, Receipt, RefreshCw } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveSettlementDetail } from "@/components/live/payments/LiveSettlementDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt, VerifiableReceipt } from "@/types/domain";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { FinalityTrack } from "@/components/ui/FinalityTrack";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { Callout } from "@/components/ui/Callout";
+import { Timeline } from "@/components/ui/Timeline";
+import { SimulatedBadge } from "@/components/live/common";
+import { ToneBadge, merchantDisplayName } from "@/components/approvals/approval-primitives";
+import { PendingValue, buildStatusHistory, isPreAuthorization } from "@/components/settlements/settlement-utils";
 import { cn } from "@/lib/utils";
-import { formatAddress, formatTimestamp, getExplorerTxUrl, getHSPStatusMeta } from "@/lib/formatters";
+import { formatTimestamp, getExplorerTxUrl } from "@/lib/formatters";
 
 /** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
 export default function SettlementDetailRoute() {
@@ -101,12 +97,12 @@ function DemoSettlementDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-14 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="h-64 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 h-96 bg-carbon-nav border border-carbon-border rounded" />
-          <div className="lg:col-span-5 h-96 bg-carbon-nav border border-carbon-border rounded" />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading settlement">
+        <div className="h-16 w-1/2 animate-pulse rounded-md bg-surface-2" />
+        <div className="h-48 animate-pulse rounded-lg bg-surface-2" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="h-80 animate-pulse rounded-lg bg-surface-2 lg:col-span-7" />
+          <div className="h-80 animate-pulse rounded-lg bg-surface-2 lg:col-span-5" />
         </div>
       </div>
     );
@@ -114,286 +110,232 @@ function DemoSettlementDetailPage() {
 
   if (!attempt) {
     return (
-      <div className="space-y-6">
-        <div className="bg-carbon-nav border border-carbon-border p-8 rounded text-center">
-          <Lock className="w-10 h-10 text-carbon-muted mx-auto mb-3" />
-          <h2 className="font-display text-lg font-bold text-carbon-text">
-            Settlement Record Not Found
-          </h2>
-          <p className="text-xs text-carbon-muted font-mono mt-1 mb-4">
-            No settlement record matches ID {attemptId}.
-          </p>
-          <Link
-            href="/app/settlements"
-            className="px-4 py-2 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void transition-colors inline-block"
-          >
-            Back to Settlements
-          </Link>
-        </div>
-      </div>
+      <Panel>
+        <EmptyState
+          title="Settlement record not found"
+          description={`No settlement record matches ${attemptId}. It may belong to a different mode.`}
+          action={
+            <Link href="/app/settlements" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+              Back to settlements
+            </Link>
+          }
+        />
+      </Panel>
     );
   }
 
-  const meta = getHSPStatusMeta(attempt.hspStatus);
   const isFinal = attempt.hspStatus === "payment-finalized";
   const isSafe = attempt.hspStatus === "payment-safe";
 
+  const pre = isPreAuthorization(attempt);
+  const history = buildStatusHistory(attempt);
+  const merchant = merchantDisplayName(attempt.approvalSummary?.merchantName || "Verified Agent");
+
   return (
     <div className="space-y-6">
-      {/* 1. Technical Context Header */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <PageHeader
+        back={{ href: "/app/settlements", label: "Settlements" }}
+        eyebrow="Settlement"
+        title={`Payment to ${merchant}`}
+        badges={
+          <>
+            {pre ? (
+              <ToneBadge tone="neutral" icon={Clock}>
+                Awaiting authorization
+              </ToneBadge>
+            ) : (
+              <StatusBadge status={attempt.hspStatus} type="hsp" />
+            )}
+            <SimulatedBadge />
+          </>
+        }
+        meta={
+          <>
+            <MetaItem label="Attempt">
+              <span className="font-mono">{attempt.id}</span>
+            </MetaItem>
+            <MetaItem label="Invoice">
+              <Link href={`/app/invoices/${attempt.invoiceId}`} className="font-mono hover:text-foreground hover:underline">
+                {attempt.invoiceId}
+              </Link>
+            </MetaItem>
+            <MetaItem label="Created">{formatTimestamp(attempt.createdAt)}</MetaItem>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={handlePollStatus} disabled={isPolling}>
+              <RefreshCw className={cn(isPolling && "animate-spin")} />
+              Refresh status
+            </Button>
+            <Link href={`/app/trust/${attempt.invoiceId}`} className={buttonStyles({ variant: "ghost", size: "sm" })}>
+              Trust Inspector
+              <ArrowUpRight />
+            </Link>
+          </>
+        }
+      />
+
+      {/* Finality: the one thing this page exists to answer */}
+      <Panel>
+        <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-5">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-              <Link href="/app" className="hover:text-carbon-text transition-colors">
-                Console
-              </Link>
-              <span className="text-carbon-border">/</span>
-              <Link href="/app/settlements" className="hover:text-carbon-text transition-colors">
-                Settlement Explorer
-              </Link>
-              <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">#{attempt.id}</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase">
-              Settlement Reconciler &amp; Finality Track
-            </h1>
-            <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              HashKey HSP transaction state tracking from submission to irreversible finality.
+            <h2 className="text-[15px] font-medium tracking-[-0.01em] text-foreground">Finality</h2>
+            <p className="mt-0.5 text-xs text-foreground-muted">
+              HashKey HSP lifecycle from submission to irreversible finality.
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePollStatus}
-              disabled={isPolling}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", isPolling && "animate-spin")} />
-              <span>Poll Status</span>
-            </button>
-            <Link
-              href={`/app/trust/${attempt.invoiceId}`}
-              className="px-3 py-1.5 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors"
-            >
-              <span>Trust Inspector</span>
-              <ExternalLink className="w-3 h-3 text-carbon-muted" />
-            </Link>
+          <div className="sm:text-right">
+            <div className="text-xs text-foreground-muted">Amount</div>
+            <div className="text-[22px] font-medium tabular-nums tracking-[-0.02em] text-foreground">
+              {attempt.approvalSummary?.humanAmount || "0.00 USDC"}
+            </div>
           </div>
         </div>
-      </section>
-
-      {/* 2. Signature Component — The Finality Track Card */}
-      <div className="bg-carbon-nav border border-carbon-border rounded p-6 shadow-xl relative overflow-hidden">
-        {/* Ambient Top Glow */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 right-0 h-[2px]",
-            isFinal
-              ? "bg-gradient-to-r from-success via-primary to-success"
-              : isSafe
-              ? "bg-gradient-to-r from-sky-400 via-primary to-sky-400"
-              : "bg-gradient-to-r from-primary via-warning to-primary"
+        <PanelBody className="space-y-5">
+          {pre ? (
+            <Callout
+              tone="neutral"
+              title="Not submitted"
+              actions={
+                <Link href={`/app/approvals/${attempt.id}`} className={buttonStyles({ variant: "secondary", size: "sm" })}>
+                  Open approval
+                </Link>
+              }
+            >
+              This payment is still awaiting human authorization and has not been broadcast.
+            </Callout>
+          ) : (
+            <div className="px-1 py-2 sm:px-4">
+              <FinalityTrack status={attempt.hspStatus} />
+            </div>
           )}
-        />
 
-        {/* Focused Tx Meta Row */}
-        <div className="flex flex-wrap items-center justify-between pb-6 border-b border-carbon-border gap-4">
-          <div className="flex items-center gap-4">
-            <div className="px-2.5 py-1 bg-carbon-void border border-carbon-border rounded font-mono text-xs font-bold text-primary">
-              #HSP-{attempt.id.slice(-4).toUpperCase()}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-display text-base font-bold text-carbon-text">
-                  Settlement Intent: {attempt.approvalSummary?.merchantName || "Verified Agent"}
-                </span>
-                <span className="text-xs font-mono text-carbon-border">|</span>
-                <span className="text-xs font-mono text-carbon-muted">
-                  Payee: {formatAddress(attempt.payee)}
-                </span>
-              </div>
-              <p className="text-xs text-carbon-muted font-mono mt-0.5">
-                Submitted at {formatTimestamp(attempt.createdAt)}
-              </p>
-            </div>
-          </div>
+          {isSafe && !isFinal && (
+            <Callout tone="warning" title="Safe is not final">
+              The transaction is included on-chain but has not reached consensus finality. The verifiable receipt is
+              anchored only after full settlement finality.
+            </Callout>
+          )}
+        </PanelBody>
+      </Panel>
 
-          <div className="flex items-center gap-6">
-            <div className="text-right font-mono">
-              <span className="text-[10px] text-carbon-muted uppercase block">
-                Disbursement Amount
-              </span>
-              <span className="font-display text-xl font-bold text-carbon-text">
-                {attempt.approvalSummary?.humanAmount || "0.00 USDC"}
-              </span>
-            </div>
-
-            {/* Current Stage Badge */}
-            <div className="px-3 py-1.5 rounded bg-carbon-void border border-carbon-border flex items-center gap-2">
-              <span
-                className={cn(
-                  "w-2.5 h-2.5 rounded-full",
-                  isFinal ? "bg-success" : isSafe ? "bg-sky-400 animate-pulse" : "bg-warning"
-                )}
-              />
-              <div className="text-left font-mono">
-                <span className="text-[9px] text-carbon-muted block uppercase font-bold tracking-wider">
-                  CURRENT STAGE
-                </span>
-                <span
-                  className={cn(
-                    "text-xs font-bold uppercase",
-                    isFinal ? "text-success" : isSafe ? "text-sky-300" : "text-warning"
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-7">
+          <Panel>
+            <PanelHeader title="On-chain references" description="Identifiers for independently checking this settlement." />
+            <PanelBody>
+              <DataList>
+                <DataRow label="Transaction hash">
+                  {attempt.txHash ? (
+                    <CopyableValue className="max-w-full" value={attempt.txHash} explorerUrl={getExplorerTxUrl(attempt.txHash)} label="Copy transaction hash" />
+                  ) : (
+                    <PendingValue>Awaiting broadcast inclusion</PendingValue>
                   )}
-                >
-                  {meta.label}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+                </DataRow>
+                <DataRow label="HSP flow ID">
+                  <CopyableValue className="max-w-full" value={attempt.flowId} label="Copy flow ID" />
+                </DataRow>
+                <DataRow label="Payment request ID">
+                  <CopyableValue className="max-w-full" value={attempt.paymentRequestId} label="Copy payment request ID" />
+                </DataRow>
+                <DataRow label="Evidence registry anchor">
+                  {attempt.evidenceRegistryTx ? (
+                    <CopyableValue className="max-w-full" value={attempt.evidenceRegistryTx} label="Copy evidence anchor" />
+                  ) : (
+                    <PendingValue>Committed alongside the final receipt</PendingValue>
+                  )}
+                </DataRow>
+                <DataRow label="Payer">
+                  <CopyableValue className="max-w-full" value={attempt.payer} label="Copy payer address" />
+                </DataRow>
+                <DataRow label="Payee">
+                  <CopyableValue className="max-w-full" value={attempt.payee} label="Copy payee address" />
+                </DataRow>
+              </DataList>
+            </PanelBody>
+          </Panel>
 
-        {/* Architectural 5-Stage Horizontal Finality Timeline */}
-        <div className="py-6">
-          <FinalityTrack status={attempt.hspStatus} />
-        </div>
-
-        {/* Safe is not final alert banner */}
-        {isSafe && !isFinal && (
-          <div className="mt-4 p-3 bg-sky-500/10 border border-sky-400/40 rounded flex items-center justify-between text-xs font-mono text-sky-200">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>
-                <strong>SAFE IS NOT FINAL:</strong> Transaction is included on-chain but awaiting consensus finality.
-                Verifiable receipt will be anchored upon reaching full settlement finality.
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 3. Two-Column Forensic Telemetry & HSP Settlement Ledger */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (7 cols): Parameters & Commitments */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4">
-            <div className="pb-3 border-b border-carbon-border flex items-center justify-between">
-              <h3 className="font-display text-xs font-bold uppercase tracking-wider text-carbon-text">
-                Settlement Parameters &amp; On-Chain Anchors
-              </h3>
-              <StatusBadge status={attempt.hspStatus} type="hsp" size="sm" />
-            </div>
-
-            <div className="space-y-3 font-mono text-xs">
-              <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase">On-Chain Transaction Hash</div>
-                {attempt.txHash ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-carbon-text break-all">{attempt.txHash}</span>
-                    <a
-                      href={getExplorerTxUrl(attempt.txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 flex items-center gap-1 text-[11px] shrink-0 ml-2"
-                    >
-                      <span>Explorer</span>
-                      <ArrowUpRight className="w-3 h-3" />
-                    </a>
-                  </div>
-                ) : (
-                  <span className="text-carbon-muted">Awaiting broadcast inclusion</span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                  <div className="text-[10px] text-carbon-muted uppercase">HSP Flow ID</div>
-                  <div className="text-carbon-text font-bold break-all">{attempt.flowId}</div>
-                </div>
-
-                <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                  <div className="text-[10px] text-carbon-muted uppercase">Payment Request ID</div>
-                  <div className="text-carbon-text font-bold break-all">{attempt.paymentRequestId}</div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase">Evidence Registry Anchor</div>
-                {attempt.evidenceRegistryTx ? (
-                  <div className="text-success break-all">{attempt.evidenceRegistryTx}</div>
-                ) : (
-                  <span className="text-carbon-muted">Committed alongside final receipt</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Raw HSP Telemetry toggle */}
-          <div className="bg-carbon-nav border border-carbon-border rounded p-4">
+          <Panel>
             <button
+              type="button"
               onClick={() => setShowRaw(!showRaw)}
-              className="w-full flex items-center justify-between text-xs font-mono text-carbon-muted hover:text-carbon-text transition-colors"
+              aria-expanded={showRaw}
+              aria-controls="hsp-raw-payload"
+              className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-surface-2/50 sm:px-5"
             >
-              <span className="flex items-center gap-2">
-                <FileJson2 className="w-4 h-4 text-primary" />
-                <span>Raw HSP Settlement Payload</span>
+              <span className="flex items-center gap-2.5">
+                <FileJson2 className="h-4 w-4 text-foreground-muted" aria-hidden="true" />
+                <span>
+                  <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">Raw settlement record</span>
+                  <span className="block text-xs text-foreground-muted">The full payment attempt as stored</span>
+                </span>
               </span>
-              <span>{showRaw ? "Hide JSON" : "Inspect Raw JSON"}</span>
+              <span className="flex items-center gap-1 text-xs text-foreground-secondary">
+                {showRaw ? "Hide" : "Inspect"}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", showRaw && "rotate-180")} aria-hidden="true" />
+              </span>
             </button>
-
             {showRaw && (
-              <div className="mt-3 pt-3 border-t border-carbon-border">
+              <div id="hsp-raw-payload" className="border-t border-border p-4 sm:p-5">
                 <CodeViewer title={`hsp-attempt-${attempt.id}.json`} data={attempt} />
               </div>
             )}
-          </div>
+          </Panel>
         </div>
 
-        {/* Right Column (5 cols): Receipt Anchor Card */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4 sticky top-20 shadow-lg">
-            <div className="pb-3 border-b border-carbon-border">
-              <span className="text-[10px] font-mono text-carbon-muted uppercase tracking-wider block">
-                TERMINAL STATE ARTIFACT
-              </span>
-              <h3 className="font-display text-base font-bold text-carbon-text mt-0.5">
-                Verifiable Cryptographic Receipt
-              </h3>
-            </div>
-
-            {isFinal ? (
-              <div className="space-y-4 font-mono text-xs">
-                <div className="p-4 bg-success/10 border border-success/40 rounded space-y-2">
-                  <div className="flex items-center gap-2 text-success font-bold text-xs uppercase">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Settlement Irreversibly Finalized</span>
+        <div className="space-y-6 lg:col-span-5">
+          <Panel>
+            <PanelHeader title="Receipt" />
+            <PanelBody>
+              {isFinal ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <div className="text-[13px] font-medium text-foreground">Settlement finalized</div>
+                      <p className="mt-0.5 text-xs leading-relaxed text-foreground-muted">
+                        Block finality is confirmed and an evidence-backed receipt was issued for this payment.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-carbon-muted leading-relaxed">
-                    HashKey HSP has confirmed block finality. An evidence-backed verifiable receipt has been minted and committed to the ledger.
-                  </p>
+                  {receipt && (
+                    <DataList dense>
+                      <DataRow label="Receipt">
+                        <CopyableValue className="max-w-full" value={receipt.id} label="Copy receipt ID" />
+                      </DataRow>
+                    </DataList>
+                  )}
+                  <Link href={`/app/receipts/${attempt.invoiceId}`} className={cn(buttonStyles({ variant: "primary", size: "md" }), "w-full")}>
+                    <Receipt />
+                    View receipt
+                  </Link>
                 </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-foreground-muted ring-1 ring-inset ring-border">
+                    <Clock className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <div className="text-[13px] font-medium text-foreground">Awaiting finality</div>
+                    <p className="mt-0.5 text-xs leading-relaxed text-foreground-muted">
+                      A receipt is issued only after settlement finality is attested on-chain. Safe transactions move to
+                      finalized automatically.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </PanelBody>
+          </Panel>
 
-                <Link
-                  href={`/app/receipts/${attempt.invoiceId}`}
-                  className="w-full px-4 py-2.5 rounded text-xs font-semibold text-white bg-success hover:bg-success/90 flex items-center justify-center gap-2 shadow-sm transition-colors text-center"
-                >
-                  <Receipt className="w-4 h-4" />
-                  <span>View Verifiable Receipt Certificate</span>
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4 font-mono text-xs">
-                <div className="p-4 bg-carbon-panel rounded border border-carbon-border space-y-2 text-center">
-                  <Clock className="w-8 h-8 text-carbon-muted mx-auto mb-1" />
-                  <div className="text-carbon-text font-bold">Awaiting Settlement Finality</div>
-                  <p className="text-[11px] text-carbon-muted leading-relaxed max-w-xs mx-auto">
-                    The verifiable receipt is only minted once full settlement finality has been attested on chain. Safe transactions will transition to finalized automatically.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          <Panel>
+            <PanelHeader title="Status history" description="Only recorded timestamps are shown." />
+            <PanelBody>
+              <Timeline items={history} />
+            </PanelBody>
+          </Panel>
         </div>
       </div>
     </div>

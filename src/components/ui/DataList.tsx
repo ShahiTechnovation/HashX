@@ -30,7 +30,7 @@ export const DataRow: React.FC<DataRowProps> = ({ label, children, hint, mono, s
   >
     <dt className="text-xs text-foreground-muted">
       {label}
-      {hint && <span className="block text-2xs text-foreground-muted/70 mt-0.5">{hint}</span>}
+      {hint && <span className="block text-2xs text-foreground-muted mt-0.5">{hint}</span>}
     </dt>
     <dd className={cn("min-w-0 text-[13px] text-foreground", mono && "font-mono text-xs break-all")}>
       {children}

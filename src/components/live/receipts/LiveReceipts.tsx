@@ -36,7 +36,7 @@ function ReceiptsInner() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Connected mode · Receipts"
+        eyebrow="Settlement records · connected"
         title="Receipts"
         description="Portable hashx.receipt.v2 documents. Each binds the signed invoice, verified delivery, the payer's EIP-712 authorization and the independently verified Test USDC Transfer on Sepolia Testnet."
         actions={
@@ -50,7 +50,11 @@ function ReceiptsInner() {
 
       <Panel>
         {q.loading && !q.data ? (
-          <PanelBody className="h-40 animate-pulse" />
+          <PanelBody className="space-y-3" aria-busy="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-4 rounded bg-surface-3" />
+            ))}
+          </PanelBody>
         ) : q.data && rows.length === 0 ? (
           <PanelBody>
             <EmptyState
@@ -60,50 +64,53 @@ function ReceiptsInner() {
           </PanelBody>
         ) : rows.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
+            <table className="table-base min-w-[860px]">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2.5 font-medium sm:px-5">Receipt</th>
-                  <th className="px-3 py-2.5 font-medium">Status</th>
-                  <th className="px-3 py-2.5 font-medium">Network</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Amount</th>
-                  <th className="px-3 py-2.5 font-medium">Transaction</th>
-                  <th className="px-4 py-2.5 font-medium sm:px-5">Issued</th>
+                  <th>Receipt</th>
+                  <th>Status</th>
+                  <th>Network</th>
+                  <th className="text-right">Amount</th>
+                  <th>Transaction</th>
+                  <th>Issued</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {rows.map((r) => {
                   const st = receiptStatus(r);
                   const s = (r.document as Partial<ReceiptBody> | null)?.settlement;
                   const chainId = s?.chainId ?? r.chainId;
                   return (
-                    <tr key={r.id} className="hover:bg-surface-2/40">
-                      <td className="px-4 py-3 sm:px-5">
-                        <Link href={`/app/receipts/${r.id}`} className="font-mono text-foreground hover:text-primary-light hover:underline">
+                    <tr key={r.id} className="hover:bg-surface-2/60">
+                      <td>
+                        <Link href={`/app/receipts/${r.id}`} className="whitespace-nowrap font-mono text-xs text-foreground hover:text-primary-light hover:underline">
                           {r.id}
                         </Link>
-                        <div className="mt-0.5 font-mono text-2xs text-foreground-muted">invoice {r.invoiceId}</div>
+                        <div className="mt-0.5 text-xs text-foreground-muted">Invoice <span className="font-mono">{r.invoiceId}</span></div>
                       </td>
-                      <td className="px-3 py-3">
-                        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium ring-1", toneStyles[st.tone].badge)}>{st.label}</span>
+                      <td>
+                        <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset", toneStyles[st.tone].badge)}>
+                          <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", toneStyles[st.tone].dot)} />
+                          {st.label}
+                        </span>
                       </td>
-                      <td className="px-3 py-3">
+                      <td>
                         <TestnetBadge chainId={chainId} />
                       </td>
-                      <td className="px-3 py-3 text-right">
+                      <td className="text-right">
                         {s ? (
                           <>
-                            <div className="font-medium text-foreground">{tokenAmount(s.amount, s.tokenDecimals, s.tokenSymbol, chainId)}</div>
-                            <div className="font-mono text-2xs text-foreground-muted">{s.amount} raw</div>
+                            <div className="font-medium tabular-nums text-foreground">{tokenAmount(s.amount, s.tokenDecimals, s.tokenSymbol, chainId)}</div>
+                            <div className="mt-0.5 font-mono text-xs text-foreground-muted">{s.amount} raw</div>
                           </>
                         ) : (
                           <span className="text-foreground-muted">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3">
+                      <td>
                         <TxLink chainId={chainId} hash={s?.txHash ?? r.txHash} />
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-foreground-muted sm:px-5">{fmtTime(r.issuedAt)}</td>
+                      <td className="whitespace-nowrap text-xs tabular-nums text-foreground-muted">{fmtTime(r.issuedAt)}</td>
                     </tr>
                   );
                 })}

@@ -47,7 +47,7 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/60 animate-fade-in" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-foreground/25 animate-fade-in" onClick={onClose} aria-hidden="true" />
 
       <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
         <div

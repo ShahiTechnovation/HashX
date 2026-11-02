@@ -19,16 +19,16 @@ export interface HashRowSpec {
  */
 export const HashGroup: React.FC<{ title: string; rows: HashRowSpec[]; className?: string }> = ({ title, rows, className }) => (
   <div className={className}>
-    <div className="px-4 sm:px-5 pt-3 pb-1.5 text-2xs font-medium text-foreground-muted">{title}</div>
+    <div className="px-4 sm:px-5 pt-4 pb-1.5 text-xs font-medium text-foreground-muted">{title}</div>
     <dl className="divide-y divide-border/50">
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)_auto] gap-x-4 gap-y-1 items-center px-4 sm:px-5 py-2.5 hover:bg-surface-2/40 transition-colors"
+          className="grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)_auto] gap-x-4 gap-y-1 items-center px-4 sm:px-5 py-2.5 hover:bg-surface-2/60 transition-colors"
         >
           <dt className="min-w-0">
             <span className="block text-xs text-foreground-secondary">{row.label}</span>
-            {row.hint && <span className="block text-2xs text-foreground-muted/80 truncate">{row.hint}</span>}
+            {row.hint && <span className="block text-2xs text-foreground-muted truncate">{row.hint}</span>}
           </dt>
           <dd className="min-w-0">
             {row.value ? (
@@ -46,7 +46,7 @@ export const HashGroup: React.FC<{ title: string; rows: HashRowSpec[]; className
             {row.match && (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1 text-2xs font-medium whitespace-nowrap",
+                  "inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap",
                   row.match.ok ? "text-success" : "text-danger"
                 )}
               >

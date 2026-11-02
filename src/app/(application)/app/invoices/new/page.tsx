@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Lock, PenLine, FileSignature } from "lucide-react";
 import { keccak256, toBytes, createWalletClient, custom } from "viem";
 import { useApp } from "@/providers/AppContext";
+import { LiveInvoiceCreate } from "@/components/live/invoices/LiveInvoiceCreate";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { MOCK_COUNTERPARTIES } from "@/mocks/fixtures";
 import { Button, buttonStyles } from "@/components/ui/Button";
@@ -59,7 +60,7 @@ const STEPS: Array<StepDef & { title: string; description: string }> = [
   },
 ];
 
-export default function CreateInvoicePage() {
+function DemoCreateInvoicePage() {
   const router = useRouter();
   const { mode, triggerRefresh, walletAddress, isWalletConnected, connectWallet } = useApp();
   const client = mode === "connected" ? connectedClient : demoClient;
@@ -70,7 +71,11 @@ export default function CreateInvoicePage() {
 
   // Form State
   const [selectedSellerId, setSelectedSellerId] = useState(MOCK_COUNTERPARTIES[0].id);
-  const [buyerRef, setBuyerRef] = useState("buyer-job-audit-hsk-" + Math.floor(100 + Math.random() * 900));
+  const [buyerRef, setBuyerRef] = useState("");
+  // Random default is generated after mount so server and client render the same markup (avoids a hydration mismatch).
+  useEffect(() => {
+    setBuyerRef((prev) => prev || "buyer-job-audit-hsk-" + Math.floor(100 + Math.random() * 900));
+  }, []);
 
   // Service params
   const [targetAddress, setTargetAddress] = useState("0x0B306BF915C4d645ff596e518fAf3F9669b97016");
@@ -273,17 +278,17 @@ export default function CreateInvoicePage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* ── Composer ─────────────────────────────────────────────── */}
         <Panel className="xl:col-span-7 min-w-0">
-          <div className="px-4 sm:px-5 py-4 border-b border-border overflow-x-auto">
-            <InvoiceStepper steps={STEPS} current={currentStep} onSelect={goToStep} className="min-w-[520px]" />
+          <div className="px-4 sm:px-6 py-4 border-b border-border overflow-x-auto">
+            <InvoiceStepper steps={STEPS} current={currentStep} onSelect={goToStep} className="sm:min-w-[520px]" />
           </div>
 
-          <div className="px-4 sm:px-5 pt-5 pb-6">
-            <div className="mb-5">
-              <div className="text-2xs text-foreground-muted tabular-nums">
+          <div className="px-4 sm:px-6 pt-6 pb-8">
+            <div className="mb-6">
+              <div className="text-xs text-foreground-muted tabular-nums">
                 Step {currentStep} of {STEPS.length}
               </div>
-              <h2 className="mt-1 text-[15px] font-semibold text-foreground tracking-[-0.01em]">{step.title}</h2>
-              <p className="mt-1 text-xs text-foreground-muted leading-relaxed max-w-xl">{step.description}</p>
+              <h2 className="mt-1.5 text-[20px] font-semibold text-foreground tracking-[-0.022em]">{step.title}</h2>
+              <p className="mt-1.5 text-[13px] text-foreground-secondary leading-relaxed max-w-xl">{step.description}</p>
             </div>
 
             {errorMessage && (
@@ -315,7 +320,7 @@ export default function CreateInvoicePage() {
                     type="text"
                     disabled
                     value={selectedSeller.walletAddress}
-                    className="font-mono text-xs text-foreground-secondary bg-surface-3/40 cursor-not-allowed hover:border-border"
+                    className="font-mono text-xs"
                   />
                 </Field>
 
@@ -346,7 +351,7 @@ export default function CreateInvoicePage() {
                 <div className="panel-inset px-3.5 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-foreground-muted">Service type</span>
-                    <span className="inline-flex items-center gap-1 text-2xs text-foreground-muted">
+                    <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
                       <Lock className="w-3 h-3" aria-hidden="true" />
                       Fixed
                     </span>
@@ -483,20 +488,22 @@ export default function CreateInvoicePage() {
                   <div className="min-w-0">
                     <div className="text-xs text-foreground-muted">Seller requests</div>
                     <div className="mt-1.5 flex items-baseline gap-1.5">
-                      <span className="font-display text-[28px] leading-none font-semibold tracking-[-0.03em] tabular-nums text-foreground">
+                      <span className="text-[32px] leading-none font-medium tracking-[-0.03em] tabular-nums text-foreground">
                         {formatMinorToUsd(amountMinor)}
                       </span>
-                      <span className="text-2xs font-medium text-foreground-muted">USD</span>
+                      <span className="text-[13px] text-foreground-muted">USD</span>
                     </div>
-                    <div className="mt-1.5 font-mono text-2xs text-foreground-muted tabular-nums">amount_minor {amountMinor}</div>
+                    <div className="mt-2 font-mono text-xs text-foreground-muted tabular-nums">amount_minor {amountMinor}</div>
                   </div>
-                  <div className="text-xs text-foreground-secondary sm:text-right">
-                    <div>{selectedSeller.displayName}</div>
-                    <div className="font-mono text-2xs text-foreground-muted mt-0.5">pays to {formatAddress(payeeAddress)}</div>
+                  <div className="text-[13px] text-foreground-secondary sm:text-right">
+                    <div className="font-medium text-foreground">{selectedSeller.displayName}</div>
+                    <div className="mt-0.5 text-xs text-foreground-muted">
+                      pays to <span className="font-mono">{formatAddress(payeeAddress)}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-md border border-border divide-y divide-border/60">
+                <div className="rounded-md border border-border divide-y divide-border bg-surface-1">
                   <ReviewRow
                     label="Counterparties"
                     onEdit={() => goToStep(1)}
@@ -601,7 +608,7 @@ export default function CreateInvoicePage() {
                     {startBlock || "—"} → {endBlock || "—"}
                   </span>
                   {span !== null && span > 0 && (
-                    <span className="block text-2xs text-foreground-muted mt-0.5 tabular-nums">{span.toLocaleString("en-US")} blocks</span>
+                    <span className="block text-xs text-foreground-muted mt-0.5 tabular-nums">{span.toLocaleString("en-US")} blocks</span>
                   )}
                 </DataRow>
                 <DataRow label="Policy" mono>
@@ -612,18 +619,18 @@ export default function CreateInvoicePage() {
               <PreviewGroup title="Payment" active={currentStep === 3}>
                 <DataRow label="Amount">
                   <span className="tabular-nums">{formatMinorToUsd(amountMinor)}</span>
-                  <span className="text-2xs text-foreground-muted"> USD</span>
-                  <span className="block font-mono text-2xs text-foreground-muted mt-0.5 tabular-nums">{amountMinor} minor units</span>
+                  <span className="text-xs text-foreground-muted"> USD</span>
+                  <span className="block font-mono text-xs text-foreground-muted mt-0.5 tabular-nums">{amountMinor} minor units</span>
                 </DataRow>
                 <DataRow label="Payee">
                   <span className="font-mono text-xs">{payeeAddress ? formatAddress(payeeAddress, 6) : <Missing />}</span>
-                  <span className="block text-2xs text-foreground-muted mt-0.5">
+                  <span className="block text-xs text-foreground-muted mt-0.5">
                     {payeeIsSeller ? "Seller wallet" : "Differs from seller wallet"}
                   </span>
                 </DataRow>
                 <DataRow label="Chain">
                   {chainLabel(preferredChainId)}
-                  <span className="font-mono text-2xs text-foreground-muted tabular-nums"> · {preferredChainId}</span>
+                  <span className="font-mono text-xs text-foreground-muted tabular-nums"> · {preferredChainId}</span>
                 </DataRow>
                 <DataRow label="Validity">
                   <span className="tabular-nums">{expiresInDays}</span> {expiresInDays === 1 ? "day" : "days"} from signing
@@ -638,7 +645,7 @@ export default function CreateInvoicePage() {
             maxHeight="max-h-72"
             className={cn(currentStep === 4 && "ring-1 ring-inset ring-border-strong")}
             actions={
-              <span className="hidden sm:inline-flex items-center gap-1 text-2xs text-foreground-muted pr-1">
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-foreground-muted pr-1">
                 <PenLine className="w-3 h-3" aria-hidden="true" />
                 Live
               </span>
@@ -652,9 +659,9 @@ export default function CreateInvoicePage() {
 
 function PreviewGroup({ title, active, children }: { title: string; active: boolean; children: React.ReactNode }) {
   return (
-    <section className={cn("relative px-4 sm:px-5 py-4 transition-colors", active && "bg-surface-2/40")}>
+    <section className={cn("relative px-4 sm:px-5 py-4 transition-colors duration-200", active && "bg-primary-subtle/40")}>
       {active && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" />}
-      <div className={cn("eyebrow mb-3", active && "text-foreground-secondary")}>{title}</div>
+      <div className={cn("eyebrow mb-3", active && "text-foreground")}>{title}</div>
       <DataList dense>{children}</DataList>
     </section>
   );
@@ -662,9 +669,9 @@ function PreviewGroup({ title, active, children }: { title: string; active: bool
 
 function ReviewRow({ label, summary, onEdit }: { label: string; summary: React.ReactNode; onEdit: () => void }) {
   return (
-    <div className="flex items-center gap-4 px-3.5 py-2.5">
-      <span className="w-28 shrink-0 text-xs text-foreground-muted">{label}</span>
-      <span className="flex-1 min-w-0 truncate text-[13px] text-foreground">{summary}</span>
+    <div className="flex items-start gap-4 px-4 py-3">
+      <span className="w-28 shrink-0 pt-0.5 text-xs text-foreground-muted">{label}</span>
+      <span className="flex-1 min-w-0 break-words text-[13px] leading-relaxed text-foreground">{summary}</span>
       <Button variant="ghost" size="xs" onClick={onEdit}>
         Edit
       </Button>
@@ -674,4 +681,9 @@ function ReviewRow({ label, summary, onEdit }: { label: string; summary: React.R
 
 function Missing() {
   return <span className="font-sans text-xs text-warning">Required</span>;
+}
+
+export default function CreateInvoicePage() {
+  const { mode } = useApp();
+  return mode === "connected" ? <LiveInvoiceCreate /> : <DemoCreateInvoicePage />;
 }

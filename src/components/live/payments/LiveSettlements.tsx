@@ -50,44 +50,44 @@ function SettlementsInner() {
           </PanelBody>
         ) : rows.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
+            <table className="table-base min-w-[820px]">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2.5 font-medium sm:px-5">Attempt</th>
-                  <th className="px-3 py-2.5 font-medium">State</th>
-                  <th className="px-3 py-2.5 font-medium">Network</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Amount</th>
-                  <th className="px-3 py-2.5 font-medium">Transaction</th>
-                  <th className="px-4 py-2.5 font-medium sm:px-5">Updated</th>
+                  <th>Attempt</th>
+                  <th>State</th>
+                  <th>Network</th>
+                  <th className="text-right">Amount</th>
+                  <th>Transaction</th>
+                  <th>Updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {rows.map((p) => (
-                  <tr key={p.id} className="hover:bg-surface-2/40">
-                    <td className="px-4 py-3 sm:px-5">
-                      <Link href={`/app/settlements/${p.id}`} className="font-mono text-foreground hover:text-primary-light hover:underline">
+                  <tr key={p.id} className="hover:bg-surface-2/60">
+                    <td>
+                      <Link href={`/app/settlements/${p.id}`} className="font-mono text-xs font-medium text-foreground hover:text-primary-light hover:underline">
                         {p.id}
                       </Link>
                       <div className="mt-0.5 font-mono text-2xs text-foreground-muted">
                         {shortAddr(p.payer)} → {shortAddr(p.payee)}
                       </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td>
                       <PaymentStateBadge state={p.state} />
                       {p.rail === "legacy-v1" && <div className="mt-1 text-2xs text-warning">Legacy v1 — not verified</div>}
                     </td>
-                    <td className="px-3 py-3">
+                    <td>
                       <div className="text-foreground-secondary">{networkLabel(p.chainId, p.network)}</div>
                       <TestnetBadge chainId={p.chainId} className="mt-1" />
                     </td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="font-medium text-foreground">{tokenAmount(p.tokenTotalRaw, p.tokenDecimals, p.tokenSymbol, p.chainId)}</div>
+                    <td className="text-right">
+                      <div className="font-medium tabular-nums text-foreground">{tokenAmount(p.tokenTotalRaw, p.tokenDecimals, p.tokenSymbol, p.chainId)}</div>
                       <div className="font-mono text-2xs text-foreground-muted">{p.tokenTotalRaw} raw</div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td>
                       <TxLink chainId={p.chainId} hash={p.txHash} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-foreground-muted sm:px-5">{fmtTime(p.updatedAt)}</td>
+                    <td className="whitespace-nowrap text-xs tabular-nums text-foreground-muted">{fmtTime(p.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>

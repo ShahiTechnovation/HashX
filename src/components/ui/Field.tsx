@@ -45,14 +45,14 @@ interface FieldProps {
 
 export const Field: React.FC<FieldProps> = ({ label, htmlFor, hint, error, children, className }) => (
   <div className={cn("space-y-1.5", className)}>
-    <label htmlFor={htmlFor} className="block text-xs font-medium text-foreground-secondary">
+    <label htmlFor={htmlFor} className="block text-[13px] font-medium text-foreground">
       {label}
     </label>
     {children}
     {error ? (
-      <p className="text-2xs text-danger">{error}</p>
+      <p role="alert" className="text-xs text-danger">{error}</p>
     ) : hint ? (
-      <p className="text-2xs text-foreground-muted leading-relaxed">{hint}</p>
+      <p className="text-xs text-foreground-muted leading-relaxed">{hint}</p>
     ) : null}
   </div>
 );
@@ -68,7 +68,7 @@ interface SegmentedProps<T extends string> {
 /** Segmented control for filters and tabs. */
 export function Segmented<T extends string>({ value, onChange, options, className, size = "md" }: SegmentedProps<T>) {
   return (
-    <div role="tablist" className={cn("inline-flex items-center gap-0.5 rounded-md bg-surface-2/70 p-0.5 ring-1 ring-inset ring-border", className)}>
+    <div role="tablist" className={cn("inline-flex items-center gap-0.5 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-border", className)}>
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -80,15 +80,15 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
             onClick={() => onChange(opt.value)}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-[5px] font-medium transition-colors duration-150 whitespace-nowrap",
-              size === "sm" ? "h-6 px-2 text-2xs" : "h-7 px-2.5 text-xs",
+              size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-[13px]",
               active
-                ? "bg-surface-3 text-foreground shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05),0_1px_2px_rgb(0_0_0/0.3)]"
+                ? "bg-surface-1 text-foreground shadow-[0_0_0_1px_rgb(var(--border)),0_1px_2px_rgb(25_24_29/0.06)]"
                 : "text-foreground-muted hover:text-foreground"
             )}
           >
             {opt.label}
             {opt.count !== undefined && (
-              <span className={cn("tabular-nums text-2xs", active ? "text-foreground-secondary" : "text-foreground-muted/80")}>
+              <span className={cn("tabular-nums text-2xs", active ? "text-foreground-secondary" : "text-foreground-muted")}>
                 {opt.count}
               </span>
             )}
@@ -113,8 +113,8 @@ export function Tabs<T extends string>({ value, onChange, options, className }: 
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "relative -mb-px inline-flex items-center gap-1.5 h-9 text-[13px] font-medium border-b transition-colors",
-              active ? "text-foreground border-foreground" : "text-foreground-muted border-transparent hover:text-foreground-secondary"
+              "relative -mb-px inline-flex items-center gap-1.5 h-10 text-[13px] font-medium border-b-2 transition-colors",
+              active ? "text-foreground border-primary" : "text-foreground-muted border-transparent hover:text-foreground"
             )}
           >
             {opt.label}

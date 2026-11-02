@@ -28,7 +28,7 @@ export const AmountDisplay: React.FC<AmountDisplayProps> = ({
     sm: "text-[13px] font-medium",
     md: "text-[15px] font-medium",
     lg: "text-xl font-semibold tracking-tight",
-    xl: "text-[32px] font-semibold tracking-[-0.03em] font-display",
+    xl: "text-[32px] font-medium tracking-[-0.03em]",
   };
 
   return (

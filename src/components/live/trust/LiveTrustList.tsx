@@ -72,7 +72,7 @@ function TrustTable() {
       {loading && !data ? (
         <div className="p-5 space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-5 rounded bg-surface-2 animate-pulse" />
+            <div key={i} className="h-5 rounded bg-surface-2" />
           ))}
         </div>
       ) : rows.length === 0 ? (
@@ -87,47 +87,47 @@ function TrustTable() {
         />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="table-base min-w-[880px]">
             <thead>
-              <tr className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
-                <th className="py-2.5 px-4 font-medium">Invoice</th>
-                <th className="py-2.5 px-4 font-medium">Role</th>
-                <th className="py-2.5 px-4 font-medium">Status</th>
-                <th className="py-2.5 px-4 font-medium">Invoice</th>
-                <th className="py-2.5 px-4 font-medium">Delivery</th>
-                <th className="py-2.5 px-4 font-medium">Overall</th>
-                <th className="py-2.5 px-4 font-medium">Payable</th>
-                <th className="py-2.5 px-4 font-medium">Last verified</th>
+              <tr>
+                <th>Invoice</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Intent check</th>
+                <th>Delivery check</th>
+                <th>Overall</th>
+                <th>Payable</th>
+                <th>Last verified</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody>
               {rows.map(({ invoice: inv, summary, error: rowError, skipped }) => {
                 const lastRun = [summary?.invoiceVerification?.verifiedAt, summary?.deliveryVerification?.verifiedAt]
                   .filter((x): x is string => Boolean(x))
                   .sort()
                   .pop();
                 return (
-                  <tr key={inv.id} className="hover:bg-surface-2/50 transition-colors align-top">
-                    <td className="py-3 px-4">
-                      <Link href={`/app/trust/${inv.id}`} className="font-mono text-primary-light hover:underline">
+                  <tr key={inv.id} className="hover:bg-surface-2/60 [&>td]:align-top">
+                    <td>
+                      <Link href={`/app/trust/${inv.id}`} className="font-mono text-xs text-foreground hover:text-primary-light hover:underline">
                         {inv.id}
                       </Link>
                       {isLegacy(inv) && <LegacyBadge className="mt-1 flex w-fit" />}
                     </td>
-                    <td className="py-3 px-4"><RoleBadge role={inv.viewerRole} /></td>
-                    <td className="py-3 px-4"><StatusBadge status={inv.status} type="invoice" size="sm" /></td>
+                    <td><RoleBadge role={inv.viewerRole} /></td>
+                    <td><StatusBadge status={inv.status} type="invoice" size="sm" /></td>
                     {skipped ? (
-                      <td colSpan={5} className="py-3 px-4 text-foreground-muted">
+                      <td colSpan={5} className="text-foreground-muted">
                         Not loaded (list exceeds {MAX_SUMMARIES} invoices) — <Link href={`/app/trust/${inv.id}`} className="text-primary-light hover:underline">open inspector</Link>
                       </td>
                     ) : rowError ? (
-                      <td colSpan={5} className="py-3 px-4 text-danger">{errorMessage(rowError)}</td>
+                      <td colSpan={5} className="text-danger">{errorMessage(rowError)}</td>
                     ) : summary ? (
                       <>
-                        <td className="py-3 px-4"><DecisionBadge decision={summary.invoiceVerification ? summary.invoiceDecision : null} size="sm" /></td>
-                        <td className="py-3 px-4"><DecisionBadge decision={summary.deliveryDecision ?? null} size="sm" emptyLabel="No delivery" /></td>
-                        <td className="py-3 px-4"><DecisionBadge decision={summary.overallDecision} size="sm" /></td>
-                        <td className="py-3 px-4">
+                        <td><DecisionBadge decision={summary.invoiceVerification ? summary.invoiceDecision : null} size="sm" /></td>
+                        <td><DecisionBadge decision={summary.deliveryDecision ?? null} size="sm" emptyLabel="No delivery" /></td>
+                        <td><DecisionBadge decision={summary.overallDecision} size="sm" /></td>
+                        <td>
                           <span className={summary.isEligibleForPayment ? "text-success" : "text-foreground-muted"}>
                             {summary.isEligibleForPayment ? "Yes" : "No"}
                           </span>
@@ -135,10 +135,10 @@ function TrustTable() {
                             <span className="block max-w-[260px] text-2xs text-foreground-muted mt-0.5">{summary.blockingReasons[0]}</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-foreground-muted whitespace-nowrap">{formatDateTime(lastRun)}</td>
+                        <td className="text-foreground-muted whitespace-nowrap">{formatDateTime(lastRun)}</td>
                       </>
                     ) : (
-                      <td colSpan={5} className="py-3 px-4 text-foreground-muted">—</td>
+                      <td colSpan={5} className="text-foreground-muted">—</td>
                     )}
                   </tr>
                 );

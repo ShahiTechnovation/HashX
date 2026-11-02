@@ -66,8 +66,10 @@ export const VerdictBand: React.FC<VerdictBandProps> = ({
           </div>
 
           <div className="mt-3 flex items-center gap-3">
-            <Icon className={cn("w-8 h-8 shrink-0", t.text)} strokeWidth={1.6} aria-hidden="true" />
-            <h2 className={cn("font-display font-semibold leading-none tracking-[-0.04em] text-[40px] sm:text-[44px]", t.text)}>
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md ring-1 ring-inset", t.badge)}>
+              <Icon className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+            </span>
+            <h2 className={cn("font-medium leading-none tracking-[-0.035em] text-[28px] sm:text-[32px]", t.text)}>
               {label}
             </h2>
           </div>
@@ -77,7 +79,7 @@ export const VerdictBand: React.FC<VerdictBandProps> = ({
 
           {reasonCodes.length > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              <span className="text-2xs text-foreground-muted mr-1">Reason codes</span>
+              <span className="text-xs text-foreground-muted mr-1">Reason codes</span>
               {reasonCodes.map((code) => (
                 <ReasonCodeChip key={code} code={code} size="md" />
               ))}
@@ -86,7 +88,7 @@ export const VerdictBand: React.FC<VerdictBandProps> = ({
         </div>
 
         {aside && (
-          <div className="shrink-0 lg:w-[280px] border-t lg:border-t-0 lg:border-l border-border bg-surface-2/30 px-5 py-4">
+          <div className="shrink-0 lg:w-[300px] border-t lg:border-t-0 lg:border-l border-border bg-surface-2/50 px-5 py-5">
             {aside}
           </div>
         )}
@@ -100,7 +102,7 @@ export const VerdictBand: React.FC<VerdictBandProps> = ({
           return (
             <li
               key={gate.key}
-              className={cn("relative flex items-center gap-3 pl-5 sm:pl-7 pr-8 py-3", failed && "bg-danger/[0.035]")}
+              className={cn("relative flex items-center gap-3 pl-5 sm:pl-7 pr-8 py-3.5", failed && "bg-danger/[0.035]")}
             >
               <span
                 className={cn(
@@ -112,10 +114,10 @@ export const VerdictBand: React.FC<VerdictBandProps> = ({
               </span>
               <span className="min-w-0">
                 <span className="flex items-baseline gap-2">
-                  <span className="text-2xs font-mono text-foreground-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="text-xs text-foreground-muted tabular-nums">{i + 1}</span>
                   <span className="text-[13px] font-medium text-foreground truncate">{gate.label}</span>
                 </span>
-                <span className="block text-2xs text-foreground-muted tabular-nums mt-px">
+                <span className="block text-xs text-foreground-muted tabular-nums mt-0.5">
                   <span className={cn("font-medium", gt.text)}>{g.word}</span>
                   <span aria-hidden="true"> · </span>
                   {gate.detail}

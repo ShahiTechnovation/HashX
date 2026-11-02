@@ -94,19 +94,19 @@ const CredentialsBody: React.FC = () => {
         </Callout>
       )}
 
-      <div className="space-y-3 rounded-md border border-border p-4">
+      <div className="space-y-4 rounded-md border border-border bg-surface-2/40 p-4 sm:p-5">
         <Field label="Label" htmlFor="agent-cred-label" hint="For your reference, e.g. “seller-agent-prod”.">
           <Input id="agent-cred-label" value={label} maxLength={128} onChange={(e) => setLabel(e.target.value)} />
         </Field>
         <fieldset className="space-y-1.5">
-          <legend className="text-xs font-medium text-foreground-secondary mb-1">Scopes</legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          <legend className="mb-2 text-[13px] font-medium text-foreground">Scopes</legend>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
             {AGENT_SCOPES.map((s) => (
-              <label key={s.scope} className="flex items-start gap-2 text-xs cursor-pointer">
-                <input type="checkbox" className="mt-0.5" checked={scopes.includes(s.scope)} onChange={() => toggle(s.scope)} />
+              <label key={s.scope} className="flex cursor-pointer items-start gap-2.5 text-[13px]">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={scopes.includes(s.scope)} onChange={() => toggle(s.scope)} />
                 <span>
-                  <code className="text-foreground">{s.scope}</code>
-                  <span className="block text-2xs text-foreground-muted">{s.description}</span>
+                  <code className="font-mono text-xs text-foreground">{s.scope}</code>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-foreground-muted">{s.description}</span>
                 </span>
               </label>
             ))}
@@ -125,41 +125,43 @@ const CredentialsBody: React.FC = () => {
       {error ? (
         <LiveError error={error} title="Could not load agent credentials" onRetry={reload} />
       ) : loading && !data ? (
-        <div className="h-16 rounded-md bg-surface-2 animate-pulse" />
+        <div aria-busy="true" className="h-16 rounded-md bg-surface-2" />
       ) : !data || data.length === 0 ? (
         <EmptyState title="No agent credentials" description="Create one above to let an agent call the HashX MCP server on your behalf." />
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-left text-[13px]">
+          <table className="table-base min-w-[680px]">
             <thead>
-              <tr className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
-                <th className="px-3 py-2 font-medium">Prefix</th>
-                <th className="px-3 py-2 font-medium">Label</th>
-                <th className="px-3 py-2 font-medium">Scopes</th>
-                <th className="px-3 py-2 font-medium">Last used</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2" />
+              <tr>
+                <th>Prefix</th>
+                <th>Label</th>
+                <th>Scopes</th>
+                <th>Last used</th>
+                <th>Status</th>
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody>
               {data.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-3 py-2.5 font-mono text-xs">{c.keyPrefix}…</td>
-                  <td className="px-3 py-2.5">{c.label}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="font-mono text-xs">{c.keyPrefix}…</td>
+                  <td>{c.label}</td>
+                  <td>
                     <div className="flex flex-wrap gap-1">
                       {c.scopes.map((s) => (
-                        <code key={s} className="rounded bg-surface-2 px-1.5 py-px text-2xs text-foreground-secondary">
+                        <code key={s} className="rounded-sm bg-surface-2 px-1.5 py-px font-mono text-2xs text-foreground-secondary ring-1 ring-inset ring-border">
                           {s}
                         </code>
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-foreground-secondary">{c.lastUsedAt ? new Date(c.lastUsedAt).toLocaleString() : "Never"}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="whitespace-nowrap text-xs tabular-nums text-foreground-secondary">{c.lastUsedAt ? new Date(c.lastUsedAt).toLocaleString() : "Never"}</td>
+                  <td>
                     {c.revokedAt ? <Pill tone="neutral">Revoked</Pill> : <Pill tone="success">Active</Pill>}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="text-right">
                     {!c.revokedAt && (
                       <Button size="xs" variant="danger" onClick={() => void revoke(c.id)} isLoading={revoking === c.id}>
                         Revoke

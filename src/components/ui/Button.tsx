@@ -13,29 +13,29 @@ export const buttonStyles = ({
   size = "md",
 }: Pick<ButtonProps, "variant" | "size"> = {}) => {
   const base =
-    "inline-flex items-center justify-center whitespace-nowrap font-medium rounded-md transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 select-none";
+    "inline-flex items-center justify-center whitespace-nowrap font-medium rounded-md tracking-[-0.006em] transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 select-none [&>svg]:shrink-0";
 
   const variants = {
     primary:
-      "bg-primary text-white hover:bg-primary-hover shadow-[inset_0_1px_0_0_rgb(255_255_255/0.16),0_1px_2px_0_rgb(0_0_0/0.4)]",
+      "bg-primary text-white hover:bg-primary-hover shadow-[inset_0_1px_0_0_rgb(255_255_255/0.14),0_1px_2px_0_rgb(25_24_29/0.12)]",
     inverse:
-      "bg-foreground text-background hover:bg-white shadow-[0_1px_2px_0_rgb(0_0_0/0.4)]",
+      "bg-foreground text-white hover:bg-foreground/85 shadow-[0_1px_2px_0_rgb(25_24_29/0.12)]",
     secondary:
-      "bg-surface-2 text-foreground border border-border hover:bg-surface-3 hover:border-border-strong shadow-[inset_0_1px_0_0_rgb(255_255_255/0.03)]",
+      "bg-surface-1 text-foreground border border-border-strong hover:bg-surface-2 shadow-panel",
     outline:
-      "bg-transparent text-foreground border border-border hover:border-border-strong hover:bg-surface-2",
-    ghost: "bg-transparent text-foreground-secondary hover:text-foreground hover:bg-surface-2",
-    danger: "bg-danger/10 text-danger border border-danger/25 hover:bg-danger/15 hover:border-danger/40",
-    subtle: "bg-primary/10 text-primary-light border border-primary/20 hover:bg-primary/15 hover:border-primary/30",
+      "bg-transparent text-foreground border border-border-strong hover:bg-surface-2",
+    ghost: "bg-transparent text-foreground-secondary hover:text-foreground hover:bg-surface-3",
+    danger: "bg-surface-1 text-danger border border-danger/35 hover:bg-danger/[0.06] hover:border-danger/50",
+    subtle: "bg-primary-subtle text-primary-light border border-primary/15 hover:border-primary/30",
   };
 
   const sizes = {
-    xs: "h-6 px-2 text-2xs gap-1",
-    sm: "h-7 px-2.5 text-xs gap-1.5",
-    md: "h-8 px-3.5 text-[13px] gap-2",
-    lg: "h-10 px-5 text-sm gap-2",
-    icon: "h-8 w-8 p-0",
-    "icon-sm": "h-7 w-7 p-0",
+    xs: "h-7 px-2 text-xs gap-1 [&>svg]:w-3.5 [&>svg]:h-3.5",
+    sm: "h-8 px-3 text-[13px] gap-1.5 [&>svg]:w-3.5 [&>svg]:h-3.5",
+    md: "h-9 px-4 text-[13px] gap-2 [&>svg]:w-4 [&>svg]:h-4",
+    lg: "h-11 px-5 text-[15px] gap-2 [&>svg]:w-4 [&>svg]:h-4",
+    icon: "h-9 w-9 p-0",
+    "icon-sm": "h-8 w-8 p-0",
   };
 
   return cn(base, variants[variant], sizes[size]);

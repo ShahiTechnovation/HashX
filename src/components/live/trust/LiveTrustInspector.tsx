@@ -55,7 +55,7 @@ function InspectorInner({ id }: { id: string }) {
         <Panel>
           <PanelBody className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-5 rounded bg-surface-2 animate-pulse" />
+              <div key={i} className="h-5 rounded bg-surface-2" />
             ))}
           </PanelBody>
         </Panel>

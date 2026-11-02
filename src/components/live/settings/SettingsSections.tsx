@@ -31,7 +31,7 @@ import {
 import type { LiveReadiness } from "@/lib/live/types";
 
 export const Pill: React.FC<{ tone: Tone; children: React.ReactNode; className?: string }> = ({ tone, children, className }) => (
-  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium ring-1", toneStyles[tone].badge, className)}>
+  <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset", toneStyles[tone].badge, className)}>
     <span className={cn("h-1.5 w-1.5 rounded-full", toneStyles[tone].dot)} />
     {children}
   </span>
@@ -49,16 +49,19 @@ export const ModeSection: React.FC = () => {
         title="Operating mode"
         description="Choose between a simulated walkthrough and the real HashX backend."
         actions={
-          <div className="inline-flex items-center gap-0.5 rounded-md bg-surface-2/70 p-0.5 ring-1 ring-inset ring-border">
+          <div role="radiogroup" aria-label="Operating mode" className="inline-flex items-center gap-0.5 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-border">
             {(["demo", "connected"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                aria-pressed={mode === m}
+                role="radio"
+                aria-checked={mode === m}
                 className={cn(
-                  "h-7 px-2.5 rounded-[5px] text-xs font-medium capitalize transition-colors",
-                  mode === m ? "bg-surface-3 text-foreground" : "text-foreground-muted hover:text-foreground"
+                  "h-7 rounded-[6px] px-2.5 text-xs capitalize transition-colors",
+                  mode === m
+                    ? "bg-surface-1 font-medium text-foreground shadow-[0_0_0_1px_rgb(var(--border)),0_1px_2px_rgb(25_24_29/0.06)]"
+                    : "text-foreground-muted hover:text-foreground"
                 )}
               >
                 {m}
@@ -160,7 +163,7 @@ export const WalletSessionSection: React.FC = () => {
             {session ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Pill tone="success">Signed in</Pill>
-                <span className="text-2xs text-foreground-muted">expires {new Date(session.expiresAt).toLocaleString()}</span>
+                <span className="text-xs text-foreground-muted">expires {new Date(session.expiresAt).toLocaleString()}</span>
                 <Button size="xs" variant="secondary" onClick={() => void signOut()}>
                   Sign out
                 </Button>
@@ -189,7 +192,7 @@ export const WalletSessionSection: React.FC = () => {
         )}
         {savedName && <p className="text-xs text-success">Display name saved as “{savedName}”.</p>}
         {saveError && <p className="text-xs text-danger">{saveError}</p>}
-        <p className="text-2xs text-foreground-muted">Signing in proves wallet control only. It never authorizes a payment.</p>
+        <p className="text-xs text-foreground-muted">Signing in proves wallet control only. It never authorizes a payment.</p>
       </PanelBody>
     </Panel>
   );
@@ -212,33 +215,35 @@ export const NetworksSection: React.FC = () => {
     <Panel>
       <PanelHeader title="Networks" description="Configured in shared/networks. Unknown chain IDs are rejected, never defaulted." />
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[13px]">
+        <table className="table-base min-w-[860px]">
           <thead>
-            <tr className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
-              <th className="px-4 sm:px-5 py-2.5 font-medium">Network</th>
-              <th className="px-3 py-2.5 font-medium">Chain ID</th>
-              <th className="px-3 py-2.5 font-medium">Rails</th>
-              <th className="px-3 py-2.5 font-medium">Payment execution</th>
-              <th className="px-3 py-2.5 font-medium">Explorer</th>
-              <th className="px-4 sm:px-5 py-2.5" />
+            <tr>
+              <th>Network</th>
+              <th>Chain ID</th>
+              <th>Rails</th>
+              <th>Payment execution</th>
+              <th>Explorer</th>
+              <th>
+                <span className="sr-only">Wallet</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody>
             {PUBLIC_NETWORKS.map((net) => {
               const exec = paymentExecution(net);
               const active = net.chainId === chainId;
               return (
                 <tr key={net.chainId}>
-                  <td className="px-4 sm:px-5 py-3">
+                  <td>
                     <div className="text-foreground">{net.name}</div>
-                    <div className="text-2xs text-foreground-muted">{net.isTestnet ? "Testnet" : "Mainnet"}</div>
+                    <div className="mt-0.5 text-xs text-foreground-muted">{net.isTestnet ? "Testnet" : "Mainnet"}</div>
                   </td>
-                  <td className="px-3 py-3 font-mono text-xs tabular-nums">{net.chainId}</td>
-                  <td className="px-3 py-3 text-xs text-foreground-secondary">{net.rails.map(railLabel).join(", ")}</td>
-                  <td className="px-3 py-3">
+                  <td className="font-mono text-xs tabular-nums">{net.chainId}</td>
+                  <td className="text-xs text-foreground-secondary">{net.rails.map(railLabel).join(", ")}</td>
+                  <td>
                     <Pill tone={exec.tone}>{exec.label}</Pill>
                   </td>
-                  <td className="px-3 py-3">
+                  <td>
                     {net.explorerUrl ? (
                       <a href={net.explorerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-light hover:underline">
                         {net.explorerUrl.replace(/^https?:\/\//, "")}
@@ -248,9 +253,9 @@ export const NetworksSection: React.FC = () => {
                       <span className="text-foreground-muted">—</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-5 py-3 text-right">
+                  <td className="text-right">
                     {active ? (
-                      <span className="text-2xs text-foreground-muted">Wallet is on this network</span>
+                      <span className="whitespace-nowrap text-xs text-foreground-muted">Wallet is on this network</span>
                     ) : (
                       <Button size="xs" variant="secondary" onClick={() => void switchChain(net.chainId)}>
                         Switch wallet to this network
@@ -315,18 +320,18 @@ export const ReadinessSection: React.FC = () => {
         {error ? (
           <LiveError error={error} title="Backend unreachable" onRetry={reload} />
         ) : !data ? (
-          <div className="h-24 rounded-md bg-surface-2 animate-pulse" />
+          <div aria-busy="true" className="h-24 rounded-md bg-surface-2" />
         ) : (
           <>
             <DataList>
               <DataRow label="Overall">
                 <Pill tone={statusTone(data.status)}>{data.status}</Pill>
-                <span className="ml-2 text-2xs text-foreground-muted">checked {new Date(data.checkedAt).toLocaleString()}</span>
+                <span className="ml-2 text-xs text-foreground-muted">checked {new Date(data.checkedAt).toLocaleString()}</span>
               </DataRow>
               <DataRow label="Database">
                 <Pill tone={statusTone(data.database.status)}>{data.database.status}</Pill>
                 {data.database.pendingMigrations && data.database.pendingMigrations.length > 0 && (
-                  <div className="mt-1 text-2xs text-warning">Pending migrations: {data.database.pendingMigrations.join(", ")}</div>
+                  <div className="mt-1 text-xs text-warning">Pending migrations: {data.database.pendingMigrations.join(", ")}</div>
                 )}
               </DataRow>
               <DataRow label="Sepolia Test USDC settlement">
@@ -337,10 +342,10 @@ export const ReadinessSection: React.FC = () => {
             </DataList>
 
             <div className="space-y-3">
-              <div className="text-xs font-medium text-foreground-secondary">Chains configured on the backend</div>
+              <div className="text-[13px] font-medium text-foreground">Chains configured on the backend</div>
               {Object.keys(data.chains).length === 0 && <p className="text-xs text-foreground-muted">No chains configured.</p>}
               {Object.entries(data.chains).map(([id, c]) => (
-                <div key={id} className="rounded-md border border-border p-3">
+                <div key={id} className="rounded-md border border-border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <span className="text-[13px] text-foreground">
                       {c.network ?? findNetwork(c.chainId)?.name ?? "Unknown network"} <span className="font-mono text-2xs text-foreground-muted">· {c.chainId}</span>
@@ -376,7 +381,7 @@ export const ReadinessSection: React.FC = () => {
 
             {hsp && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground-secondary">HashKey Settlement Protocol (HSP)</div>
+                <div className="text-[13px] font-medium text-foreground">HashKey Settlement Protocol (HSP)</div>
                 <DataList dense>
                   <DataRow label="Configured">{hsp.configured ? "Yes" : "No"}</DataRow>
                   <DataRow label="Allowlist confirmed">{hsp.allowlistConfirmed ? "Yes" : "No"}</DataRow>

@@ -106,6 +106,18 @@ export function formatTimestamp(rfc3339: string): string {
   }
 }
 
+/** Two-unit human duration: "2d 4h", "3h 12m", "4m 05s", "42s". */
+function formatDurationShort(totalSeconds: number): string {
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const sec = totalSeconds % 60;
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, "0")}s`;
+  return `${sec}s`;
+}
+
 /**
  * Computes time remaining until expiration.
  */
@@ -121,23 +133,14 @@ export function formatExpiryCountdown(rfc3339: string, referenceTime = new Date(
 
     if (diff <= 0) {
       return {
-        text: `Expired ${Math.abs(diff)}s ago`,
+        text: `Expired ${formatDurationShort(Math.abs(diff))} ago`,
         isExpired: true,
         secondsRemaining: 0,
       };
     }
 
-    const minutes = Math.floor(diff / 60);
-    const seconds = diff % 60;
-    if (minutes === 0) {
-      return {
-        text: `${seconds}s remaining`,
-        isExpired: false,
-        secondsRemaining: diff,
-      };
-    }
     return {
-      text: `${minutes}m ${seconds}s remaining`,
+      text: `${formatDurationShort(diff)} remaining`,
       isExpired: false,
       secondsRemaining: diff,
     };

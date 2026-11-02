@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
+import { LiveInvoiceDetail } from "@/components/live/invoices/LiveInvoiceDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { Invoice, Delivery, PaymentAttempt, InvoiceStatus } from "@/types/domain";
 import { Button, buttonStyles } from "@/components/ui/Button";
@@ -45,7 +46,7 @@ import {
 } from "@/lib/formatters";
 import { BLOCKED_STATUSES, blockSpan, chainLabel, formatShortUtc, sameAddress } from "@/components/invoices/utils";
 
-export default function InvoiceDetailPage() {
+function DemoInvoiceDetailPage() {
   const params = useParams();
   const invoiceId = params?.id as string;
   const router = useRouter();
@@ -338,7 +339,7 @@ export default function InvoiceDetailPage() {
           <>
             <StatusBadge status={invoice.status} type="invoice" />
             {isExpired && !isSettled && (
-              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-[5px] text-xs font-medium ring-1 ring-inset bg-warning/10 text-warning ring-warning/20">
+              <span className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium ring-1 ring-inset bg-warning/10 text-warning ring-warning/20">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                 Expired
               </span>
@@ -376,17 +377,17 @@ export default function InvoiceDetailPage() {
                 <div className="eyebrow">Payment eligibility</div>
                 <div className={cn("mt-2 flex items-center gap-2", toneStyles[band.tone].text)}>
                   <band.Icon className="w-5 h-5 shrink-0" strokeWidth={2} aria-hidden="true" />
-                  <span className="font-display text-[22px] leading-none font-semibold tracking-[-0.025em]">{band.title}</span>
+                  <span className="text-[22px] leading-none font-medium tracking-[-0.025em]">{band.title}</span>
                 </div>
                 <p className="mt-2 text-[13px] text-foreground-secondary max-w-md leading-relaxed">{band.consequence}</p>
               </div>
               <div className="sm:text-right shrink-0">
                 <div className="eyebrow">Invoice amount</div>
                 <div className="mt-2 flex items-baseline sm:justify-end gap-1.5">
-                  <span className="font-display text-[28px] leading-none font-semibold tracking-[-0.03em] tabular-nums text-foreground">
+                  <span className="text-[30px] leading-none font-medium tracking-[-0.03em] tabular-nums text-foreground">
                     {formatMinorToUsd(invoice.payment.amount_minor)}
                   </span>
-                  <span className="text-2xs font-medium text-foreground-muted">{invoice.payment.currency}</span>
+                  <span className="text-[13px] text-foreground-muted">{invoice.payment.currency}</span>
                 </div>
                 <div className="mt-1.5 font-mono text-2xs text-foreground-muted tabular-nums">
                   amount_minor {invoice.payment.amount_minor}
@@ -404,7 +405,7 @@ export default function InvoiceDetailPage() {
                 {isEligibleForPayment || isBlocked ? (
                   <StatusBadge status={isEligibleForPayment ? "PASS" : "FAIL"} type="check" size="sm" />
                 ) : (
-                  <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-[5px] text-2xs font-medium ring-1 ring-inset bg-warning/10 text-warning ring-warning/20">
+                  <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-2xs font-medium ring-1 ring-inset bg-warning/10 text-warning ring-warning/20">
                     <Lock className="w-3 h-3" aria-hidden="true" />
                     Gated
                   </span>
@@ -764,7 +765,7 @@ export default function InvoiceDetailPage() {
             hint={
               <>
                 The verifier recomputes this against HashKey Chain RPC. A mismatch raises{" "}
-                <code className="font-mono text-danger/90">TX_COUNT_MISMATCH</code>.
+                <code className="font-mono text-danger">TX_COUNT_MISMATCH</code>.
               </>
             }
           >
@@ -1031,4 +1032,11 @@ function buildTimeline(invoice: Invoice, delivery: Delivery | null, attempt: Pay
       time: s.time && state !== "pending" ? formatShortUtc(s.time) : undefined,
     };
   });
+}
+
+export default function InvoiceDetailPage() {
+  const { mode } = useApp();
+  const params = useParams();
+  const invoiceId = params?.id as string;
+  return mode === "connected" ? <LiveInvoiceDetail id={invoiceId} /> : <DemoInvoiceDetailPage />;
 }

@@ -70,53 +70,53 @@ function InvoiceTable() {
         />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="table-base min-w-[860px]">
             <thead>
-              <tr className="border-b border-border text-2xs uppercase tracking-wider text-foreground-muted">
-                <th className="py-2.5 px-4 font-medium">Invoice</th>
-                <th className="py-2.5 px-4 font-medium">Your role</th>
-                <th className="py-2.5 px-4 font-medium">Counterparty</th>
-                <th className="py-2.5 px-4 font-medium">Status</th>
-                <th className="py-2.5 px-4 font-medium">Settlement</th>
-                <th className="py-2.5 px-4 font-medium text-right">Amount</th>
-                <th className="py-2.5 px-4 font-medium">Created</th>
+              <tr>
+                <th>Invoice</th>
+                <th>Your role</th>
+                <th>Counterparty</th>
+                <th>Status</th>
+                <th>Settlement</th>
+                <th className="text-right">Amount</th>
+                <th>Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody>
               {invoices.map((inv) => {
                 const cp = counterpartyOf(inv);
                 return (
-                  <tr key={inv.id} className="hover:bg-surface-2/50 transition-colors">
-                    <td className="py-3 px-4">
-                      <Link href={`/app/invoices/${inv.id}`} className="font-mono text-primary-light hover:underline">
+                  <tr key={inv.id} className="hover:bg-surface-2/60">
+                    <td>
+                      <Link href={`/app/invoices/${inv.id}`} className="font-mono text-xs font-medium text-foreground hover:text-primary-light">
                         {inv.id}
                       </Link>
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <RoleBadge role={inv.viewerRole} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <div className="text-foreground-secondary">{cp.label}</div>
-                      <div className="font-mono text-2xs text-foreground-muted" title={cp.wallet ?? undefined}>
+                      <div className="mt-0.5 font-mono text-xs text-foreground-muted" title={cp.wallet ?? undefined}>
                         {shortAddr(cp.wallet)}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <div className="flex flex-col items-start gap-1">
                         <StatusBadge status={inv.status} type="invoice" size="sm" />
                         {isLegacy(inv) && <LegacyBadge />}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <div className="flex flex-col items-start gap-1">
                         <span className="text-foreground-secondary">{inv.payment.settlement_network ?? `Chain ${inv.payment.settlement_chain_id}`}</span>
                         <TestnetBadge chainId={inv.payment.settlement_chain_id} />
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-right tabular-nums text-foreground whitespace-nowrap">
+                    <td className="text-right font-medium tabular-nums text-foreground whitespace-nowrap">
                       {tokenAmount(inv.payment.amount_raw, inv.payment.token_decimals, inv.payment.token_symbol, inv.payment.settlement_chain_id)}
                     </td>
-                    <td className="py-3 px-4 text-foreground-muted whitespace-nowrap">{formatDateTime(inv.createdAt)}</td>
+                    <td className="text-xs text-foreground-muted whitespace-nowrap">{formatDateTime(inv.createdAt)}</td>
                   </tr>
                 );
               })}

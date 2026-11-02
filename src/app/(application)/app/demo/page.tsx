@@ -1,29 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
-import {
-  FlaskConical,
-  ShieldAlert,
-  ShieldCheck,
-  Play,
-  RotateCcw,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Layers,
-  ArrowRight,
-  ExternalLink,
-  AlertTriangle,
-  Code2,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { demoClient } from "@/lib/api/client";
 import { FIXTURE_INVOICE_REPLAY } from "@/mocks/fixtures";
-import { ProofCircuit } from "@/components/brand/ProofCircuit";
 import { cn } from "@/lib/utils";
-import { SCENARIOS, type ScenarioId } from "@/components/demo/scenarios";
-import { ReplaySimulator, type ReplayCall } from "@/components/demo/ScenarioEvidence";
+import { buttonStyles } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { Callout } from "@/components/ui/Callout";
+import { Timeline } from "@/components/ui/Timeline";
+import { toneStyles } from "@/components/ui/StatusBadge";
+import { SimulatedBadge } from "@/components/live/common";
+import { ReasonCodeChip } from "@/components/trust/reasonCodes";
+import { SCENARIOS, ProofMatrix, type Scenario, type ScenarioId } from "@/components/demo/scenarios";
+import {
+  CountCompare,
+  GoldenSettlement,
+  PayeeDiff,
+  ReplaySimulator,
+  type ReplayCall,
+} from "@/components/demo/ScenarioEvidence";
 
 export default function DemoCenterPage() {
   const { mode } = useApp();
@@ -69,344 +69,221 @@ export default function DemoCenterPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Operational Header & Notice Banner */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-              <span>CONSOLE</span>
-              <span className="text-carbon-border">/</span>
-              <span>PROOF LAB</span>
-              <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">ADVERSARIAL SCENARIOS</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase flex items-center gap-2.5">
-              <span>HashX Interactive Proof Lab</span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-danger/20 text-danger border border-danger/40 font-mono font-normal">
-                SIMULATOR
-              </span>
-            </h1>
-            <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              Simulated walkthroughs of the checks HashX runs against payee tampering, fake fulfillment, and duplicate payment requests. Runs entirely in your browser.
-            </p>
-          </div>
+      <PageHeader
+        eyebrow="Proof Lab"
+        title="Adversarial scenarios"
+        badges={<SimulatedBadge label="Simulation only" />}
+        description="Walk through the checks HashX runs against payee tampering, fabricated fulfillment and duplicate payment requests. Everything runs in your browser."
+      />
 
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="px-2.5 py-1 rounded bg-carbon-panel text-carbon-muted border border-carbon-border flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-carbon-muted" />
-              <span>Simulation only</span>
-            </span>
-          </div>
+      <Callout tone="warning" title="Simulated scenarios — no real transactions, hashes are illustrative.">
+        Every invoice, signature, transaction hash, amount, and settlement state on this page is a local fixture. Nothing is sent to a
+        backend or a blockchain.
+      </Callout>
+
+      <ScenarioTabs active={activeTab} onSelect={setActiveTab} />
+
+      <div
+        role="tabpanel"
+        id={`scenario-panel-${scenario.id}`}
+        aria-labelledby={`scenario-tab-${scenario.id}`}
+        className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12"
+      >
+        <div key={scenario.id} className="min-w-0 animate-crossfade space-y-6 lg:col-span-7">
+          <Panel>
+            <PanelHeader
+              title={scenario.title}
+              description={scenario.kind}
+              actions={<OutcomeBadge scenario={scenario} />}
+            />
+            <PanelBody className="space-y-6">
+              <p className="max-w-2xl text-[15px] leading-relaxed text-foreground-secondary">{scenario.lead}</p>
+              <div>
+                {scenario.id === "A" && <PayeeDiff />}
+                {scenario.id === "B" && <CountCompare />}
+                {scenario.id === "C" && (
+                  <ReplaySimulator
+                    calls={replayCalls}
+                    nextCallNumber={duplicateAttemptsTriggered + 1}
+                    result={duplicateResult}
+                    error={duplicateError}
+                    isCalling={isReplaying}
+                    onCall={handleTestDuplicatePayment}
+                    onReset={handleResetReplay}
+                  />
+                )}
+                {scenario.id === "D" && <GoldenSettlement />}
+              </div>
+            </PanelBody>
+          </Panel>
+
+          <Panel>
+            <PanelHeader title="Sequence" description="What happens, step by step (simulated)." />
+            <PanelBody>
+              <Timeline items={scenario.steps} />
+            </PanelBody>
+          </Panel>
         </div>
 
-        {/* Hazard Banner */}
-        <div role="note" className="mt-4 p-3 bg-warning/10 border-l-4 border-warning flex items-start gap-2 text-xs font-mono text-warning">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
-          <span>
-            <strong className="text-sm">Simulated scenarios — no real transactions, hashes are illustrative.</strong>
-            <span className="block text-warning/80 mt-0.5">
-              Every invoice, signature, transaction hash, amount, and settlement state on this page is a local fixture. Nothing is sent to a
-              backend or a blockchain.
-            </span>
-          </span>
-        </div>
-      </section>
+        <aside key={`${scenario.id}-aside`} className="min-w-0 animate-crossfade space-y-6 lg:col-span-5">
+          <Panel>
+            <PanelHeader title="Attack and control" />
+            <PanelBody className="space-y-5">
+              <DataList>
+                <DataRow label={scenario.claimLabel} stacked>
+                  {scenario.claim}
+                </DataRow>
+                <DataRow label="HashX control" stacked>
+                  <span className="font-medium text-foreground">{scenario.control.name}</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-foreground-secondary">
+                    {scenario.control.detail}
+                  </span>
+                </DataRow>
+                <DataRow label="Expected verdict" stacked>
+                  {scenario.expected.code && <ReasonCodeChip code={scenario.expected.code} size="md" className="mb-1.5" />}
+                  <span className="block text-[13px] leading-relaxed text-foreground-secondary">{scenario.expected.text}</span>
+                </DataRow>
+              </DataList>
+
+              <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                <Link href={scenario.primary.href} className={buttonStyles({ variant: "primary", size: "sm" })}>
+                  {scenario.primary.label}
+                  <ArrowRight />
+                </Link>
+                {scenario.secondary.map((link) => (
+                  <Link key={link.href} href={link.href} className={buttonStyles({ variant: "ghost", size: "sm" })}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </PanelBody>
+          </Panel>
+
+          <Panel>
+            <PanelHeader title="Which control decides" description="Every scenario is stopped — or passes — at a specific gate." />
+            <PanelBody>
+              <ProofMatrix active={activeTab} onSelect={setActiveTab} />
+            </PanelBody>
+          </Panel>
+        </aside>
+      </div>
 
       {/* Real golden path entry */}
-      <section className="bg-carbon-nav border border-primary/40 rounded p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="font-bold text-carbon-text uppercase tracking-wider">Run the real Sepolia golden path</span>
-            <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 text-[10px]">
-              {mode === "connected" ? "CONNECTED MODE" : "REQUIRES CONNECTED MODE"}
-            </span>
-          </div>
-          <p className="text-xs text-carbon-muted max-w-3xl leading-relaxed">
-            Create, sign, verify, deliver, approve, and settle a real invoice against the HashX backend on Ethereum Sepolia (testnet). You need:
-            connected mode with a running backend, two browser wallets (seller and buyer), Sepolia ETH for gas, and Circle test USDC in the buyer
-            wallet (faucet:{" "}
-            <a href="https://faucet.circle.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-              faucet.circle.com
-            </a>
-            ). Test tokens have no monetary value.
-          </p>
-        </div>
-        <Link
-          href="/app/invoices/new"
-          className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-white text-xs font-mono font-semibold flex items-center gap-1.5 shrink-0 self-start lg:self-auto"
-        >
-          <span>Create a real invoice</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </section>
-
-      {/* 2. Scenario Matrix (4 Interactive Cards) */}
-      <section className="space-y-3 font-mono">
-        <div className="flex items-center justify-between text-xs text-carbon-muted">
-          <span className="font-bold text-carbon-text uppercase tracking-wider">
-            THREAT VECTORS &amp; TEST GAUNTLETS
-          </span>
-          <span className="text-[11px]">SIMULATED · SELECT A SCENARIO</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
-          {/* Card A: Payee Substitution */}
-          <div
-            onClick={() => setActiveTab("A")}
-            className={cn(
-              "p-4 rounded border transition-all cursor-pointer relative",
-              activeTab === "A"
-                ? "bg-carbon-panel border-danger shadow-lg ring-1 ring-danger"
-                : "bg-carbon-nav border-carbon-border hover:border-carbon-muted opacity-80 hover:opacity-100"
-            )}
-          >
-            {activeTab === "A" && (
-              <span className="absolute -top-2.5 right-3 bg-danger text-white text-[9px] font-bold px-2 py-0.5 rounded shadow">
-                ACTIVE TESTBENCH
-              </span>
-            )}
-            <div className="text-xs font-bold text-danger mb-1">
-              01 // PAYEE SUBSTITUTION
-            </div>
-            <p className="text-[11px] text-carbon-muted line-clamp-2 mb-3">
-              Adversary replaces invoice payee address between EIP-712 signing and payment authorization.
-            </p>
-            <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
-              <div className="flex justify-between">
-                <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">Illustrative</span>
-              </div>
-              <div className="flex justify-between">
-                <span>GATE:</span>
-                <span className="text-danger font-semibold">GATE 03 INTERCEPTED</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card B: Fake Delivery */}
-          <div
-            onClick={() => setActiveTab("B")}
-            className={cn(
-              "p-4 rounded border transition-all cursor-pointer relative",
-              activeTab === "B"
-                ? "bg-carbon-panel border-danger shadow-lg ring-1 ring-danger"
-                : "bg-carbon-nav border-carbon-border hover:border-carbon-muted opacity-80 hover:opacity-100"
-            )}
-          >
-            {activeTab === "B" && (
-              <span className="absolute -top-2.5 right-3 bg-danger text-white text-[9px] font-bold px-2 py-0.5 rounded shadow">
-                ACTIVE TESTBENCH
-              </span>
-            )}
-            <div className="text-xs font-bold text-danger mb-1">
-              02 // FAKE FULFILLMENT
-            </div>
-            <p className="text-[11px] text-carbon-muted line-clamp-2 mb-3">
-              Seller claims deliverable completion with invalid RPC proof or tampered SHA-256 artifact.
-            </p>
-            <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
-              <div className="flex justify-between">
-                <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">Illustrative</span>
-              </div>
-              <div className="flex justify-between">
-                <span>GATE:</span>
-                <span className="text-danger font-semibold">GATE 04 WITNESS FAILED</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card C: Replay Attack */}
-          <div
-            onClick={() => setActiveTab("C")}
-            className={cn(
-              "p-4 rounded border transition-all cursor-pointer relative",
-              activeTab === "C"
-                ? "bg-carbon-panel border-warning shadow-lg ring-1 ring-warning"
-                : "bg-carbon-nav border-carbon-border hover:border-carbon-muted opacity-80 hover:opacity-100"
-            )}
-          >
-            {activeTab === "C" && (
-              <span className="absolute -top-2.5 right-3 bg-warning text-carbon-void text-[9px] font-bold px-2 py-0.5 rounded shadow">
-                ACTIVE TESTBENCH
-              </span>
-            )}
-            <div className="text-xs font-bold text-warning mb-1">
-              03 // REPLAY ATTACK
-            </div>
-            <p className="text-[11px] text-carbon-muted line-clamp-2 mb-3">
-              Attacker replays previously authorized EIP-712 payload attempting duplicate settlement debit.
-            </p>
-            <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
-              <div className="flex justify-between">
-                <span>TARGET:</span>
-                <span className="text-carbon-text font-bold">Illustrative</span>
-              </div>
-              <div className="flex justify-between">
-                <span>GATE:</span>
-                <span className="text-warning font-semibold">GATE 01 IDEMPOTENT NOOP</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card D: Legitimate Execution */}
-          <div
-            onClick={() => setActiveTab("D")}
-            className={cn(
-              "p-4 rounded border transition-all cursor-pointer relative",
-              activeTab === "D"
-                ? "bg-carbon-panel border-success shadow-lg ring-1 ring-success"
-                : "bg-carbon-nav border-carbon-border hover:border-carbon-muted opacity-80 hover:opacity-100"
-            )}
-          >
-            {activeTab === "D" && (
-              <span className="absolute -top-2.5 right-3 bg-success text-white text-[9px] font-bold px-2 py-0.5 rounded shadow">
-                ACTIVE TESTBENCH
-              </span>
-            )}
-            <div className="text-xs font-bold text-success mb-1">
-              04 // LEGITIMATE GOLDEN PATH
-            </div>
-            <p className="text-[11px] text-carbon-muted line-clamp-2 mb-3">
-              All gates clear: EIP-712 signed, delivery recomputed, human authorized, settlement and receipt simulated.
-            </p>
-            <div className="space-y-1 text-[10px] border-t border-carbon-border/70 pt-2 text-carbon-muted">
-              <div className="flex justify-between">
-                <span>SIM AMOUNT:</span>
-                <span className="text-success font-bold">Illustrative</span>
-              </div>
-              <div className="flex justify-between">
-                <span>OUTCOME:</span>
-                <span className="text-success font-semibold">ALL GATES PASSED (SIM)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Active Scenario Workbench */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (7 cols): Scenario Circuit Visualizer & Diverter */}
-        <div className="lg:col-span-7 space-y-5">
-          <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4 font-mono text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-carbon-border">
-              <div>
-                <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-                  CIRCUIT WALKTHROUGH
-                </span>
-                <h3 className="font-display text-base font-bold text-carbon-text mt-0.5">
-                  {scenario.title}
-                </h3>
-              </div>
+      <Panel>
+        <div className="flex flex-col gap-4 px-4 py-5 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[15px] font-medium tracking-[-0.01em] text-foreground">Run the real Sepolia golden path</h2>
               <span
                 className={cn(
-                  "px-2 py-0.5 rounded text-[10px] font-bold border",
-                  scenario.outcome.tone === "danger"
-                    ? "bg-danger/15 text-danger border-danger/40"
-                    : "bg-success/15 text-success border-success/40"
+                  "inline-flex h-5 items-center rounded px-1.5 text-2xs font-medium ring-1 ring-inset",
+                  mode === "connected" ? toneStyles.success.badge : toneStyles.neutral.badge
                 )}
               >
-                {scenario.outcome.label}
+                {mode === "connected" ? "Connected mode" : "Requires connected mode"}
               </span>
             </div>
-
-            <p className="text-carbon-muted text-xs leading-relaxed">
-              {scenario.lead}
+            <p className="max-w-3xl text-[13px] leading-relaxed text-foreground-secondary">
+              Create, sign, verify, deliver, approve, and settle a real invoice against the HashX backend on Ethereum Sepolia (testnet). You
+              need: connected mode with a running backend, two browser wallets (seller and buyer), Sepolia ETH for gas, and Circle test USDC
+              in the buyer wallet (faucet:{" "}
+              <a
+                href="https://faucet.circle.com"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 text-primary-light hover:underline"
+              >
+                faucet.circle.com
+                <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              </a>
+              ). Test tokens have no monetary value.
             </p>
-
-            {/* Proof Circuit Visualizer for this Scenario */}
-            <ProofCircuit
-              variant="inspector"
-              isBlocked={scenario.outcome.tone === "danger"}
-              diverterActive={activeTab === "A"}
-              blockReason={activeTab === "A" ? "PAYEE_MISMATCH_DETECTED" : "EVIDENCE_INVALID"}
-              quarantineTarget={activeTab === "A" ? "0x99A0...11B0" : undefined}
-            />
           </div>
-
-          {/* Interactive Replay Test for Scenario C */}
-          {activeTab === "C" && (
-            <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4 font-mono text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-carbon-border">
-                <span className="font-bold text-warning uppercase">
-                  INTERACTIVE REPLAY TESTER
-                </span>
-                <span className="text-[10px] text-carbon-muted">Idempotency Guard</span>
-              </div>
-              <p className="text-carbon-muted">
-                Trigger duplicate request_payment calls for the same invoice (simulated in the browser). The idempotency guard returns the original attempt instead of creating a duplicate.
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleTestDuplicatePayment}
-                  disabled={isReplaying}
-                  className="px-4 py-2 rounded bg-warning text-carbon-void font-bold hover:bg-warning/90 transition-colors flex items-center gap-1.5"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Send Replay Attempt #{duplicateAttemptsTriggered + 1}</span>
-                </button>
-                <button
-                  onClick={handleResetReplay}
-                  className="px-3 py-2 rounded bg-carbon-panel border border-carbon-border text-carbon-muted hover:text-carbon-text transition-colors flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset</span>
-                </button>
-              </div>
-              {duplicateResult && (
-                <div className="p-3 bg-success/10 border border-success/30 rounded text-success text-[11px] leading-relaxed">
-                  {duplicateResult}
-                </div>
-              )}
-            </div>
-          )}
+          <Link
+            href="/app/invoices/new"
+            className={cn(buttonStyles({ variant: "secondary" }), "shrink-0 self-start lg:self-auto")}
+          >
+            Create a real invoice
+            <ArrowRight />
+          </Link>
         </div>
-
-        {/* Right Column (5 cols): Forensic Evidence Card */}
-        <div className="lg:col-span-5 space-y-4 font-mono text-xs">
-          <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-4">
-            <div className="pb-3 border-b border-carbon-border">
-              <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-                FORENSIC DETAILS
-              </span>
-              <h3 className="font-display text-base font-bold text-carbon-text mt-0.5">
-                Attack &amp; Control Analysis
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase">{scenario.claimLabel}</div>
-                <div className="text-carbon-text font-bold">{scenario.claim}</div>
-              </div>
-
-              <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase">HashX Control Response</div>
-                <div className="text-primary font-bold">{scenario.control.name}</div>
-                <div className="text-[11px] text-carbon-muted mt-0.5">{scenario.control.detail}</div>
-              </div>
-
-              <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase">Expected Verdict &amp; Code</div>
-                <div className="text-danger font-bold">{scenario.expected.code || "ALL_CHECKS_PASSED"}</div>
-                <div className="text-[11px] text-carbon-muted mt-0.5">{scenario.expected.text}</div>
-              </div>
-            </div>
-
-            {scenario.primary && (
-              <div className="pt-2">
-                <Link
-                  href={scenario.primary.href}
-                  className="w-full px-4 py-2.5 rounded bg-primary hover:bg-primary/90 text-white font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors text-center"
-                >
-                  <span>{scenario.primary.label}</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      </Panel>
     </div>
   );
 }
+
+const OutcomeBadge: React.FC<{ scenario: Scenario }> = ({ scenario }) => {
+  const { tone, label, Icon } = scenario.outcome;
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded px-2 text-xs font-medium ring-1 ring-inset",
+        toneStyles[tone].badge
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
+      {label}
+      {scenario.id === "D" && <span className="font-normal opacity-80">(simulated)</span>}
+    </span>
+  );
+};
+
+/** Scenario selector: an accessible tablist with arrow-key navigation. */
+const ScenarioTabs: React.FC<{ active: ScenarioId; onSelect: (id: ScenarioId) => void }> = ({ active, onSelect }) => {
+  const refs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onKeyDown = (e: React.KeyboardEvent, index: number) => {
+    const last = SCENARIOS.length - 1;
+    let next: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = index === last ? 0 : index + 1;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = index === 0 ? last : index - 1;
+    if (e.key === "Home") next = 0;
+    if (e.key === "End") next = last;
+    if (next === null) return;
+    e.preventDefault();
+    onSelect(SCENARIOS[next].id);
+    refs.current[next]?.focus();
+  };
+
+  return (
+    <div role="tablist" aria-label="Scenarios" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {SCENARIOS.map((s, i) => {
+        const selected = s.id === active;
+        return (
+          <button
+            key={s.id}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            id={`scenario-tab-${s.id}`}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={`scenario-panel-${s.id}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onSelect(s.id)}
+            onKeyDown={(e) => onKeyDown(e, i)}
+            className={cn(
+              "group flex flex-col rounded-lg border bg-surface-1 p-4 text-left transition-[border-color,box-shadow] duration-200",
+              selected
+                ? "border-primary/60 shadow-[0_0_0_1px_rgb(var(--primary)/0.6)]"
+                : "border-border hover:border-border-strong"
+            )}
+          >
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-xs text-foreground-muted">
+                {s.group} · {s.kind}
+              </span>
+              <span className={cn("inline-flex items-center gap-1 text-xs font-medium", toneStyles[s.outcome.tone].text)}>
+                <s.outcome.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
+                {s.outcome.label}
+              </span>
+            </span>
+            <span className="mt-2 text-[15px] font-medium tracking-[-0.01em] text-foreground">{s.title}</span>
+            <span className="mt-1 text-[13px] leading-relaxed text-foreground-secondary">{s.summary}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};

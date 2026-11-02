@@ -32,10 +32,10 @@ export const InvoiceStepper: React.FC<InvoiceStepperProps> = ({ steps, current, 
         <>
           <span
             className={cn(
-              "flex items-center justify-center w-6 h-6 rounded-full text-2xs font-medium tabular-nums shrink-0 transition-colors",
-              done && "bg-surface-3 text-foreground-secondary ring-1 ring-border-strong",
-              active && "bg-primary text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.16)]",
-              !done && !active && "bg-background text-foreground-muted ring-1 ring-border"
+              "flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium tabular-nums shrink-0 transition-colors duration-200",
+              done && "bg-foreground text-white",
+              active && "bg-primary text-white ring-4 ring-primary/15",
+              !done && !active && "bg-surface-1 text-foreground-muted ring-1 ring-border-strong"
             )}
           >
             {done ? <Check className="w-3 h-3" strokeWidth={3} /> : s.num}
@@ -43,34 +43,35 @@ export const InvoiceStepper: React.FC<InvoiceStepperProps> = ({ steps, current, 
           <span className="min-w-0 text-left">
             <span
               className={cn(
-                "block text-xs font-medium truncate",
+                "block text-[13px] font-medium whitespace-nowrap",
+                !active && "sr-only sm:not-sr-only",
                 active ? "text-foreground" : done ? "text-foreground-secondary" : "text-foreground-muted"
               )}
             >
               {s.label}
             </span>
-            {s.hint && <span className="hidden md:block text-2xs text-foreground-muted truncate">{s.hint}</span>}
+            {s.hint && <span className="hidden 2xl:block text-xs text-foreground-muted truncate">{s.hint}</span>}
           </span>
         </>
       );
 
       return (
-        <li key={s.num} className={cn("flex items-center min-w-0", !isLast && "flex-1")} aria-current={active ? "step" : undefined}>
+        <li key={s.num} className={cn("flex items-center", !isLast && "flex-1")} aria-current={active ? "step" : undefined}>
           {clickable ? (
             <button
               type="button"
               onClick={() => onSelect?.(s.num)}
-              className="flex items-center gap-2.5 min-w-0 rounded-md -m-1 p-1 hover:bg-surface-2 transition-colors"
+              className="flex shrink-0 items-center gap-2.5 rounded-md -m-1 p-1 hover:bg-surface-2 transition-colors"
             >
               {body}
             </button>
           ) : (
-            <span className="flex items-center gap-2.5 min-w-0">{body}</span>
+            <span className="flex shrink-0 items-center gap-2.5">{body}</span>
           )}
           {!isLast && (
             <span
               aria-hidden="true"
-              className={cn("flex-1 h-px mx-3 min-w-[16px]", done ? "bg-border-strong" : "bg-border")}
+              className={cn("flex-1 h-px mx-1.5 min-w-[8px] sm:mx-3 sm:min-w-[16px]", done ? "bg-foreground/40" : "bg-border-strong")}
             />
           )}
         </li>

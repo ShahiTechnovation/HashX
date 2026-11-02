@@ -15,6 +15,8 @@ import { Panel, PanelBody, PanelHeader, SectionHeading } from "@/components/ui/P
 import { Button, buttonStyles } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Callout } from "@/components/ui/Callout";
+import { toneStyles } from "@/components/ui/StatusBadge";
+import { cn } from "@/lib/utils";
 import { LiveError, LiveGate, TestnetBadge, useLiveQuery } from "@/components/live/common";
 import { SEPOLIA_CHAIN_ID } from "@shared/networks";
 import type { LiveStats } from "@/lib/live/types";
@@ -113,7 +115,7 @@ const LiveDashboardBody: React.FC = () => {
                 value={
                   <>
                     {data.settledTestUsdcDisplay}{" "}
-                    <span className="text-sm font-sans text-foreground-muted">Test USDC</span>
+                    <span className="text-sm font-normal tracking-normal text-foreground-muted">Test USDC</span>
                   </>
                 }
                 hint="Sepolia Testnet · test tokens, no monetary value"
@@ -149,14 +151,22 @@ const LiveDashboardBody: React.FC = () => {
           <Panel>
             <PanelHeader title="Delivery verification decisions" description="Independent RPC recomputation results for submitted deliveries." />
             <PanelBody>
-              <div className="grid grid-cols-3 gap-4 text-[13px]">
-                {(["PASS", "FAIL", "PENDING"] as const).map((d) => (
-                  <div key={d}>
-                    <div className="text-xs text-foreground-muted">{d}</div>
-                    <div className="mt-1 font-display text-xl tabular-nums text-foreground">{data.deliveryVerificationsByDecision[d] ?? 0}</div>
-                  </div>
-                ))}
-              </div>
+              <dl className="grid grid-cols-3 gap-4 text-[13px]">
+                {(["PASS", "FAIL", "PENDING"] as const).map((d) => {
+                  const tone = d === "PASS" ? "success" : d === "FAIL" ? "danger" : "warning";
+                  return (
+                    <div key={d}>
+                      <dt className="flex items-center gap-1.5 text-xs text-foreground-muted">
+                        <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", toneStyles[tone].dot)} />
+                        {d === "PASS" ? "Pass" : d === "FAIL" ? "Fail" : "Pending"}
+                      </dt>
+                      <dd className="mt-1.5 text-[22px] font-medium tracking-[-0.02em] tabular-nums text-foreground">
+                        {data.deliveryVerificationsByDecision[d] ?? 0}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
             </PanelBody>
           </Panel>
         </>

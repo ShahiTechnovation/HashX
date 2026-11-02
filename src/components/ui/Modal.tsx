@@ -49,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="fixed inset-0 bg-black/60 animate-fade-in" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-foreground/25 animate-fade-in" onClick={onClose} aria-hidden="true" />
 
       <div
         className={cn(
@@ -74,7 +74,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         <div className="px-5 pb-5">{children}</div>
 
-        {footer && <div className="px-5 py-3.5 border-t border-border bg-surface-2/40 flex items-center justify-end gap-2">{footer}</div>}
+        {footer && <div className="px-5 py-3.5 border-t border-border bg-surface-2/60 flex items-center justify-end gap-2">{footer}</div>}
       </div>
     </div>
   );

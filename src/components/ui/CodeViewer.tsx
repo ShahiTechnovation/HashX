@@ -81,11 +81,11 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   };
 
   return (
-    <div className={cn("rounded-lg border border-border bg-[rgb(7_9_12)] overflow-hidden", className)}>
-      <div className="flex items-center justify-between h-9 pl-3.5 pr-1.5 border-b border-border bg-surface-1">
+    <div className={cn("surface-ink rounded-lg border border-border overflow-hidden", className)}>
+      <div className="flex items-center justify-between h-10 pl-4 pr-2 border-b border-border bg-surface-1">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-foreground-secondary truncate">{title || "Document"}</span>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-foreground-muted px-1.5 py-px rounded bg-surface-3/70">
+          <span className="text-2xs font-mono text-foreground-muted px-1.5 py-px rounded bg-surface-3/70">
             {lang}
           </span>
         </div>
@@ -95,7 +95,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             type="button"
             onClick={handleCopy}
             aria-label={copied ? "Copied" : "Copy code"}
-            className="inline-flex items-center gap-1.5 h-6 px-2 rounded text-2xs text-foreground-muted hover:text-foreground hover:bg-surface-3 transition-colors"
+            className="inline-flex items-center gap-1.5 h-7 px-2 rounded text-xs text-foreground-muted hover:text-foreground hover:bg-surface-3 transition-colors"
           >
             {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
             <span>{copied ? "Copied" : "Copy"}</span>
@@ -103,7 +103,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
         </div>
       </div>
 
-      <pre className={cn("py-3 overflow-auto font-mono text-xs leading-[1.7]", maxHeight)}>
+      <pre className={cn("py-3.5 overflow-auto font-mono text-[12.5px] leading-[1.7]", maxHeight)}>
         <code className="block min-w-max">
           {lines.map((line, n) => (
             <div key={n} className="flex px-3.5 hover:bg-surface-1/60">

@@ -10,7 +10,7 @@ import {
   Copy,
   Check,
   Wallet,
-  Layers,
+  ChevronRight,
   KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,6 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
     isWalletConnected,
     isWrongNetwork,
     isConnecting,
-    walletError,
     connectWallet,
     disconnectWallet,
     switchChain,
@@ -93,74 +92,33 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
   };
 
   return (
-    <header className="h-16 shrink-0 border-b border-carbon-border bg-carbon-void/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 select-none">
-      {/* Left: Mobile trigger, Workspace & Breadcrumbs */}
-      <div className="flex items-center gap-3.5 min-w-0">
+    <header className="no-print sticky top-0 z-30 flex h-14 shrink-0 select-none items-center justify-between gap-3 border-b border-border bg-background/95 px-4 sm:px-6 lg:px-8">
+      {/* Left: mobile trigger + breadcrumbs */}
+      <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
           onClick={onOpenMobileMenu}
           aria-label="Open navigation"
-          className="p-1.5 -ml-1 rounded text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel md:hidden"
+          className="-ml-1.5 rounded-md p-1.5 text-foreground-secondary hover:bg-surface-3 hover:text-foreground lg:hidden"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="h-5 w-5" />
         </button>
 
-        {/* Workspace Pill */}
-        <div className="hidden lg:flex items-center gap-2 bg-carbon-nav px-2.5 py-1 rounded border border-carbon-border text-xs">
-          <Layers className="w-3.5 h-3.5 text-primary" />
-          <span className="font-display font-semibold text-carbon-text tracking-tight">
-            {mode === "connected" ? "Connected · live backend" : "Demo · simulated"}
-          </span>
-        </div>
-
-        {/* Network selector (shared/networks PUBLIC_NETWORKS) */}
-        <label className="hidden sm:flex items-center gap-1.5 pl-1">
-          <span className={cn("inline-block w-2 h-2 rounded-full", network?.isTestnet ? "bg-warning" : "bg-danger")} />
-          <span className="sr-only">Wallet network</span>
-          <select
-            value={isPublic ? chainId : ""}
-            onChange={(e) => void switchChain(Number(e.target.value))}
-            className="bg-transparent font-mono text-[11px] uppercase tracking-wider text-carbon-text focus:outline-none cursor-pointer"
-            title={mode === "demo" ? "Demo mode: network selection is simulated" : "Switch wallet network"}
-          >
-            {!isPublic && (
-              <option value="" disabled>
-                Unsupported chain {chainId}
-              </option>
-            )}
-            {PUBLIC_NETWORKS.map((n) => (
-              <option key={n.chainId} value={n.chainId} className="bg-carbon-panel normal-case">
-                {n.shortName} · {n.chainId}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Mobile / Secondary Breadcrumb */}
-        <nav
-          aria-label="Breadcrumb"
-          className="flex sm:hidden items-center gap-1.5 text-xs min-w-0 font-mono"
-        >
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[13px]">
           {visibleCrumbs.map((crumb, idx) => {
             const last = idx === visibleCrumbs.length - 1;
             return (
               <React.Fragment key={crumb.href}>
-                {idx > 0 && <span className="text-carbon-muted/50">/</span>}
+                {idx > 0 && <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-foreground-muted/70 sm:block" aria-hidden="true" />}
                 {last ? (
                   <span
                     aria-current="page"
-                    className={cn(
-                      "text-carbon-text font-medium truncate",
-                      crumb.isId && "font-mono text-2xs"
-                    )}
+                    className={cn("truncate font-medium text-foreground", crumb.isId && "font-mono text-xs")}
                   >
                     {crumb.label}
                   </span>
                 ) : (
-                  <Link
-                    href={crumb.href}
-                    className="text-carbon-muted hover:text-carbon-text transition-colors truncate"
-                  >
+                  <Link href={crumb.href} className="hidden truncate text-foreground-muted transition-colors hover:text-foreground sm:inline">
                     {crumb.label}
                   </Link>
                 )}
@@ -170,88 +128,92 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
         </nav>
       </div>
 
-      {/* Right: Telemetry & Controls */}
-      <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
-        {/* Rail Telemetry */}
-        <div className="hidden xl:flex items-center gap-1.5 text-carbon-muted">
-          <span>Settlement:</span>
-          <span className={cn("font-semibold", mode === "connected" ? "text-carbon-text" : "text-primary")}>
-            {mode === "connected" ? "Sepolia Test USDC · HSP not connected" : "Simulated"}
-          </span>
-        </div>
-
-        <div className="hidden xl:block h-3.5 w-px bg-carbon-border" />
-
-        {/* Quorum Notice */}
-        <div className="hidden md:flex items-center gap-1.5 text-carbon-muted">
-          <span>Approval:</span>
-          <span className="text-warning font-semibold bg-warning/10 px-1.5 py-0.5 rounded border border-warning/20 text-[11px]">
-            2-Stage Required
-          </span>
-        </div>
-
-        {/* Wrong Network Notice */}
-        {isWrongNetwork && (
+      {/* Right: network, mode, session, wallet */}
+      <div className="flex shrink-0 items-center gap-2">
+        {isWrongNetwork ? (
           <button
             type="button"
             onClick={() => switchChain(SEPOLIA_CHAIN_ID)}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded bg-warning/10 border border-warning/30 text-warning text-xs hover:bg-warning/20 transition-colors font-mono"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-warning/35 bg-warning/[0.06] px-2.5 text-xs font-medium text-warning transition-colors hover:bg-warning/10"
             title="Unsupported network. Switch wallet to Ethereum Sepolia Testnet (chain 11155111)"
           >
-            <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning" />
             Switch to Sepolia
           </button>
+        ) : (
+          <label className="relative hidden h-8 items-center rounded-md border border-border bg-surface-1 pl-2.5 pr-1 text-xs text-foreground-secondary transition-colors hover:border-border-strong sm:flex">
+            <span aria-hidden="true" className={cn("mr-1.5 h-1.5 w-1.5 rounded-full", network?.isTestnet ? "bg-warning" : "bg-danger")} />
+            <span className="sr-only">Wallet network</span>
+            <select
+              value={isPublic ? chainId : ""}
+              onChange={(e) => void switchChain(Number(e.target.value))}
+              className="h-full cursor-pointer appearance-none bg-transparent pr-5 text-xs text-foreground focus:outline-none"
+              title={mode === "demo" ? "Demo mode: network selection is simulated" : "Switch wallet network"}
+            >
+              {!isPublic && (
+                <option value="" disabled>
+                  Unsupported chain {chainId}
+                </option>
+              )}
+              {PUBLIC_NETWORKS.map((n) => (
+                <option key={n.chainId} value={n.chainId}>
+                  {n.shortName}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-foreground-muted" aria-hidden="true" />
+          </label>
         )}
 
-        <div className="hidden md:block h-3.5 w-px bg-carbon-border" />
-
-        {/* Mode Toggle (Demo vs Connected) */}
-        <div className="flex items-center h-8 rounded border border-carbon-border bg-carbon-nav p-0.5 text-xs">
+        {/* Data mode: simulated fixtures vs. the live backend */}
+        <div role="radiogroup" aria-label="Data mode" className="flex h-8 items-center rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-border">
           {(["demo", "connected"] as const).map((m) => (
             <button
               key={m}
               type="button"
-              role="tab"
-              aria-selected={mode === m}
+              role="radio"
+              aria-checked={mode === m}
               onClick={() => setMode(m)}
               className={cn(
-                "h-6 px-2.5 rounded font-mono text-[11px] transition-colors capitalize",
+                "h-7 rounded-[6px] px-2.5 text-xs transition-colors",
                 mode === m
-                  ? "bg-carbon-panel text-carbon-text font-semibold border border-carbon-border shadow-sm"
-                  : "text-carbon-muted hover:text-carbon-text"
+                  ? "bg-surface-1 font-medium text-foreground shadow-[0_0_0_1px_rgb(var(--border)),0_1px_2px_rgb(25_24_29/0.06)]"
+                  : "text-foreground-muted hover:text-foreground"
               )}
             >
-              {m === "demo" ? (mode === "demo" ? "Demo · simulated" : "Demo") : "Connected"}
+              {m === "demo" ? "Demo" : "Connected"}
             </button>
           ))}
         </div>
 
         {/* Session (connected mode only) */}
-        {mode === "connected" && walletType === "eoa" && walletAddress &&
+        {mode === "connected" &&
+          walletType === "eoa" &&
+          walletAddress &&
           (session ? (
             <button
               type="button"
               onClick={() => void signOut()}
-              className="hidden sm:flex items-center gap-1.5 h-8 px-2.5 rounded border border-success/30 bg-success/10 text-success text-[11px] hover:bg-success/15 transition-colors"
+              className="hidden h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-foreground-secondary transition-colors hover:bg-surface-3 hover:text-foreground lg:flex"
               title="Signed in with Ethereum. Click to sign out."
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              Signed in · Sign out
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-success" />
+              Signed in
             </button>
           ) : (
             <button
               type="button"
               onClick={() => void signIn()}
               disabled={isSigningIn}
-              className="flex items-center gap-1.5 h-8 px-2.5 rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-medium transition-colors disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-md border border-border-strong bg-surface-1 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-2 disabled:opacity-50"
               title="Sign a one-time SIWE message. Signing in never authorizes a payment."
             >
-              <KeyRound className="w-3.5 h-3.5" />
+              <KeyRound className="h-3.5 w-3.5" />
               {isSigningIn ? "Signing in…" : "Sign in"}
             </button>
           ))}
 
-        {/* Wallet Connector / Badge */}
+        {/* Wallet */}
         <div className="relative" ref={menuRef}>
           {isWalletConnected && walletAddress ? (
             <>
@@ -260,71 +222,53 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                 onClick={() => setWalletOpen(!walletOpen)}
                 aria-expanded={walletOpen}
                 aria-haspopup="menu"
-                className={cn(
-                  "flex items-center gap-2 h-8 px-2.5 rounded border text-xs transition-colors focus-visible:outline-none focus-visible:ring-1",
-                  walletType === "simulated"
-                    ? "border-warning/30 bg-warning/10 hover:bg-warning/15 text-warning focus-visible:ring-warning"
-                    : "border-primary/30 bg-primary/10 hover:bg-primary/15 text-primary focus-visible:ring-primary"
-                )}
+                className="flex h-8 items-center gap-1.5 sm:gap-2 rounded-md border border-border bg-surface-1 px-2 sm:px-2.5 text-xs text-foreground transition-colors hover:border-border-strong"
               >
                 <span
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    walletType === "simulated" ? "bg-warning" : "bg-success"
-                  )}
+                  aria-hidden="true"
+                  className={cn("h-1.5 w-1.5 rounded-full", walletType === "simulated" ? "bg-warning" : "bg-success")}
                 />
-                <span className="font-mono text-[11px] font-medium">
-                  {formatAddress(walletAddress)}
-                </span>
+                <Wallet className="h-3.5 w-3.5 text-foreground-muted sm:hidden" aria-label={formatAddress(walletAddress)} />
+                <span className="hidden font-mono text-xs sm:inline">{formatAddress(walletAddress)}</span>
                 <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 transition-transform",
-                    walletType === "simulated" ? "text-warning/70" : "text-primary/70",
-                    walletOpen && "rotate-180"
-                  )}
+                  aria-hidden="true"
+                  className={cn("h-3.5 w-3.5 text-foreground-muted transition-transform duration-200", walletOpen && "rotate-180")}
                 />
               </button>
 
               {walletOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 mt-2 w-72 rounded bg-carbon-panel border border-carbon-border shadow-2xl z-50 animate-fade-in overflow-hidden"
+                  className="absolute right-0 z-50 mt-2 w-80 animate-fade-in overflow-hidden rounded-lg bg-surface-1 shadow-overlay"
                 >
-                  <div className="px-3.5 pt-3 pb-3 border-b border-carbon-border">
+                  <div className="space-y-3 p-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-carbon-text">
-                        Wallet
+                      <span className="text-[13px] font-medium text-foreground">Wallet</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-xs",
+                          walletType === "simulated" ? "text-warning" : "text-success"
+                        )}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn("h-1.5 w-1.5 rounded-full", walletType === "simulated" ? "bg-warning" : "bg-success")}
+                        />
+                        {walletType === "simulated" ? "Simulated (demo)" : "Connected EOA"}
                       </span>
-                      {walletType === "simulated" ? (
-                        <span className="text-[10px] text-warning font-mono flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-warning" />
-                          Simulated (Demo)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-success font-mono flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                          Connected EOA
-                        </span>
-                      )}
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 rounded bg-carbon-void border border-carbon-border px-2.5 py-1.5">
-                      <span className="font-mono text-2xs text-carbon-muted break-all">
-                        {walletAddress}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-2">
+                      <span className="break-all font-mono text-xs text-foreground-secondary">{walletAddress}</span>
                       <button
                         type="button"
                         onClick={handleCopyWallet}
-                        aria-label="Copy address"
-                        className="p-1 rounded text-carbon-muted hover:text-carbon-text shrink-0"
+                        aria-label={copied ? "Address copied" : "Copy address"}
+                        className="shrink-0 rounded p-1 text-foreground-muted transition-colors hover:bg-surface-3 hover:text-foreground"
                       >
-                        {copied ? (
-                          <Check className="w-3.5 h-3.5 text-success" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
+                        {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                     </div>
-                    <p className="mt-2 text-[11px] text-carbon-muted leading-relaxed font-sans">
+                    <p className="text-xs leading-relaxed text-foreground-muted">
                       {walletType === "simulated"
                         ? "Simulated demo wallet — cannot sign real transactions. Connected mode requires a real browser wallet."
                         : session
@@ -332,6 +276,20 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                           : "Connected browser wallet, not signed in. Sign in (SIWE) to use the HashX backend. HashX never stores private keys."}
                     </p>
                   </div>
+                  {mode === "connected" && session && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        void signOut();
+                        setWalletOpen(false);
+                      }}
+                      className="flex h-10 w-full items-center gap-2 border-t border-border px-4 text-[13px] text-foreground-secondary transition-colors hover:bg-surface-2 hover:text-foreground"
+                    >
+                      <KeyRound className="h-3.5 w-3.5" />
+                      Sign out
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"
@@ -339,10 +297,10 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
                       disconnectWallet();
                       setWalletOpen(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3.5 h-9 text-xs text-carbon-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                    className="flex h-10 w-full items-center gap-2 border-t border-border px-4 text-[13px] text-foreground-secondary transition-colors hover:bg-danger/[0.05] hover:text-danger"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Disconnect</span>
+                    <LogOut className="h-3.5 w-3.5" />
+                    Disconnect
                   </button>
                 </div>
               )}
@@ -352,10 +310,11 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileMenu, action }) => {
               type="button"
               onClick={connectWallet}
               disabled={isConnecting}
-              className="flex items-center gap-1.5 h-8 px-3 rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-mono font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3 text-xs font-medium text-white transition-colors hover:bg-foreground/85 disabled:opacity-50"
             >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>{isConnecting ? "Connecting…" : "Connect Wallet"}</span>
+              <Wallet className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{isConnecting ? "Connecting…" : "Connect wallet"}</span>
+              <span className="sr-only sm:hidden">Connect wallet</span>
             </button>
           )}
         </div>

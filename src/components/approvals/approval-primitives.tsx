@@ -111,7 +111,7 @@ export const ToneBadge: React.FC<{
 }> = ({ tone, icon: Icon, children, size = "md", className }) => (
   <span
     className={cn(
-      "inline-flex items-center rounded-[5px] ring-1 ring-inset font-medium whitespace-nowrap",
+      "inline-flex items-center rounded ring-1 ring-inset font-medium whitespace-nowrap",
       toneStyles[tone].badge,
       size === "sm" ? "h-5 px-1.5 text-2xs gap-1" : "h-6 px-2 text-xs gap-1.5",
       className
@@ -225,7 +225,7 @@ const StepStateLabel: React.FC<{ state: StepState }> = ({ state }) => {
     complete: { label: "Approved", cls: "text-success" },
     active: { label: "Awaiting you", cls: "text-primary-light" },
     blocked: { label: "Quote expired", cls: "text-danger" },
-    pending: { label: "Locked", cls: "text-foreground-muted/80" },
+    pending: { label: "Locked", cls: "text-foreground-muted" },
   };
   const m = map[state];
   return <span className={cn("text-2xs font-medium", m.cls)}>· {m.label}</span>;

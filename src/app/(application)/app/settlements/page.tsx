@@ -3,18 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  ChevronRight,
-  RefreshCw,
-  Lock,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  Search,
-  Layers,
-  Activity,
-} from "lucide-react";
+import { ChevronRight, Clock, RefreshCw } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveSettlements } from "@/components/live/payments/LiveSettlements";
 import { demoClient, connectedClient } from "@/lib/api/client";
@@ -22,9 +11,16 @@ import { PaymentAttempt } from "@/types/domain";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FinalityTrack } from "@/components/ui/FinalityTrack";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { Metric, MetricStrip } from "@/components/ui/Metric";
+import { Segmented, SearchInput } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { SimulatedBadge } from "@/components/live/common";
+import { ToneBadge, merchantDisplayName } from "@/components/approvals/approval-primitives";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatTimestamp } from "@/lib/formatters";
-import { SettlementGroup, getSettlementGroup } from "@/components/settlements/settlement-utils";
+import { SettlementGroup, getSettlementGroup, isPreAuthorization } from "@/components/settlements/settlement-utils";
 
 /** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
 export default function SettlementsPage() {
@@ -95,227 +91,139 @@ function DemoSettlementExplorerIndexPage() {
     });
   }, [paymentAttempts, searchQuery, statusFilter]);
 
+  const filterOptions: Array<{ value: SettlementGroup; label: string; count: number }> = [
+    { value: "all", label: "All", count: counts.all },
+    { value: "inflight", label: "In flight", count: counts.inflight },
+    { value: "safe", label: "Safe · not final", count: counts.safe },
+    { value: "finalized", label: "Finalized", count: counts.finalized },
+    { value: "failed", label: "Failed", count: counts.failed },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* 1. Header Toolbar */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-              <span>Console</span>
-              <span className="text-carbon-border">/</span>
-              <span>Settlement Explorer</span>
-              <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">HashKey HSP Reconciler</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase">
-              Settlement Reconciler &amp; Finality Monitor
-            </h1>
-            <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              HSP payment attempts reconciled to actual finality. Safe is not final — only finalized attempts produce receipts.
-            </p>
-          </div>
+      <PageHeader
+        eyebrow="HashKey HSP"
+        title="Settlements"
+        badges={<SimulatedBadge />}
+        description="Payment attempts reconciled to actual finality. Safe is not final — only finalized attempts produce receipts."
+        actions={
+          <Button variant="secondary" size="sm" onClick={triggerRefresh} disabled={isLoading}>
+            <RefreshCw className={cn(isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        }
+      />
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={triggerRefresh}
-              disabled={isLoading}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
-              <span>Sync Rail</span>
-            </button>
+      <MetricStrip cols={4}>
+        <Metric label="In flight" value={counts.inflight} tone={counts.inflight > 0 ? "info" : undefined} hint="Submitted, awaiting inclusion" />
+        <Metric label="Safe · not final" value={counts.safe} tone={counts.safe > 0 ? "warning" : undefined} hint="On-chain, still reversible" />
+        <Metric label="Finalized" value={counts.finalized} tone={counts.finalized > 0 ? "success" : undefined} hint="Irreversible; receipt issued" />
+        <Metric label="Failed or timed out" value={counts.failed} tone={counts.failed > 0 ? "danger" : undefined} hint="Needs recovery or review" />
+      </MetricStrip>
+
+      <Panel>
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+            <Segmented value={statusFilter} onChange={setStatusFilter} options={filterOptions} />
           </div>
+          <SearchInput
+            wrapperClassName="w-full lg:w-72"
+            placeholder="Search attempt, tx hash, or invoice"
+            aria-label="Search settlements"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        {/* Realtime KPI Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 mt-4 border-t border-carbon-border/70 text-xs font-mono">
-          <div className="bg-carbon-void border border-carbon-border p-3 rounded">
-            <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-              In Settlement (Flight)
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xl font-display font-bold text-primary">
-                {counts.inflight}
-              </span>
-              <span className="text-[10px] text-primary bg-primary/10 px-1 rounded border border-primary/20">
-                Awaiting Epoch
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-carbon-void border border-carbon-border p-3 rounded">
-            <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-              Safe (Justified)
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xl font-display font-bold text-warning">
-                {counts.safe}
-              </span>
-              <span className="text-[10px] text-warning bg-warning/10 px-1 rounded border border-warning/20">
-                Not Finalized
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-carbon-void border border-carbon-border p-3 rounded">
-            <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-              Finalized (Settled)
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xl font-display font-bold text-success">
-                {counts.finalized}
-              </span>
-              <span className="text-[10px] text-success bg-success/10 px-1 rounded border border-success/20">
-                100% Attested
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-carbon-void border border-carbon-border p-3 rounded">
-            <span className="text-[10px] text-carbon-muted uppercase tracking-wider block">
-              HSP Engine Status
-            </span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className={cn("text-base font-display font-bold", mode === "connected" ? "text-amber-400" : "text-success")}>
-                {mode === "connected" ? "Safe Mode (QA Pending)" : "Simulated Engine"}
-              </span>
-              <span className={cn("text-[10px] flex items-center gap-1", mode === "connected" ? "text-amber-400" : "text-success")}>
-                <span className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-amber-400" : "bg-success")} />
-                {mode === "connected" ? "Fail-Closed" : "142ms (Sim)"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Settlements Ledger & Finality Cards */}
-      <section className="border border-carbon-border rounded bg-carbon-nav overflow-hidden">
-        {/* Controls */}
-        <div className="p-3.5 border-b border-carbon-border flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-carbon-panel/60">
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
-            {[
-              { id: "all" as SettlementGroup, label: "All Settlements", count: counts.all },
-              { id: "inflight" as SettlementGroup, label: "In Flight", count: counts.inflight, highlight: "text-primary" },
-              { id: "safe" as SettlementGroup, label: "Safe (Pending Finality)", count: counts.safe, highlight: "text-warning" },
-              { id: "finalized" as SettlementGroup, label: "Finalized", count: counts.finalized, highlight: "text-success" },
-              { id: "failed" as SettlementGroup, label: "Failed", count: counts.failed, highlight: "text-danger" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded text-xs font-mono font-medium flex items-center gap-1.5 transition-colors shrink-0",
-                  statusFilter === tab.id
-                    ? "bg-carbon-void text-carbon-text border border-carbon-border shadow-sm font-semibold"
-                    : cn("text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40", tab.highlight)
-                )}
-              >
-                <span>{tab.label}</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-carbon-void text-[10px] text-carbon-muted border border-carbon-border/50">
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-carbon-muted" />
-            <input
-              type="text"
-              placeholder="Search by Payment ID, txHash, or invoice..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-carbon-void pl-8 pr-3 py-1.5 rounded text-xs font-mono text-carbon-text border border-carbon-border focus:border-primary focus:outline-none placeholder:text-carbon-muted/60"
-            />
-          </div>
-        </div>
-
-        {/* Settlements Table with Embedded Finality Track */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-mono text-xs">
+          <table className="table-base min-w-[920px]">
             <thead>
-              <tr className="bg-carbon-void/80 text-[10px] uppercase tracking-wider text-carbon-muted border-b border-carbon-border">
-                <th className="py-3 px-4 font-semibold">Payment Attempt</th>
-                <th className="py-3 px-4 font-semibold">Invoice &amp; Payee</th>
-                <th className="py-3 px-4 font-semibold text-right">Disbursement</th>
-                <th className="py-3 px-4 font-semibold">HSP Status</th>
-                <th className="py-3 px-4 font-semibold w-72">Finality Gauntlet</th>
-                <th className="py-3 px-4 font-semibold text-right">Inspect</th>
+              <tr>
+                <th>Payment attempt</th>
+                <th>Payee</th>
+                <th className="text-right">Amount</th>
+                <th>Status</th>
+                <th className="w-72">Finality</th>
+                <th className="w-12">
+                  <span className="sr-only">Open</span>
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-carbon-border">
+            <tbody>
               {isLoading && paymentAttempts.length === 0 ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="p-4">
-                      <div className="h-4 rounded bg-carbon-panel animate-pulse" />
+                    <td colSpan={6}>
+                      <div className="h-4 animate-pulse rounded bg-surface-2" />
                     </td>
                   </tr>
                 ))
               ) : filteredAttempts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center">
+                  <td colSpan={6} className="!p-0">
                     <EmptyState
-                      title="No settlements matching criteria"
-                      description="Adjust your search filters to view recorded payment attempts."
+                      title="No settlements match"
+                      description="Adjust the filter or search to see recorded payment attempts."
                     />
                   </td>
                 </tr>
               ) : (
                 filteredAttempts.map((p) => {
+                  const pre = isPreAuthorization(p);
                   return (
                     <tr
                       key={p.id}
                       onClick={() => router.push(`/app/settlements/${p.id}`)}
-                      className="hover:bg-carbon-panel/40 transition-colors cursor-pointer group"
+                      className="group cursor-pointer hover:bg-surface-2/60"
                     >
-                      <td className="py-3.5 px-4">
+                      <td>
                         <Link
                           href={`/app/settlements/${p.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="font-bold text-carbon-text hover:text-primary transition-colors flex items-center gap-1"
+                          className="font-mono text-xs font-medium text-foreground hover:text-primary-light"
                         >
-                          <span>{p.id}</span>
+                          {p.id}
                         </Link>
-                        <div className="text-[10px] text-carbon-muted">
+                        <div className="mt-0.5 text-xs tabular-nums text-foreground-muted">
                           {formatTimestamp(p.createdAt).replace(" UTC", "")}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="text-carbon-text font-medium truncate max-w-[160px]">
-                          {p.approvalSummary?.merchantName || "Verified Agent"}
+                      <td>
+                        <div className="max-w-[180px] truncate text-foreground">
+                          {merchantDisplayName(p.approvalSummary?.merchantName || "Verified Agent")}
                         </div>
-                        <div className="text-[10px] text-carbon-muted">
-                          {formatAddress(p.payee)}
-                        </div>
+                        <div className="mt-0.5 font-mono text-xs text-foreground-muted">{formatAddress(p.payee)}</div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="font-bold text-carbon-text">
-                          {p.approvalSummary?.humanAmount || "0.00 USDC"}
-                        </div>
-                        <div className="text-[10px] text-carbon-muted">HSP Rail</div>
+                      <td className="text-right">
+                        <div className="font-medium tabular-nums text-foreground">{p.approvalSummary?.humanAmount || "0.00 USDC"}</div>
+                        <div className="mt-0.5 text-xs text-foreground-muted">HSP rail</div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <StatusBadge status={p.hspStatus} type="hsp" size="sm" />
+                      <td>
+                        {pre ? (
+                          <ToneBadge size="sm" tone="neutral" icon={Clock}>
+                            Awaiting authorization
+                          </ToneBadge>
+                        ) : (
+                          <StatusBadge status={p.hspStatus} type="hsp" size="sm" />
+                        )}
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <FinalityTrack status={p.hspStatus} compact />
+                      <td>
+                        {pre ? (
+                          <span className="text-xs text-foreground-muted">Not submitted</span>
+                        ) : (
+                          <FinalityTrack status={p.hspStatus} compact />
+                        )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <Link
-                          href={`/app/settlements/${p.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono text-carbon-muted hover:text-carbon-text bg-carbon-void border border-carbon-border hover:bg-carbon-panel transition-colors"
-                        >
-                          <span>Track</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </Link>
+                      <td className="text-right">
+                        <ChevronRight
+                          className="ml-auto h-4 w-4 text-foreground-muted transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-foreground"
+                          aria-hidden="true"
+                        />
                       </td>
                     </tr>
                   );
@@ -324,7 +232,7 @@ function DemoSettlementExplorerIndexPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }

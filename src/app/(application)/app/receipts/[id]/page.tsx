@@ -3,27 +3,24 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Download,
-  Printer,
-  Copy,
-  Check,
-  CheckCircle2,
-  ExternalLink,
-  ShieldCheck,
-  FileCode2,
-  Lock,
-  Stamp,
-  Layers,
-} from "lucide-react";
+import { Download, Printer, Copy, Check, FileCode2, ChevronDown } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveReceiptDetail } from "@/components/live/receipts/LiveReceiptDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { VerifiableReceipt, Invoice, Delivery, PaymentAttempt } from "@/types/domain";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { Button, buttonStyles } from "@/components/ui/Button";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel, PanelBody } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { StatusBadge, toneStyles } from "@/components/ui/StatusBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LogoMark } from "@/components/brand/Logo";
+import { SimulatedBadge } from "@/components/live/common";
+import { ReceiptPaper, DocSection, DocField, StatusStamp } from "@/components/receipts/ReceiptDocument";
 import { cn } from "@/lib/utils";
-import { formatAddress, formatTimestamp, getExplorerTxUrl } from "@/lib/formatters";
+import { formatTimestamp } from "@/lib/formatters";
 
 /** Connected mode renders only real backend records; demo mode keeps the simulated fixture view. */
 export default function ReceiptDetailRoute() {
@@ -117,281 +114,227 @@ function DemoReceiptDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-14 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="max-w-4xl mx-auto h-[600px] bg-carbon-nav border border-carbon-border rounded" />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading receipt">
+        <div className="space-y-2">
+          <div className="h-4 w-24 rounded bg-surface-3" />
+          <div className="h-8 w-72 rounded bg-surface-3" />
+        </div>
+        <div className="mx-auto h-[560px] max-w-4xl rounded-lg border border-border bg-surface-1" />
       </div>
     );
   }
 
   if (!receipt) {
     return (
-      <div className="space-y-6">
-        <div className="bg-carbon-nav border border-carbon-border p-8 rounded text-center">
-          <FileCode2 className="w-10 h-10 text-carbon-muted mx-auto mb-3" />
-          <h2 className="font-display text-lg font-bold text-carbon-text">
-            Receipt Not Found
-          </h2>
-          <p className="text-xs text-carbon-muted font-mono mt-1 mb-4">
-            No verifiable receipt exists for {receiptId}.
-          </p>
-          <Link
-            href="/app/receipts"
-            className="px-4 py-2 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void transition-colors inline-block"
-          >
-            Back to Receipts
-          </Link>
-        </div>
-      </div>
+      <Panel>
+        <EmptyState
+          icon={<FileCode2 className="h-[18px] w-[18px]" />}
+          title="Receipt not found"
+          description={`No verifiable receipt exists for ${receiptId}. Receipts are issued only after settlement reaches finality.`}
+          action={
+            <Link href="/app/receipts" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+              Back to receipts
+            </Link>
+          }
+        />
+      </Panel>
     );
   }
 
+  const finalized = receipt.payment.hspStatus === "payment-finalized";
+
   return (
     <div className="space-y-6">
-      {/* 1. Shell Control Bar */}
-      <section className="bg-carbon-nav border border-carbon-border p-3.5 rounded flex flex-wrap items-center justify-between gap-4 font-mono text-xs select-none">
-        <div className="flex items-center gap-2">
-          <Link href="/app/receipts" className="text-carbon-muted hover:text-carbon-text transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Receipts</span>
-          </Link>
-          <span className="text-carbon-border">/</span>
-          <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary font-semibold">
-            RECORD #{receipt.id}
-          </span>
-          <span className="text-success text-[11px] hidden sm:inline ml-2 border-l border-carbon-border pl-3">
-            Status: SETTLED &amp; FINALIZED
-          </span>
+      <PageHeader
+        className="no-print"
+        back={{ href: "/app/receipts", label: "Receipts" }}
+        eyebrow="Verifiable receipt"
+        title={<span className="font-mono text-[22px] sm:text-2xl tracking-[-0.02em]">{receipt.id}</span>}
+        badges={
+          <>
+            <StatusBadge status={receipt.payment.hspStatus} type="hsp" />
+            <SimulatedBadge />
+          </>
+        }
+        meta={
+          <>
+            <MetaItem label="Issued">{formatTimestamp(receipt.issuedAt)}</MetaItem>
+            <MetaItem label="Invoice">
+              <Link href={`/app/invoices/${receipt.invoiceId}`} className="font-mono hover:text-foreground hover:underline">
+                {receipt.invoiceId}
+              </Link>
+            </MetaItem>
+            {attempt && (
+              <MetaItem label="Settlement">
+                <Link href={`/app/settlements/${attempt.id}`} className="font-mono hover:text-foreground hover:underline">
+                  {attempt.id}
+                </Link>
+              </MetaItem>
+            )}
+          </>
+        }
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={handleCopyProof} aria-live="polite">
+              {copied ? <Check className="text-success" /> : <Copy />}
+              {copied ? "Digest copied" : "Copy invoice digest"}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleDownloadJson}>
+              <Download />
+              Export JSON
+            </Button>
+            <Button variant="inverse" size="sm" onClick={handlePrint}>
+              <Printer />
+              Print
+            </Button>
+          </>
+        }
+      />
+
+      <ReceiptPaper label={`Receipt ${receipt.id}`}>
+        {/* Document header */}
+        <header className="flex flex-col gap-6 px-6 pb-7 pt-8 sm:flex-row sm:items-start sm:justify-between sm:px-10 sm:pt-10">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <LogoMark size={22} decorative />
+              <span className="text-[15px] font-semibold tracking-[-0.03em] text-foreground">HashX</span>
+            </div>
+            <h1 className="mt-6 text-[26px] font-medium leading-tight tracking-[-0.03em] text-foreground sm:text-[30px]">
+              Verifiable settlement receipt
+            </h1>
+            <p className="mt-2 max-w-md text-[13px] leading-relaxed text-foreground-secondary">
+              Binds the seller&apos;s signed commercial intent, the verified delivery evidence, the payer&apos;s authorization, and the
+              settlement it was issued against.
+            </p>
+          </div>
+          <StatusStamp
+            status={receipt.payment.hspStatus}
+            date={formatTimestamp(receipt.payment.finalizedAt || receipt.issuedAt)}
+            className="shrink-0 self-start"
+          />
+        </header>
+
+        <div className="mx-6 mb-7 rounded-md border border-warning/25 bg-warning/[0.05] px-3.5 py-2.5 text-xs leading-relaxed text-foreground-secondary sm:mx-10">
+          <span className="font-medium text-warning">Simulated demo record.</span> Hashes, addresses, and settlement states are
+          illustrative in-browser fixtures. No real transaction occurred.
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyProof}
-            className="px-3 py-1.5 rounded bg-carbon-panel hover:bg-carbon-void border border-carbon-border text-carbon-text text-xs font-mono transition-colors flex items-center gap-1.5"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5 text-carbon-muted" />}
-            <span>{copied ? "Digest Copied" : "Copy Digest"}</span>
-          </button>
-
-          <button
-            onClick={handleDownloadJson}
-            className="px-3 py-1.5 rounded bg-carbon-panel hover:bg-carbon-void border border-carbon-border text-carbon-text text-xs font-mono transition-colors flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5 text-carbon-muted" />
-            <span>Export Envelope</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-1.5 rounded bg-primary hover:bg-primary/90 text-white text-xs font-mono font-medium transition-colors flex items-center gap-1.5 shadow-sm"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Certificate</span>
-          </button>
+        {/* Identification band */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-border px-6 py-6 sm:px-10 md:grid-cols-4">
+          <DocField label="Receipt ID">
+            <span className="break-all font-mono text-xs">{receipt.id}</span>
+          </DocField>
+          <DocField label="Invoice">
+            <span className="break-all font-mono text-xs">{receipt.invoiceId}</span>
+          </DocField>
+          <DocField label="Amount">
+            <span className="text-[17px] font-medium tabular-nums tracking-[-0.02em]">{receipt.payment.humanAmount}</span>
+            <span className="mt-0.5 block font-mono text-xs text-foreground-muted">{receipt.payment.tokenTotalRaw} raw units</span>
+          </DocField>
+          <DocField label={finalized ? "Finalized" : "Recorded"}>
+            <span className="tabular-nums">{formatTimestamp(receipt.payment.finalizedAt || receipt.issuedAt)}</span>
+          </DocField>
         </div>
-      </section>
 
-      {/* 2. Physical Parchment Certificate in Carbon Frame */}
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-[#FBFAF6] text-[#111719] p-8 sm:p-12 rounded-sm border border-[#D9DCD7] shadow-2xl relative overflow-hidden select-text">
-          {/* Subtle security background watermark */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#111719_1px,transparent_1px)] [background-size:16px_16px]" />
+        <DocSection index={1} title="Commercial intent" description="EIP-712 invoice signed by the seller agent.">
+          <DataList>
+            <DataRow label="Seller">{receipt.sellerDisplayName || "Registered seller"}</DataRow>
+            <DataRow label="Seller wallet">
+              <CopyableValue value={receipt.seller} displayText={receipt.seller} className="max-w-full" />
+            </DataRow>
+            <DataRow label="Buyer reference" mono>{receipt.buyerRef}</DataRow>
+            <DataRow label="Invoice digest">
+              <CopyableValue value={receipt.invoiceDigest} displayText={receipt.invoiceDigest} className="max-w-full" />
+            </DataRow>
+          </DataList>
+        </DocSection>
 
-          {/* Crosshairs on corners */}
-          <div className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-[#111719]/40" />
-          <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-[#111719]/40" />
-          <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-[#111719]/40" />
-          <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-[#111719]/40" />
-
-          {/* Certificate Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 border-b-2 border-[#111719] pb-6 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 bg-[#345BEE] flex items-center justify-center font-mono font-bold text-white text-xs rounded-none">
-                  HX
-                </div>
-                <span className="font-mono text-xs font-bold tracking-widest text-[#111719] uppercase">
-                  PROOF SYSTEM / HASHX
-                </span>
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#111719] uppercase mt-2">
-                Verifiable Settlement Certificate
-              </h1>
-              <p className="font-mono text-xs text-[#515B60] mt-1">
-                CRYPTOGRAPHIC ATTESTATION OF COMMERCIAL INTENT, DELIVERED SERVICE, AND RECONCILED SETTLEMENT
-              </p>
-            </div>
-
-            {/* Official Seal Badge */}
-            <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#345BEE] p-1 flex flex-col items-center justify-center text-center shrink-0 self-center sm:self-auto bg-[#345BEE]/5 select-none">
-              <ShieldCheck className="w-6 h-6 text-[#345BEE] mb-0.5" />
-              <span className="font-mono text-[8px] font-bold text-[#345BEE] uppercase tracking-tighter leading-tight">
-                FINALIZED
-              </span>
-              <span className="font-mono text-[7px] text-[#515B60] uppercase">
-                AUTHENTIC
-              </span>
-            </div>
-          </div>
-
-          {/* Certificate Identification Band */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-6 mb-8 border-b border-[#D9DCD7] font-mono text-xs">
-            <div>
-              <span className="text-[10px] text-[#788287] uppercase block">Receipt Identifier</span>
-              <span className="font-bold text-[#111719] break-all">{receipt.id}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-[#788287] uppercase block">Associated Invoice</span>
-              <span className="font-bold text-[#111719]">#{receipt.invoiceId}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-[#788287] uppercase block">Final Settlement Amount</span>
-              <span className="font-bold text-[#0D824B] text-sm">
-                {receipt.payment.humanAmount} {receipt.payment.tokenSymbol}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-[#788287] uppercase block">Finality Attested At</span>
-              <span className="font-medium text-[#111719]">
-                {formatTimestamp(receipt.payment.finalizedAt || receipt.issuedAt)}
-              </span>
-            </div>
-          </div>
-
-          {/* The 4 Cryptographic Pillars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Pillar 01: Commercial Intent */}
-            <div className="p-4 bg-[#F4F2EB] border border-[#D9DCD7] space-y-2">
-              <div className="flex items-center justify-between pb-1 border-b border-[#D9DCD7]">
-                <span className="font-mono text-[10px] font-bold text-[#345BEE] uppercase tracking-wider">
-                  01 // COMMERCIAL INTENT
-                </span>
-                <span className="font-mono text-[9px] text-[#0D824B] font-bold">EIP-712 AUTHENTIC</span>
-              </div>
-              <div className="font-mono text-xs space-y-1 pt-1">
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Creditor Agent:</span>{" "}
-                  <span className="font-semibold text-[#111719]">
-                    {receipt.sellerDisplayName || "Registered Agent"}
+        <DocSection index={2} title="Delivery evidence" description="Objective evidence checked before payment became eligible.">
+          <DataList>
+            <DataRow label="Evidence digest">
+              <CopyableValue value={receipt.deliveryEvidenceDigest} displayText={receipt.deliveryEvidenceDigest} className="max-w-full" />
+            </DataRow>
+            {delivery && (
+              <>
+                <DataRow label="Artifact SHA-256">
+                  <CopyableValue value={delivery.artifactSha256} displayText={delivery.artifactSha256} className="max-w-full" />
+                </DataRow>
+                <DataRow label="Delivery">
+                  <span className="font-mono text-xs">{delivery.id}</span>
+                  <span className="text-foreground-muted"> · version {delivery.version}</span>
+                </DataRow>
+                <DataRow label="Delivery status">
+                  <span className={cn("text-[13px]", delivery.status === "ACCEPTED" ? toneStyles.success.text : toneStyles.warning.text)}>
+                    {delivery.status === "ACCEPTED" ? "Accepted" : delivery.status === "REJECTED" ? "Rejected" : "Pending verification"}
                   </span>
-                </div>
-                <div className="text-[11px] truncate">
-                  <span className="text-[#788287]">Creditor Wallet:</span>{" "}
-                  <span className="text-[#111719]">{formatAddress(receipt.seller, 8)}</span>
-                </div>
-                <div className="text-[11px] truncate">
-                  <span className="text-[#788287]">Invoice Digest:</span>{" "}
-                  <span className="text-[#111719] break-all">{receipt.invoiceDigest.slice(0, 26)}...</span>
-                </div>
-              </div>
-            </div>
+                </DataRow>
+              </>
+            )}
+          </DataList>
+        </DocSection>
 
-            {/* Pillar 02: Digital Delivery Proof */}
-            <div className="p-4 bg-[#F4F2EB] border border-[#D9DCD7] space-y-2">
-              <div className="flex items-center justify-between pb-1 border-b border-[#D9DCD7]">
-                <span className="font-mono text-[10px] font-bold text-[#345BEE] uppercase tracking-wider">
-                  02 // OBJECTIVE DELIVERY
-                </span>
-                <span className="font-mono text-[9px] text-[#0D824B] font-bold">RPC WITNESS MATCH</span>
-              </div>
-              <div className="font-mono text-xs space-y-1 pt-1">
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Verification:</span>{" "}
-                  <span className="font-semibold text-[#111719]">Chain State Match</span>
-                </div>
-                <div className="text-[11px] truncate">
-                  <span className="text-[#788287]">Artifact SHA-256:</span>{" "}
-                  <span className="text-[#111719]">{receipt.deliveryEvidenceDigest.slice(0, 26)}...</span>
-                </div>
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Status:</span>{" "}
-                  <span className="text-[#0D824B] font-semibold">Accepted &amp; Fulfillable</span>
-                </div>
-              </div>
-            </div>
+        <DocSection index={3} title="Human authorization" description="Two explicit approvals by the payer. Agents cannot approve.">
+          <DataList>
+            <DataRow label="Payer">
+              <CopyableValue value={receipt.payment.payer} displayText={receipt.payment.payer} className="max-w-full" />
+            </DataRow>
+            <DataRow label="Stage 1 · terms">
+              <span className={toneStyles.success.text}>Approved</span>
+            </DataRow>
+            <DataRow label="Stage 2 · submission">
+              <span className={toneStyles.success.text}>Approved</span>
+            </DataRow>
+          </DataList>
+        </DocSection>
 
-            {/* Pillar 03: Explicit Human Quorum */}
-            <div className="p-4 bg-[#F4F2EB] border border-[#D9DCD7] space-y-2">
-              <div className="flex items-center justify-between pb-1 border-b border-[#D9DCD7]">
-                <span className="font-mono text-[10px] font-bold text-[#345BEE] uppercase tracking-wider">
-                  03 // HUMAN AUTHORIZATION
-                </span>
-                <span className="font-mono text-[9px] text-[#0D824B] font-bold">2/2 QUORUM CONFIRMED</span>
-              </div>
-              <div className="font-mono text-xs space-y-1 pt-1">
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Stage 1 (Terms Review):</span>{" "}
-                  <span className="text-[#0D824B] font-semibold">Approved ✓</span>
-                </div>
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Stage 2 (Treasury Submit):</span>{" "}
-                  <span className="text-[#0D824B] font-semibold">Approved ✓</span>
-                </div>
-                <div className="text-[11px] truncate">
-                  <span className="text-[#788287]">Approver:</span>{" "}
-                  <span className="text-[#111719]">Institutional Treasury Officer</span>
-                </div>
-              </div>
-            </div>
+        <DocSection index={4} title="Settlement" description="HashKey HSP flow the receipt was issued against (simulated).">
+          <DataList>
+            <DataRow label="Status">
+              <StatusBadge status={receipt.payment.hspStatus} type="hsp" size="sm" />
+            </DataRow>
+            <DataRow label="Transaction">
+              <CopyableValue value={receipt.payment.txHash} displayText={receipt.payment.txHash} className="max-w-full" />
+            </DataRow>
+            <DataRow label="HSP flow" mono>{receipt.payment.flowId}</DataRow>
+            <DataRow label="Payment request" mono>{receipt.payment.paymentRequestId}</DataRow>
+            <DataRow label="Payee">
+              <CopyableValue value={receipt.payment.payee} displayText={receipt.payment.payee} className="max-w-full" />
+            </DataRow>
+          </DataList>
+        </DocSection>
 
-            {/* Pillar 04: Reconciled Settlement */}
-            <div className="p-4 bg-[#F4F2EB] border border-[#D9DCD7] space-y-2">
-              <div className="flex items-center justify-between pb-1 border-b border-[#D9DCD7]">
-                <span className="font-mono text-[10px] font-bold text-[#345BEE] uppercase tracking-wider">
-                  04 // HSP SETTLEMENT
-                </span>
-                <span className="font-mono text-[9px] text-[#0D824B] font-bold">FINALITY RECONCILED</span>
-              </div>
-              <div className="font-mono text-xs space-y-1 pt-1">
-                <div className="text-[11px] truncate">
-                  <span className="text-[#788287]">Settlement Tx:</span>{" "}
-                  <span className="text-[#111719] font-mono">{formatAddress(receipt.payment.txHash, 8)}</span>
-                </div>
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">HSP Rail Flow:</span>{" "}
-                  <span className="text-[#111719] font-mono">{receipt.payment.flowId}</span>
-                </div>
-                <div className="text-[11px]">
-                  <span className="text-[#788287]">Debiting Party:</span>{" "}
-                  <span className="text-[#111719]">{formatAddress(receipt.payment.payer, 6)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <footer className="flex flex-col gap-2 border-t border-border bg-surface-2/50 px-6 py-4 text-xs text-foreground-muted sm:flex-row sm:items-center sm:justify-between sm:px-10 print:bg-white">
+          <span className="min-w-0">
+            Evidence registry tx <span className="break-all font-mono text-foreground-secondary">{receipt.evidenceRegistryTx}</span>
+          </span>
+          <span className="shrink-0">Receipt version {receipt.receiptVersion}</span>
+        </footer>
+      </ReceiptPaper>
 
-          {/* Footer Security Anchor */}
-          <div className="border-t-2 border-[#111719] pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-[10px] text-[#515B60]">
-            <div>
-              <span>EVIDENCE REGISTRY TX: </span>
-              <span className="text-[#111719] font-bold">{receipt.evidenceRegistryTx}</span>
-            </div>
-            <div>
-              <span>CERTIFICATE VERSION: {receipt.receiptVersion}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Raw JSON Envelope Toggle */}
-        <div className="mt-6 bg-carbon-nav border border-carbon-border rounded p-4">
-          <button
-            onClick={() => setShowJson(!showJson)}
-            className="w-full flex items-center justify-between text-xs font-mono text-carbon-muted hover:text-carbon-text transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <FileCode2 className="w-4 h-4 text-primary" />
-              <span>Cryptographic Receipt JSON Envelope</span>
-            </span>
-            <span>{showJson ? "Hide Envelope" : "Inspect Raw JSON"}</span>
-          </button>
-
-          {showJson && (
-            <div className="mt-3 pt-3 border-t border-carbon-border">
-              <CodeViewer title={`receipt-${receipt.id}.json`} data={receipt} />
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Raw JSON envelope */}
+      <Panel className="no-print mx-auto max-w-4xl">
+        <button
+          type="button"
+          onClick={() => setShowJson(!showJson)}
+          aria-expanded={showJson}
+          aria-controls="receipt-json"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-2/60 sm:px-5"
+        >
+          <span className="flex items-center gap-2.5">
+            <FileCode2 className="h-4 w-4 text-foreground-muted" aria-hidden="true" />
+            <span className="text-[13px] font-medium text-foreground">Raw receipt JSON</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-foreground-muted">
+            {showJson ? "Hide" : "Inspect"}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", showJson && "rotate-180")} aria-hidden="true" />
+          </span>
+        </button>
+        {showJson && (
+          <PanelBody id="receipt-json" className="animate-fade-in border-t border-border">
+            <CodeViewer title={`receipt-${receipt.id}.json`} data={receipt} />
+          </PanelBody>
+        )}
+      </Panel>
     </div>
   );
 }

@@ -3,36 +3,28 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowDown,
-  ArrowLeftRight,
-  ArrowRight,
-  ArrowUpRight,
-  Check,
-  ChevronDown,
-  FileCode2,
-  RefreshCw,
-  ShieldAlert,
-  KeyRound,
-  Clock,
-  ExternalLink,
-  Layers,
-  Lock,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, FileCode2, KeyRound, ShieldAlert } from "lucide-react";
 import { createWalletClient, custom, keccak256, toBytes } from "viem";
 import { useApp } from "@/providers/AppContext";
 import { LiveApprovalDetail } from "@/components/live/payments/LiveApprovalDetail";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { PaymentAttempt } from "@/types/domain";
-import { Button } from "@/components/ui/Button";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { Callout } from "@/components/ui/Callout";
+import { SimulatedBadge } from "@/components/live/common";
 import { cn } from "@/lib/utils";
-import { formatAddress, formatMinorToUsd, formatTimestamp, getExplorerAddressUrl } from "@/lib/formatters";
+import { formatAddress, formatTimestamp, getExplorerAddressUrl } from "@/lib/formatters";
 import {
+  AttributionTag,
+  AuthorizationStepper,
+  QuoteExpiryTag,
+  ToneBadge,
   getApprovalGroup,
   getQuoteExpiry,
   isAttributionVerified,
@@ -94,11 +86,11 @@ function DemoApprovalDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-14 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-7 h-96 bg-carbon-nav border border-carbon-border rounded" />
-          <div className="lg:col-span-5 h-96 bg-carbon-nav border border-carbon-border rounded" />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading authorization">
+        <div className="h-16 w-1/2 animate-pulse rounded-md bg-surface-2" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="h-96 animate-pulse rounded-lg bg-surface-2 lg:col-span-7" />
+          <div className="h-96 animate-pulse rounded-lg bg-surface-2 lg:col-span-5" />
         </div>
       </div>
     );
@@ -106,23 +98,18 @@ function DemoApprovalDetailPage() {
 
   if (!attempt) {
     return (
-      <div className="space-y-6">
-        <div className="bg-carbon-nav border border-carbon-border p-8 rounded text-center">
-          <KeyRound className="w-10 h-10 text-carbon-muted mx-auto mb-3" />
-          <h2 className="font-display text-lg font-bold text-carbon-text">
-            Authorization Record Not Found
-          </h2>
-          <p className="text-xs text-carbon-muted font-mono mt-1 mb-4">
-            No payment attempt matches ID {attemptId}.
-          </p>
-          <Link
-            href="/app/approvals"
-            className="px-4 py-2 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void transition-colors inline-block"
-          >
-            Back to Approvals Queue
-          </Link>
-        </div>
-      </div>
+      <Panel>
+        <EmptyState
+          icon={<KeyRound className="h-[18px] w-[18px]" />}
+          title="Authorization record not found"
+          description={`No payment attempt matches ${attemptId}. It may belong to a different mode.`}
+          action={
+            <Link href="/app/approvals" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+              Back to approvals
+            </Link>
+          }
+        />
+      </Panel>
     );
   }
 
@@ -233,329 +220,281 @@ function DemoApprovalDetailPage() {
     },
   };
 
+  const unit = amountUnit || tokenSymbol;
+  const amountCheck = humanMatchesRaw(summary?.humanAmount ?? "", attempt.tokenTotalRaw, tokenDecimals);
+  const attributionVerified = isAttributionVerified(attempt);
+  const chainLabel = summary?.chain || "HashKey Testnet 133";
+
   return (
     <div className="space-y-6">
-      {/* 1. Operational Quorum Control Header */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted">
-            <Link href="/app" className="hover:text-carbon-text transition-colors">
-              Console
-            </Link>
-            <span className="text-carbon-border">/</span>
-            <Link href="/app/approvals" className="hover:text-carbon-text transition-colors">
-              Human Authorization
-            </Link>
-            <span className="text-carbon-border">/</span>
-            <span className="text-carbon-text font-bold">Quorum Review</span>
-            <span className="text-carbon-border">/</span>
-            <span className="text-primary font-bold bg-carbon-panel px-1.5 py-0.5 rounded border border-carbon-border">
-              #AUTH-{attempt.id.slice(-4).toUpperCase()}
-            </span>
-            <span className="text-carbon-border">•</span>
-            <Link
-              href={`/app/invoices/${attempt.invoiceId}`}
-              className="text-carbon-muted hover:text-primary transition-colors"
-            >
-              INVOICE: #{attempt.invoiceId}
-            </Link>
-          </div>
+      <PageHeader
+        back={{ href: "/app/approvals", label: "Approvals" }}
+        eyebrow="Payment authorization"
+        title={`Payment to ${merchant}`}
+        badges={
+          <>
+            <ToneBadge tone={isDone ? "success" : "warning"} icon={isDone ? CheckCircle2 : Clock}>
+              {isStage1 ? "Stage 1 of 2 · terms review" : isStage2 ? "Stage 2 of 2 · submission" : "Both stages approved"}
+            </ToneBadge>
+            <SimulatedBadge />
+          </>
+        }
+        meta={
+          <>
+            <MetaItem label="Attempt">
+              <span className="font-mono">{attempt.id}</span>
+            </MetaItem>
+            <MetaItem label="Invoice">
+              <Link href={`/app/invoices/${attempt.invoiceId}`} className="font-mono hover:text-foreground hover:underline">
+                {attempt.invoiceId}
+              </Link>
+            </MetaItem>
+            <MetaItem label="Created">{formatTimestamp(attempt.createdAt)}</MetaItem>
+          </>
+        }
+      />
 
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-carbon-panel border border-warning/40 rounded">
-            <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-            <span className="text-xs font-mono font-bold text-warning">
-              {isDone
-                ? "2-STAGE HUMAN QUORUM COMPLETED // AUTHORIZED"
-                : isStage1
-                ? "2-STAGE HUMAN QUORUM ACTIVE // STAGE 1 REVIEW REQUIRED"
-                : "2-STAGE HUMAN QUORUM ACTIVE // STAGE 2 SUBMISSION REQUIRED"}
-            </span>
-          </div>
-        </div>
+      <Panel>
+        <AuthorizationStepper
+          state={attempt.state}
+          quoteExpired={expiry.isExpired}
+          settlementSlot={
+            isDone ? (
+              <Link
+                href={`/app/settlements/${attempt.id}`}
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-primary-light hover:underline"
+              >
+                Track HSP settlement
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ) : undefined
+          }
+        />
+      </Panel>
 
-        {/* Quorum Progress Split Badges & Countdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-2 border-t border-carbon-border/70">
-          {/* Quote Expiry Countdown */}
-          <div className="lg:col-span-5 bg-carbon-void p-3 rounded border border-carbon-border">
-            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-              <span className="text-carbon-muted flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-warning" />
-                <span>HSP Settlement Window:</span>
-              </span>
-              <span className={cn("font-bold", expiry.urgency === "expired" ? "text-danger" : "text-warning")}>
-                {expiry.text}
-              </span>
-            </div>
-            <div className="w-full bg-carbon-panel h-1.5 rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full transition-all duration-500",
-                  expiry.urgency === "expired" ? "bg-danger w-full" : "bg-warning w-[75%]"
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Key 1 & Key 2 Badges */}
-          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
-            {/* Key 1 */}
-            <div className="bg-carbon-void border border-success/40 p-2.5 rounded flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-carbon-panel border border-success/50 flex items-center justify-center text-success">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-carbon-muted uppercase">Stage 1: Terms</div>
-                  <div className="text-xs font-bold text-success">
-                    {isStage1 ? "AWAITING YOU" : "CONFIRMED ✓"}
-                  </div>
-                </div>
-              </div>
-              <span className="text-[10px] text-success bg-carbon-panel px-1.5 py-0.5 rounded border border-success/30">
-                {isStage1 ? "READY" : "SIGNED"}
-              </span>
-            </div>
-
-            {/* Key 2 */}
-            <div className="bg-carbon-void border border-warning/40 p-2.5 rounded flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-carbon-panel border border-warning/50 flex items-center justify-center text-warning">
-                  <KeyRound className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-carbon-muted uppercase">Stage 2: Treasury</div>
-                  <div className="text-xs font-bold text-warning">
-                    {isDone ? "DISPATCHED ✓" : isStage2 ? "ACTION REQ" : "PENDING STAGE 1"}
-                  </div>
-                </div>
-              </div>
-              <span className="text-[10px] text-warning bg-carbon-panel px-1.5 py-0.5 rounded border border-warning/30">
-                {isDone ? "EXECUTED" : "SIGNER READY"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Split Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT COLUMN (7 cols / ~58%): Immutable Transaction Terms */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Financial Ledger Inspection Panel */}
-          <div className="bg-carbon-nav border border-carbon-border rounded p-6 shadow-sm">
-            <div className="flex items-center justify-between pb-4 border-b border-carbon-border mb-6">
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-primary" />
-                <h2 className="font-display text-xs font-semibold tracking-wider uppercase text-carbon-text">
-                  Financial Ledger Inspection
-                </h2>
-              </div>
-              <span className="text-xs font-mono text-success bg-carbon-panel px-2 py-0.5 rounded border border-carbon-border flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                Deterministic Debit Lock
-              </span>
-            </div>
-
-            {/* Big Amount Hero */}
-            <div className="bg-carbon-void p-5 rounded border border-carbon-border mb-6">
-              <div className="text-xs font-mono text-carbon-muted uppercase mb-1">
-                Total Agreed Disbursement
-              </div>
-              <div className="flex flex-wrap items-baseline justify-between gap-4">
-                <div className="text-4xl md:text-5xl font-display font-bold text-carbon-text tracking-tight">
-                  {summary.humanAmount}{" "}
-                  <span className="text-xl text-primary font-mono font-medium">USDC</span>
-                </div>
-                <div className="text-right font-mono text-xs">
-                  <div className="text-carbon-muted">RAW TOKEN UNITS</div>
-                  <div className="text-carbon-text font-bold">{attempt.tokenTotalRaw}</div>
-                </div>
-              </div>
-
-              <div className="mt-5 pt-4 border-t border-carbon-border grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-                <div>
-                  <span className="text-carbon-muted block mb-0.5">Contract / Chain:</span>
-                  <span className="text-carbon-text break-all">
-                    USDC ({formatAddress(attempt.tokenAddress)})
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        {/* Review: the exact obligation being authorized */}
+        <div className="space-y-6 lg:col-span-7">
+          <Panel>
+            <PanelHeader title="Payment summary" description="The exact terms this authorization covers. Nothing here can change after approval." />
+            <PanelBody className="space-y-6">
+              <div>
+                <div className="text-xs text-foreground-muted">Amount</div>
+                <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-[40px] font-medium leading-none tracking-[-0.035em] tabular-nums text-foreground">
+                    {amountValue || summary?.humanAmount}
                   </span>
-                  <span className="text-carbon-muted text-[11px] block mt-0.5">
-                    {summary?.chain || "HashKey Testnet 133"}
-                  </span>
+                  <span className="text-lg font-medium text-foreground-secondary">{unit}</span>
                 </div>
-                <div className="sm:text-right">
-                  <span className="text-carbon-muted block mb-0.5">Gas &amp; Routing Fee:</span>
-                  <span className="text-carbon-text">2.40 USDC (Fixed Institutional)</span>
-                  <div className="text-xs text-primary font-bold mt-1">
-                    Debit Total: {formatMinorToUsd(Number(attempt.tokenTotalRaw) + 240)} USDC
-                  </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-foreground-muted">
+                  <span>
+                    Exact <span className="font-mono text-foreground-secondary">{exactDecimal}</span>
+                  </span>
+                  <span>
+                    Raw units <span className="font-mono text-foreground-secondary">{attempt.tokenTotalRaw}</span>
+                  </span>
+                  <span>{tokenDecimals} decimals</span>
+                  {amountCheck === true && (
+                    <span className="inline-flex items-center gap-1 text-success">
+                      <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+                      Display amount matches raw units
+                    </span>
+                  )}
+                  {amountCheck === false && (
+                    <span className="inline-flex items-center gap-1 text-danger">
+                      <ShieldAlert className="h-3 w-3" aria-hidden="true" />
+                      Display amount does not match raw units
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
 
-            {/* Counterparty & Entity Binding */}
-            <div className="space-y-4">
-              <div className="text-xs font-mono text-carbon-muted uppercase tracking-wider">
-                Cryptographic Counterparty Binding
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
-                {/* Payer */}
-                <div className="bg-carbon-panel p-3.5 rounded border border-carbon-border">
-                  <span className="text-[10px] text-carbon-muted uppercase block">
-                    Debiting Party (Payer Treasury)
-                  </span>
-                  <div className="text-xs font-bold text-carbon-text mt-1 break-all">
-                    {formatAddress(attempt.payer, 8)}
+              <DataList>
+                <DataRow label="Recipient">
+                  <div className="space-y-1">
+                    <CopyableValue className="max-w-full" value={attempt.payee} explorerUrl={getExplorerAddressUrl(attempt.payee)} label="Copy recipient address" />
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="text-xs text-foreground-secondary">{merchant}</span>
+                      <AttributionTag verified={attributionVerified} />
+                    </div>
                   </div>
-                  <div className="text-[11px] text-carbon-muted mt-1.5 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-success" />
-                    Autonomous Treasury Alpha
+                </DataRow>
+                <DataRow label="Payer">
+                  <CopyableValue className="max-w-full" value={attempt.payer} explorerUrl={getExplorerAddressUrl(attempt.payer)} label="Copy payer address" />
+                </DataRow>
+                <DataRow label="Token">
+                  <div className="space-y-1">
+                    <span className="text-[13px] text-foreground">{tokenSymbol}</span>
+                    <CopyableValue className="max-w-full" value={attempt.tokenAddress} explorerUrl={getExplorerAddressUrl(attempt.tokenAddress)} label="Copy token contract" />
                   </div>
-                </div>
+                </DataRow>
+                <DataRow label="Network">
+                  {chainLabel}
+                  {summary?.chainId ? <span className="ml-2 font-mono text-xs text-foreground-muted">chain {summary.chainId}</span> : null}
+                </DataRow>
+                {summary?.invoiceValueUsd ? <DataRow label="Invoice value">{summary.invoiceValueUsd}</DataRow> : null}
+                {summary?.paymentFeeEstimateUsd ? (
+                  <DataRow label="Fee estimate" hint="Provider estimate, not part of the signed amount">
+                    {summary.paymentFeeEstimateUsd}
+                  </DataRow>
+                ) : null}
+                <DataRow label="Quote expires">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <QuoteExpiryTag iso={attempt.quoteExpiresAt} now={nowTime} />
+                    <span className="text-xs text-foreground-muted">{formatTimestamp(attempt.quoteExpiresAt)}</span>
+                  </div>
+                </DataRow>
+              </DataList>
+            </PanelBody>
+          </Panel>
 
-                {/* Payee */}
-                <div className="bg-carbon-panel p-3.5 rounded border border-carbon-border">
-                  <span className="text-[10px] text-carbon-muted uppercase block">
-                    Receiving Party (Service Creditor)
-                  </span>
-                  <div className="text-xs font-bold text-success mt-1 break-all">
-                    {formatAddress(attempt.payee, 8)}
-                  </div>
-                  <div className="text-[11px] text-success mt-1.5 flex items-center justify-between">
-                    <span>{merchant}</span>
-                    <span className="bg-success/15 px-1 rounded text-[10px] font-bold">100% REGISTRY MATCH</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payload Inspection Toggle */}
-          <div className="bg-carbon-nav border border-carbon-border rounded p-4">
+          <Panel>
             <button
+              type="button"
               onClick={() => setShowPayload(!showPayload)}
-              className="w-full flex items-center justify-between text-xs font-mono text-carbon-muted hover:text-carbon-text transition-colors"
+              aria-expanded={showPayload}
+              aria-controls="eip712-payload"
+              className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-surface-2/50 sm:px-5"
             >
-              <span className="flex items-center gap-2">
-                <FileCode2 className="w-4 h-4 text-primary" />
-                <span>EIP-712 Structured Payment Payload</span>
+              <span className="flex items-center gap-2.5">
+                <FileCode2 className="h-4 w-4 text-foreground-muted" aria-hidden="true" />
+                <span>
+                  <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">EIP-712 payment payload</span>
+                  <span className="block text-xs text-foreground-muted">The structured data the payer wallet signs</span>
+                </span>
               </span>
-              <span>{showPayload ? "Hide JSON" : "Inspect Payload JSON"}</span>
+              <span className="flex items-center gap-1 text-xs text-foreground-secondary">
+                {showPayload ? "Hide" : "Inspect"}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", showPayload && "rotate-180")} aria-hidden="true" />
+              </span>
             </button>
-
             {showPayload && (
-              <div className="mt-3 pt-3 border-t border-carbon-border">
+              <div id="eip712-payload" className="border-t border-border p-4 sm:p-5">
                 <CodeViewer title="transfer-with-authorization.json" data={eip712Payload} />
               </div>
             )}
-          </div>
+          </Panel>
         </div>
 
-        {/* RIGHT COLUMN (5 cols / ~42%): Interactive Authorization Action Terminal */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-carbon-nav border border-carbon-border rounded p-6 shadow-lg space-y-6 sticky top-20">
-            <div className="pb-4 border-b border-carbon-border">
-              <span className="text-[10px] font-mono text-carbon-muted uppercase tracking-wider block">
-                GATE 06 // HUMAN QUORUM TERMINAL
-              </span>
-              <h2 className="font-display text-lg font-bold text-carbon-text mt-0.5">
-                Execute Authorization
-              </h2>
-            </div>
-
-            {/* Current Stage Description */}
-            <div className="p-4 bg-carbon-panel rounded border border-carbon-border space-y-2 font-mono text-xs">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-carbon-muted">ACTIVE PROTOCOL STAGE</span>
-                <span className="text-warning font-semibold">
-                  {isStage1 ? "STAGE 1 OF 2" : isStage2 ? "STAGE 2 OF 2" : "COMPLETED"}
-                </span>
+        {/* Decision: one deliberate action, clearly separated from the review */}
+        <div className="lg:sticky lg:top-6 lg:col-span-5">
+          <Panel className="shadow-raised">
+            <PanelBody className="space-y-5">
+              <div>
+                <div className="text-xs text-foreground-muted">
+                  {isStage1 ? "Stage 1 of 2" : isStage2 ? "Stage 2 of 2" : "Completed"}
+                </div>
+                <h2 className="mt-1 text-[19px] font-semibold tracking-[-0.02em] text-foreground">
+                  {isStage1
+                    ? "Review terms and approve signing"
+                    : isStage2
+                    ? "Authorize payment submission"
+                    : "Authorization complete"}
+                </h2>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-foreground-secondary">
+                  {isStage1
+                    ? "Authorize the signing key to sign the exact EIP-712 payment authorization payload for the amount shown."
+                    : isStage2
+                    ? "Authorize broadcast of the signed payment intent to the HashKey HSP settlement rail."
+                    : "This payment cleared both human approvals and was handed to HSP settlement. Settlement is not final until it is finalized on-chain."}
+                </p>
               </div>
-              <div className="text-carbon-text font-bold">
-                {isStage1
-                  ? "Stage 1: Pre-Signing Terms Review"
-                  : isStage2
-                  ? "Stage 2: Final Payment Submission to HSP"
-                  : "Obligation Successfully Dispatched"}
-              </div>
-              <p className="text-[11px] text-carbon-muted leading-relaxed">
-                {isStage1
-                  ? "Authorize the signing key to sign the exact EIP-712 payment authorization payload for the specified amount."
-                  : isStage2
-                  ? "Authorize broadcast of the signed payment intent to the HashKey HSP settlement rail."
-                  : "Payment has cleared human authorization and is processing in the HSP settlement pipeline."}
-              </p>
-            </div>
 
-            {/* Explicit Human Confirmation Checkbox */}
-            {isAwaiting && (
-              <div className="p-3.5 bg-carbon-void rounded border border-carbon-border">
-                <label className="flex items-start gap-3 cursor-pointer select-none">
+              <dl className="divide-y divide-border rounded-md border border-border bg-surface-2/60 text-[13px]">
+                <div className="flex items-center justify-between gap-4 px-3.5 py-2.5">
+                  <dt className="text-foreground-muted">Pay</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {amountValue || summary?.humanAmount} {unit}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 px-3.5 py-2.5">
+                  <dt className="text-foreground-muted">To</dt>
+                  <dd className="font-mono text-xs text-foreground">{formatAddress(attempt.payee, 6)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 px-3.5 py-2.5">
+                  <dt className="text-foreground-muted">On</dt>
+                  <dd className="text-foreground">{chainLabel}</dd>
+                </div>
+                {isAwaiting && (
+                  <div className="flex items-center justify-between gap-4 px-3.5 py-2.5">
+                    <dt className="text-foreground-muted">Quote</dt>
+                    <dd>
+                      <QuoteExpiryTag iso={attempt.quoteExpiresAt} now={nowTime} />
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {isAwaiting && expiry.isExpired && (
+                <Callout tone="danger" title="Quote expired">
+                  This quote can no longer be approved. A new payment request is required.
+                </Callout>
+              )}
+
+              {isAwaiting && (
+                <label className="flex cursor-pointer select-none items-start gap-3 rounded-md border border-border-strong bg-surface-1 p-3.5 transition-colors hover:border-foreground-muted/50">
                   <input
                     type="checkbox"
                     checked={acknowledged}
                     onChange={(e) => setAcknowledged(e.target.checked)}
-                    className="mt-0.5 rounded border-carbon-border bg-carbon-panel text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-border-strong accent-[rgb(var(--primary))]"
                   />
-                  <span className="text-xs font-mono text-carbon-muted leading-relaxed">
-                    I explicitly verify that payee{" "}
-                    <span className="text-carbon-text font-semibold">{formatAddress(attempt.payee)}</span> and amount{" "}
-                    <span className="text-carbon-text font-semibold">{summary.humanAmount} USDC</span> match the fulfillment terms.
+                  <span className="text-[13px] leading-relaxed text-foreground-secondary">
+                    I have verified that recipient <span className="font-mono text-xs font-medium text-foreground">{formatAddress(attempt.payee)}</span> and
+                    amount{" "}
+                    <span className="font-medium text-foreground">
+                      {amountValue || summary?.humanAmount} {unit}
+                    </span>{" "}
+                    match the fulfilled terms.
                   </span>
                 </label>
-              </div>
-            )}
-
-            {actionError && (
-              <div className="p-3 bg-danger/10 border border-danger/30 rounded text-xs font-mono text-danger">
-                {actionError}
-              </div>
-            )}
-
-            {/* Primary Action Button */}
-            <div className="space-y-3 font-mono">
-              {isStage1 ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleApproveSigning}
-                  isLoading={isProcessing}
-                  disabled={!canApprove}
-                  className="w-full py-3 bg-primary text-white hover:bg-primary/90 font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  <span>Approve Terms &amp; Sign Payload (Stage 1)</span>
-                </Button>
-              ) : isStage2 ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleApproveSubmission}
-                  isLoading={isProcessing}
-                  disabled={!canApprove}
-                  className="w-full py-3 bg-primary text-white hover:bg-primary/90 font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Authorize HSP Payment Submission (Stage 2)</span>
-                </Button>
-              ) : (
-                <Link
-                  href={`/app/settlements/${attempt.id}`}
-                  className="w-full py-3 bg-success text-white hover:bg-success/90 font-semibold text-xs flex items-center justify-center gap-2 rounded transition-colors text-center"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Track Settlement Finality</span>
-                </Link>
               )}
 
-              <Link
-                href={`/app/trust/${attempt.invoiceId}`}
-                className="w-full py-2 bg-carbon-panel border border-carbon-border hover:bg-carbon-void text-carbon-text text-xs font-medium flex items-center justify-center gap-1.5 rounded transition-colors text-center"
-              >
-                <span>Inspect Forensic Chain Evidence</span>
-                <ExternalLink className="w-3 h-3 text-carbon-muted" />
-              </Link>
-            </div>
-          </div>
+              {actionError && (
+                <Callout tone="danger" title="Authorization failed">
+                  {actionError}
+                </Callout>
+              )}
+
+              {justSubmitted && (
+                <Callout tone="info" title="Submission authorized">
+                  Opening settlement tracking. The payment is not settled until it is finalized.
+                </Callout>
+              )}
+
+              <div className="space-y-2 border-t border-border pt-5">
+                {isStage1 ? (
+                  <Button size="lg" className="w-full" onClick={handleApproveSigning} isLoading={isProcessing} disabled={!canApprove}>
+                    {!isProcessing && <KeyRound />}
+                    Approve terms · Stage 1
+                  </Button>
+                ) : isStage2 ? (
+                  <Button size="lg" className="w-full" onClick={handleApproveSubmission} isLoading={isProcessing} disabled={!canApprove}>
+                    {!isProcessing && <KeyRound />}
+                    Authorize submission · Stage 2
+                  </Button>
+                ) : (
+                  <Link href={`/app/settlements/${attempt.id}`} className={cn(buttonStyles({ variant: "secondary", size: "lg" }), "w-full")}>
+                    Track settlement
+                    <ArrowRight />
+                  </Link>
+                )}
+
+                <Link href={`/app/trust/${attempt.invoiceId}`} className={cn(buttonStyles({ variant: "ghost", size: "md" }), "w-full")}>
+                  Inspect verification evidence
+                  <ExternalLink />
+                </Link>
+
+                {isAwaiting && !acknowledged && !expiry.isExpired && (
+                  <p className="text-center text-xs text-foreground-muted">Confirm the recipient and amount to enable approval.</p>
+                )}
+              </div>
+
+              <p className="border-t border-border pt-4 text-xs leading-relaxed text-foreground-muted">
+                Demo mode: approvals update simulated fixtures only. No wallet signature is requested and nothing is broadcast.
+              </p>
+            </PanelBody>
+          </Panel>
         </div>
       </div>
     </div>

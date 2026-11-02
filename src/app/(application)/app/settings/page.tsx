@@ -4,6 +4,8 @@ import React from "react";
 import { ShieldCheck, Wallet } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { toneStyles, type Tone } from "@/components/ui/StatusBadge";
 import { CopyableValue } from "@/components/ui/CopyableValue";
 import { HASHX_EIP712_DOMAIN } from "@/lib/crypto/eip712";
 import { cn } from "@/lib/utils";
@@ -22,46 +24,38 @@ function DemoSettingsPage() {
   const { mode, setMode, walletAddress, walletType, isWalletConnected, connectWallet, disconnectWallet } = useApp();
 
   return (
-    <div className="max-w-4xl space-y-8">
-      {/* Header */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-          <span>Console</span>
-          <span className="text-carbon-border">/</span>
-          <span className="text-primary font-semibold">Settings</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase">
-            Workspace Settings
-          </h1>
-          <SimulatedBadge label="Demo · simulated" />
-        </div>
-        <p className="text-xs text-carbon-muted font-mono mt-0.5">
-          You are in demo mode. Data is simulated in the browser; no backend, wallet signature, or chain is involved. Switch to
-          connected mode to see real backend readiness, networks, and agent credentials.
-        </p>
-      </section>
+    <div className="max-w-5xl space-y-10">
+      <PageHeader
+        className="pb-0"
+        eyebrow="Settings"
+        title="Workspace settings"
+        badges={<SimulatedBadge label="Demo · simulated" />}
+        description="You are in demo mode. Data is simulated in the browser; no backend, wallet signature, or chain is involved. Switch to connected mode to see real backend readiness, networks, and agent credentials."
+      />
 
       {/* Environment */}
-      <SettingsSection title="Operating Mode" description="Simulated walkthrough or the real HashX backend.">
+      <SettingsSection title="Operating mode" description="Simulated walkthrough or the real HashX backend.">
         <SettingsRow
-          label="Execution Mode"
+          label="Execution mode"
           description={
             mode === "demo"
               ? "Demo: simulated in-browser fixtures. Signatures, verification results, transaction hashes, and settlement states are illustrative — nothing touches a real chain."
               : "Connected: the real HashX backend with SIWE wallet sessions and direct Test USDC settlement on Ethereum Sepolia (testnet)."
           }
         >
-          <div className="flex items-center rounded border border-carbon-border bg-carbon-void p-0.5 text-xs font-mono">
+          <div role="radiogroup" aria-label="Execution mode" className="inline-flex items-center gap-0.5 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-border">
             {(["demo", "connected"] as const).map((m) => (
               <button
                 key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
                 onClick={() => setMode(m)}
                 className={cn(
-                  "px-3 py-1.5 rounded transition-colors capitalize",
+                  "h-8 rounded-[6px] px-3 text-[13px] capitalize transition-colors",
                   mode === m
-                    ? "bg-carbon-panel text-carbon-text font-bold border border-carbon-border shadow-sm"
-                    : "text-carbon-muted hover:text-carbon-text"
+                    ? "bg-surface-1 font-medium text-foreground shadow-[0_0_0_1px_rgb(var(--border)),0_1px_2px_rgb(25_24_29/0.06)]"
+                    : "text-foreground-muted hover:text-foreground"
                 )}
               >
                 {m}
@@ -71,10 +65,10 @@ function DemoSettingsPage() {
         </SettingsRow>
 
         <SettingsRow
-          label="Backend Endpoint"
+          label="Backend endpoint"
           description="HashX API endpoint used in connected mode (unused in demo). Set via NEXT_PUBLIC_HASHX_API_URL."
         >
-          <div className="font-mono text-xs">
+          <div className="min-w-0">
             <CopyableValue value={API_URL} label="Copy backend endpoint" />
           </div>
         </SettingsRow>
@@ -86,27 +80,33 @@ function DemoSettingsPage() {
         description="Network configuration used in connected mode. Demo mode does not contact any chain."
       >
         {PUBLIC_NETWORKS.map((net) => (
-          <SettingsRow key={net.chainId} label={`${net.name} · ${net.chainId}`} description={net.rails.map(railLabel).join(", ")}>
-            <span className="text-xs font-mono text-carbon-muted">
-              {net.chainId === SEPOLIA_CHAIN_ID ? "Payments enabled (Test USDC)" : net.isTestnet ? "HSP not connected" : "Payments disabled"}
-            </span>
+          <SettingsRow
+            key={net.chainId}
+            label={
+              <>
+                {net.name} <span className="font-mono text-xs font-normal text-foreground-muted">· {net.chainId}</span>
+              </>
+            }
+            description={net.rails.map(railLabel).join(", ")}
+          >
+            <StatusText
+              tone={net.chainId === SEPOLIA_CHAIN_ID ? "success" : net.isTestnet ? "warning" : "neutral"}
+              label={net.chainId === SEPOLIA_CHAIN_ID ? "Payments enabled (Test USDC)" : net.isTestnet ? "HSP not connected" : "Payments disabled"}
+            />
           </SettingsRow>
         ))}
         <SettingsRow
-          label="Evidence Registry Contract"
+          label="Evidence Registry contract"
           description="The Evidence Registry v2 contract has not been deployed to any public network yet."
         >
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-warning/80" />
-            <span className="text-xs font-mono text-warning font-semibold">Not deployed</span>
-          </div>
+          <StatusText tone="warning" label="Not deployed" />
         </SettingsRow>
       </SettingsSection>
 
       {/* Wallet */}
       <SettingsSection title="Wallet" description="In demo mode a clearly labelled simulated wallet is used.">
         <SettingsRow
-          label="Signing Wallet"
+          label="Signing wallet"
           description={
             walletType === "simulated"
               ? "Simulated demo wallet — it cannot sign real transactions."
@@ -115,7 +115,7 @@ function DemoSettingsPage() {
                 : "No wallet connected."
           }
         >
-          <div className="flex items-center gap-3 font-mono text-xs">
+          <div className="flex flex-wrap items-center gap-2">
             {isWalletConnected && walletAddress ? (
               <>
                 <CopyableValue
@@ -123,60 +123,48 @@ function DemoSettingsPage() {
                   displayText={`${walletAddress.slice(0, 8)}…${walletAddress.slice(-6)}`}
                   label="Copy wallet address"
                 />
-                <button
-                  onClick={disconnectWallet}
-                  className="px-2.5 py-1 rounded bg-carbon-panel border border-carbon-border text-carbon-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                >
+                <Button variant="ghost" size="xs" onClick={disconnectWallet}>
                   Disconnect
-                </button>
+                </Button>
               </>
             ) : (
-              <Button variant="primary" size="sm" onClick={connectWallet} className="bg-primary text-white hover:bg-primary/90">
-                <Wallet className="w-3.5 h-3.5 mr-1" />
-                Connect Wallet
+              <Button variant="primary" size="sm" onClick={connectWallet}>
+                <Wallet />
+                Connect wallet
               </Button>
             )}
           </div>
         </SettingsRow>
 
         <SettingsRow
-          label="Key Custody"
+          label="Key custody"
           description="HashX never receives, stores, or transmits private keys. All signatures are produced locally by your wallet."
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-success">
-            <ShieldCheck className="w-4 h-4 text-success" />
-            <span>No key custody</span>
-          </span>
+          <StatusText tone="success" icon label="No key custody" />
         </SettingsRow>
       </SettingsSection>
 
       {/* Protocol rules */}
       <SettingsSection
-        title="Protocol Rules"
+        title="Protocol rules"
         description="Rules the connected backend enforces on every obligation (demo mode only simulates them)."
       >
         <SettingsRow
-          label="Two-Stage Human Gate"
+          label="Two-stage human gate"
           description="Payments require explicit approval of the exact terms (Stage 1) and a wallet-signed authorization (Stage 2). Agents cannot approve."
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-success">
-            <ShieldCheck className="w-4 h-4 text-success" />
-            <span>Enforced by backend</span>
-          </span>
+          <StatusText tone="success" icon label="Enforced by backend" />
         </SettingsRow>
 
         <SettingsRow
-          label="Settlement Finality Rule"
+          label="Settlement finality rule"
           description="A receipt is issued only after the transfer is independently verified on-chain and the confirmation policy is met."
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-success">
-            <ShieldCheck className="w-4 h-4 text-success" />
-            <span>Confirmed only</span>
-          </span>
+          <StatusText tone="success" icon label="Confirmed only" />
         </SettingsRow>
 
-        <SettingsRow label="Demo EIP-712 Domain" description="Signing domain name used by the simulated demo fixtures.">
-          <span className="font-mono text-xs text-carbon-text font-bold">
+        <SettingsRow label="Demo EIP-712 domain" description="Signing domain name used by the simulated demo fixtures.">
+          <span className="font-mono text-xs text-foreground">
             &quot;{HASHX_EIP712_DOMAIN.name}&quot; · v{HASHX_EIP712_DOMAIN.version}
           </span>
         </SettingsRow>
@@ -195,12 +183,12 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-x-8 gap-y-3">
-      <div className="md:pt-2">
-        <h2 className="text-sm font-display font-bold text-carbon-text uppercase tracking-tight">{title}</h2>
-        <p className="mt-1 text-xs text-carbon-muted leading-relaxed font-mono">{description}</p>
+    <section className="grid grid-cols-1 gap-x-10 gap-y-3 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="md:pt-4">
+        <h2 className="text-[15px] font-medium tracking-[-0.01em] text-foreground">{title}</h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-foreground-muted">{description}</p>
       </div>
-      <div className="bg-carbon-nav border border-carbon-border rounded divide-y divide-carbon-border">{children}</div>
+      <div className="panel divide-y divide-border">{children}</div>
     </section>
   );
 }
@@ -210,17 +198,31 @@ function SettingsRow({
   description,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 px-5 py-4">
-      <div className="min-w-0 sm:max-w-[55%]">
-        <div className="text-xs font-mono font-semibold text-carbon-text">{label}</div>
-        {description && <p className="mt-0.5 text-xs text-carbon-muted leading-relaxed font-sans">{description}</p>}
+    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-5">
+      <div className="min-w-0 sm:max-w-[58%]">
+        <div className="text-[13px] font-medium text-foreground">{label}</div>
+        {description && <p className="mt-1 text-[13px] leading-relaxed text-foreground-secondary">{description}</p>}
       </div>
-      <div className="flex sm:justify-end min-w-0 shrink-0">{children}</div>
+      <div className="flex min-w-0 shrink-0 sm:justify-end">{children}</div>
     </div>
+  );
+}
+
+/** Status value for a settings row: dot (or shield) + label, never color alone. */
+function StatusText({ tone, label, icon }: { tone: Tone; label: string; icon?: boolean }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 text-[13px]", toneStyles[tone].text)}>
+      {icon ? (
+        <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+      ) : (
+        <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", toneStyles[tone].dot)} />
+      )}
+      {label}
+    </span>
   );
 }

@@ -23,7 +23,7 @@ export const PassCount: React.FC<{ checks: Record<string, CheckStatus>; classNam
     >
       <Icon className="w-3.5 h-3.5" strokeWidth={2.25} aria-hidden="true" />
       {passed}/{total} passed
-      {failed > 0 && <span className="text-danger/80 font-normal">· {failed} failed</span>}
+      {failed > 0 && <span className="text-danger font-normal">· {failed} failed</span>}
       {skipped > 0 && failed === 0 && <span className="text-foreground-muted font-normal">· {skipped} skipped</span>}
     </span>
   );

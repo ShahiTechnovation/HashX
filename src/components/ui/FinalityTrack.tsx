@@ -65,7 +65,7 @@ export const FinalityTrack: React.FC<FinalityTrackProps> = ({ status, className,
             );
           } else if (isFinalStage && isFinal) {
             node = (
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-success text-background">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-success text-white">
                 <Check className="w-3 h-3" strokeWidth={3} />
               </span>
             );
@@ -110,20 +110,20 @@ export const FinalityTrack: React.FC<FinalityTrackProps> = ({ status, className,
                 <span className="mt-2 flex flex-col items-center">
                   <span
                     className={cn(
-                      "text-2xs font-medium",
+                      "text-2xs sm:text-xs font-medium",
                       isFinalStage && isFinal
                         ? "text-success"
                         : isSafeStage && reached
                         ? "text-warning"
                         : reached
                         ? "text-foreground-secondary"
-                        : "text-foreground-muted/70"
+                        : "text-foreground-muted"
                     )}
                   >
                     {stage.label}
                   </span>
                   {"sub" in stage && (
-                    <span className="text-[10px] text-foreground-muted/80 mt-px">{stage.sub}</span>
+                    <span className="text-2xs text-foreground-muted mt-px">{stage.sub}</span>
                   )}
                 </span>
               )}

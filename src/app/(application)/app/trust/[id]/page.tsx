@@ -3,28 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Braces,
-  Check,
-  ChevronRight,
-  Clock,
-  FileSignature,
-  Fingerprint,
-  Lock,
-  LockOpen,
-  Minus,
-  RefreshCw,
-  ScanSearch,
-  Server,
-  X,
-  Scale,
-  ShieldCheck,
-  ShieldAlert,
-  KeyRound,
-  ExternalLink,
-  Layers,
-} from "lucide-react";
+import { Braces, Check, Clock, FileSignature, FileText, Fingerprint, KeyRound, RefreshCw, Scale, ScanSearch, X } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveTrustInspector } from "@/components/live/trust/LiveTrustInspector";
 import { demoClient, connectedClient } from "@/lib/api/client";
@@ -33,22 +12,22 @@ import {
   Delivery,
   InvoiceVerificationResult,
   DeliveryVerificationResult,
-  VerificationDecision,
-  VerificationReasonCode,
 } from "@/types/domain";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { StatusBadge, toneStyles } from "@/components/ui/StatusBadge";
+import { SimulatedBadge } from "@/components/live/common";
+import { VerdictBand, type Gate } from "@/components/trust/VerdictBand";
+import { CheckListPanel } from "@/components/trust/CheckListPanel";
+import { HashGroup, type HashRowSpec } from "@/components/trust/EvidenceHashes";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
-import {
-  formatAddress,
-  formatExpiryCountdown,
-  formatMinorToUsd,
-  formatTimestamp,
-  getExplorerAddressUrl,
-} from "@/lib/formatters";
+import { formatAddress, formatExpiryCountdown, formatMinorToUsd, formatTimestamp } from "@/lib/formatters";
 import { evaluatePaymentEligibility } from "@/lib/verification/engine";
-import { ReasonCodeChip, describeReasonCode } from "@/components/trust/reasonCodes";
 import {
   INVOICE_CHECK_KEYS,
   DELIVERY_CHECK_KEYS,
@@ -141,21 +120,19 @@ function DemoTrustInspectorPage() {
   if (!invoice || !invoiceVerification) {
     return (
       <div className="space-y-6">
-        <div className="border border-carbon-border bg-carbon-nav p-8 rounded text-center">
-          <ScanSearch className="w-10 h-10 text-carbon-muted mx-auto mb-3" />
-          <h2 className="font-display text-lg font-bold text-carbon-text">
-            Forensic Record Not Found
-          </h2>
-          <p className="text-xs text-carbon-muted font-mono mt-1 mb-4">
-            No verification data exists for {invoiceId}.
-          </p>
-          <Link
-            href="/app/trust"
-            className="px-4 py-2 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void transition-colors inline-block"
-          >
-            Back to Trust Inspector
-          </Link>
-        </div>
+        <PageHeader back={{ href: "/app/trust", label: "Trust Inspector" }} eyebrow="Verification record" title={<span className="font-mono">{invoiceId}</span>} />
+        <Panel>
+          <EmptyState
+            icon={<ScanSearch className="h-[18px] w-[18px]" />}
+            title="No verification record found"
+            description={`No invoice or verification data exists for ${invoiceId} in this mode.`}
+            action={
+              <Link href="/app/trust" className={buttonStyles({ variant: "secondary", size: "sm" })}>
+                Back to Trust Inspector
+              </Link>
+            }
+          />
+        </Panel>
       </div>
     );
   }
@@ -165,7 +142,6 @@ function DemoTrustInspectorPage() {
     deliveryVerification || undefined
   );
   const decision = combinedResult.overallDecision;
-  const isPass = decision === "PASS";
   const isFail = decision === "FAIL";
   const isEligible = combinedResult.isEligibleForPayment;
 
@@ -233,152 +209,161 @@ function DemoTrustInspectorPage() {
     }
   };
 
-  // Raw signature extraction
-  const rawSig = invoice.signature || "";
-  const rPart = rawSig.length >= 66 ? rawSig.slice(0, 66) : "0x00";
-  const sPart = rawSig.length >= 130 ? "0x" + rawSig.slice(66, 130) : "0x00";
-  const vPart = rawSig.length >= 132 ? parseInt(rawSig.slice(130, 132), 16) || 27 : 27;
+  const invoiceGate: Gate["state"] =
+    invoiceVerification.decision === "PASS" ? "pass" : invoiceVerification.decision === "FAIL" ? "fail" : "pending";
+  const deliveryGate: Gate["state"] = !deliveryVerification
+    ? "idle"
+    : deliveryVerification.decision === "PASS"
+      ? "pass"
+      : deliveryVerification.decision === "FAIL"
+        ? "fail"
+        : "pending";
+  const gates: Gate[] = [
+    {
+      key: "intent",
+      label: "Signed intent",
+      detail: `${invCounts.passed}/${invCounts.total} checks passed`,
+      state: invoiceGate,
+    },
+    {
+      key: "delivery",
+      label: "Delivery evidence",
+      detail: delCounts ? `${delCounts.passed}/${delCounts.total} checks passed` : "No delivery submitted",
+      state: deliveryGate,
+    },
+    {
+      key: "payment",
+      label: "Payment gate",
+      detail: isEligible ? "Human authorization required" : isFail ? "Re-issue required" : "Waiting on evidence",
+      state: isEligible ? "open" : isFail ? "blocked" : "held",
+    },
+  ];
+
+  const consequence = isEligible
+    ? "Eligible for payment — a human payer must still authorize it."
+    : isFail
+      ? "Payment gated. This invoice cannot be paid as issued."
+      : "Payment held until the delivered work is verified.";
+
+  const intentRows: HashRowSpec[] = [
+    { label: "Invoice digest", hint: "EIP-712 typed-data hash", value: invoiceVerification.invoiceDigest },
+    { label: "Seller signature", hint: "secp256k1 over the digest", value: invoice.signature, emptyText: "Unsigned" },
+    {
+      label: "Recovered signer",
+      hint: "Must equal the seller wallet",
+      value: invoiceVerification.signerRecovered,
+      match:
+        invoiceVerification.checks.signature === "PASS"
+          ? { ok: true, label: "Matches seller" }
+          : invoiceVerification.checks.signature === "FAIL"
+            ? { ok: false, label: "Does not match" }
+            : undefined,
+    },
+    { label: "Seller wallet", value: invoice.sellerWallet },
+    { label: "Service terms hash", value: invoice.serviceTermsHash },
+    { label: "Buyer reference hash", value: invoice.buyerRefHash },
+  ];
+
+  const deliveryRows: HashRowSpec[] = delivery
+    ? [
+        { label: "Artifact URI", value: delivery.artifactUri },
+        {
+          label: "Artifact SHA-256",
+          hint: "Recomputed from artifact bytes",
+          value: delivery.artifactSha256,
+          match:
+            deliveryVerification?.checks.artifact_hash === "PASS"
+              ? { ok: true, label: "Matches manifest" }
+              : deliveryVerification?.checks.artifact_hash === "FAIL"
+                ? { ok: false, label: "Mismatch" }
+                : undefined,
+        },
+        { label: "Manifest SHA-256", hint: "Committed by the seller", value: delivery.manifest.artifact_sha256 },
+        {
+          label: "Manifest signature",
+          value: delivery.manifestSignature,
+          match:
+            deliveryVerification?.checks.manifest_signature === "PASS"
+              ? { ok: true, label: "Signed by seller" }
+              : deliveryVerification?.checks.manifest_signature === "FAIL"
+                ? { ok: false, label: "Invalid" }
+                : undefined,
+        },
+        { label: "Evidence digest", value: deliveryVerification?.evidenceDigest, emptyText: "Not yet verified" },
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
-      {/* 1. Operational Subheader: Breadcrumbs & Context Bar */}
-      <section className="bg-carbon-nav border border-carbon-border p-3.5 rounded flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-carbon-muted flex items-center gap-1.5">
-            <Link href="/app" className="hover:text-carbon-text transition-colors">
-              Console
+      <PageHeader
+        back={{ href: "/app/trust", label: "Trust Inspector" }}
+        eyebrow="Verification record"
+        title={<span className="font-mono text-[22px] sm:text-[26px] tracking-[-0.02em]">{invoice.id}</span>}
+        badges={
+          <>
+            <StatusBadge status={decision} type="verdict" />
+            <SimulatedBadge />
+          </>
+        }
+        description="Deterministic checks of the seller's signed terms and of the delivered work, evaluated in this browser against simulated fixtures."
+        meta={
+          <>
+            <MetaItem label="Seller">{invoice.sellerDisplayName || "External agent"}</MetaItem>
+            <MetaItem label="Amount">
+              <span className="tabular-nums">{formatMinorToUsd(invoice.payment.amount_minor)} USDC</span>
+            </MetaItem>
+            <MetaItem label="Evaluated">{formatTimestamp(invoiceVerification.verifiedAt)}</MetaItem>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={handleRerun}>
+              <RefreshCw />
+              Re-evaluate
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowRaw(!showRaw)} aria-expanded={showRaw}>
+              <Braces />
+              {showRaw ? "Hide JSON" : "Raw JSON"}
+            </Button>
+            <Link href={`/app/invoices/${invoice.id}`} className={buttonStyles({ variant: "ghost", size: "sm" })}>
+              <FileText />
+              Invoice
             </Link>
-            <span className="text-carbon-border">/</span>
-            <Link href="/app/invoices" className="hover:text-carbon-text transition-colors">
-              Obligations
-            </Link>
-            <span className="text-carbon-border">/</span>
-            <span className="text-carbon-text font-bold">{invoice.id}</span>
-            <span className="text-carbon-border">/</span>
-            <span className="text-primary font-semibold">Trust Inspector</span>
-          </span>
-          <div className="h-3 w-px bg-carbon-border hidden sm:block" />
-          <span className="px-2 py-0.5 bg-carbon-panel rounded text-success border border-carbon-border font-bold text-[11px]">
-            FORENSIC INSPECTION // RECORD #{invoice.id}-VERIFY
-          </span>
-        </div>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-4 flex-wrap text-carbon-muted text-[11px]">
-          <div className="flex items-center gap-1.5">
-            <span>Counterparty:</span>
-            <span className="text-carbon-text font-semibold">
-              {invoice.sellerDisplayName || "External Agent"}
-            </span>
-          </div>
-          <div className="h-3 w-px bg-carbon-border" />
-          <div className="flex items-center gap-1.5">
-            <span>Stake:</span>
-            <span className="text-success font-semibold">
-              {formatMinorToUsd(invoice.payment.amount_minor)} USDC
-            </span>
-          </div>
-          <div className="h-3 w-px bg-carbon-border" />
-          <div className="flex items-center gap-1.5">
-            <span>Human Quorum:</span>
-            <span className="text-warning font-semibold">2-Stage Required</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Full Width: Forensic Verdict Header */}
-      <div className="border border-carbon-border bg-carbon-nav rounded p-5 relative overflow-hidden">
-        {/* Glow ambient stripe on top */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 right-0 h-[2px]",
-            isPass
-              ? "bg-gradient-to-r from-success via-primary to-success"
-              : isFail
-              ? "bg-gradient-to-r from-danger via-warning to-danger"
-              : "bg-gradient-to-r from-warning via-primary to-warning"
-          )}
-        />
-
-        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 font-mono text-xs tracking-wider uppercase">
-              <span
-                className={cn(
-                  "flex items-center gap-1.5 font-semibold",
-                  isPass ? "text-success" : isFail ? "text-danger" : "text-warning"
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    isPass ? "bg-success" : isFail ? "bg-danger animate-pulse" : "bg-warning"
-                  )}
-                />
-                {isPass
-                  ? "Cryptographic State: Deterministic Match"
-                  : isFail
-                  ? "Cryptographic State: Integrity Breach / Diverted"
-                  : "Cryptographic State: Pending Fulfillment Witness"}
+      <VerdictBand
+        decision={decision}
+        consequence={consequence}
+        explanation={combinedResult.eligibilityExplanation}
+        invoiceId={invoice.id}
+        reasonCodes={reasonCodes}
+        gates={gates}
+        aside={
+          <DataList dense>
+            <DataRow label="At stake">
+              <span className="font-medium tabular-nums">{formatMinorToUsd(invoice.payment.amount_minor)} USDC</span>
+            </DataRow>
+            <DataRow label="Checks passed">
+              <span className="tabular-nums">
+                {passedTotal} of {totalChecks}
               </span>
-              <span className="text-carbon-border">•</span>
-              <span className="text-carbon-muted">
-                Evaluated: {formatTimestamp(invoiceVerification.verifiedAt)}
-              </span>
-            </div>
+            </DataRow>
+            <DataRow label="Verifier" stacked>
+              <span className="break-all font-mono text-xs">{invoiceVerification.verifierVersion}</span>
+            </DataRow>
+            {deliveryVerification && (
+              <DataRow label="Evidence verified" stacked>
+                {formatTimestamp(deliveryVerification.verifiedAt)}
+              </DataRow>
+            )}
+          </DataList>
+        }
+      />
 
-            <h1 className="font-display text-xl md:text-2xl font-bold tracking-tight text-carbon-text uppercase flex items-center gap-3">
-              {isPass
-                ? `VERIFICATION VERDICT: VERIFIED // ALL ${passedTotal} GATES PASSED`
-                : isFail
-                ? "VERIFICATION VERDICT: BLOCKED // DIVERTER RAIL ACTIVE"
-                : "VERIFICATION VERDICT: PENDING // AWAITING FULFILLMENT"}
-            </h1>
-
-            <div className="flex items-center gap-4 text-xs font-mono text-carbon-muted pt-1 flex-wrap">
-              <span>
-                Invoice Digest:{" "}
-                <span className="text-primary font-mono">{invoiceVerification.invoiceDigest}</span>
-              </span>
-              <span className="text-carbon-border">•</span>
-              <span>
-                Evidence Witness:{" "}
-                <span className="text-success font-semibold">
-                  HashKey RPC Deterministic Engine
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Action Tools */}
-          <div className="flex items-center gap-2 self-start xl:self-auto">
-            <button
-              onClick={handleRerun}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Re-evaluate</span>
-            </button>
-            <button
-              onClick={() => setShowRaw(!showRaw)}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors"
-            >
-              <Braces className="w-3.5 h-3.5" />
-              <span>Raw JSON</span>
-            </button>
-            <Link
-              href={`/app/invoices/${invoice.id}`}
-              className="px-3 py-1.5 rounded text-xs font-mono font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors"
-            >
-              <span>View Invoice</span>
-              <ExternalLink className="w-3 h-3 text-carbon-muted" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Raw JSON toggle section */}
       {showRaw && (
-        <div className="border border-carbon-border rounded bg-carbon-void p-4 animate-fade-in" ref={rawRef}>
+        <div ref={rawRef} className="animate-fade-in">
           <CodeViewer
             title={`verification-run · ${invoice.id}.json`}
             data={{ invoiceVerification, deliveryVerification, combinedResult }}
@@ -387,591 +372,175 @@ function DemoTrustInspectorPage() {
         </div>
       )}
 
-      {/* 3. Three-Region Forensic Architecture */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        {/* LEFT REGION (6 cols / ~50%): STRUCTURED FORENSIC EVIDENCE */}
-        <section className="xl:col-span-6 space-y-5">
-          {/* SECTION 1: EIP-712 SIGNED COMMERCIAL INTENT */}
-          <div className="border border-carbon-border bg-carbon-nav rounded p-4">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-carbon-border">
-              <div className="flex items-center gap-2">
-                <FileSignature className="w-4 h-4 text-primary" />
-                <h2 className="font-display text-xs font-bold uppercase tracking-wider text-carbon-text">
-                  EIP-712 Signed Commercial Intent
-                </h2>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-carbon-panel text-success border border-carbon-border">
-                ECDSA_secp256k1 VALID
-              </span>
-            </div>
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+        <div className="min-w-0 space-y-6 xl:col-span-8">
+          <CheckListPanel
+            title="Signed intent"
+            description="EIP-712 signature, seller identity binding, expiry, nonce and terms consistency."
+            icon={<FileSignature />}
+            keys={INVOICE_CHECK_KEYS}
+            checks={invoiceVerification.checks}
+            details={invoiceVerification.checkDetails}
+            reasonCodes={invoiceVerification.reasonCodes}
+          />
 
-            {/* Structured Attributes Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono mb-4">
-              {/* Domain Spec */}
-              <div className="p-2.5 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                  Domain Separator
-                </div>
-                <div className="text-carbon-text truncate">
-                  name: <span className="text-primary font-semibold">&quot;HashX Global&quot;</span>
-                </div>
-                <div className="text-carbon-text">version: &quot;1&quot; • chainId: {chainId}</div>
-                <div className="text-carbon-muted truncate">
-                  verifying: <span className="text-carbon-text">0x71C0...948A</span>
-                </div>
-              </div>
-
-              {/* Payee Identity Binding */}
-              <div className="p-2.5 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                  Payee Identity Binding
-                </div>
-                <div className="text-success font-semibold truncate flex items-center gap-1">
-                  <Check className="w-3 h-3 text-success" />
-                  <span>{formatAddress(invoice.payment.payee)}</span>
-                </div>
-                <div className="text-carbon-muted truncate">
-                  Registry:{" "}
-                  <span className="text-carbon-text">
-                    {invoice.sellerDisplayName || "Registered Agent"}
-                  </span>
-                </div>
-                <div className="text-success text-[10px]">
-                  Binding Status: Cryptographic Match
-                </div>
-              </div>
-
-              {/* Replay & Nonce Defense */}
-              <div className="p-2.5 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                  Replay Defense Telemetry
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-muted">Obligation Nonce:</span>
-                  <span className="text-carbon-text font-bold">{invoice.nonce}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-muted">Replay State:</span>
-                  <span className="text-success font-semibold">UNUSED / DEFENDED</span>
-                </div>
-                <div className="text-carbon-muted text-[10px]">
-                  Window: {expiry.isExpired ? "EXPIRED" : "ACTIVE"}
-                </div>
-              </div>
-
-              {/* ECDSA Signature Registers */}
-              <div className="p-2.5 bg-carbon-panel rounded border border-carbon-border space-y-1">
-                <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                  Raw ECDSA Registers
-                </div>
-                <div className="text-[10px] text-carbon-muted truncate">
-                  r: <span className="text-carbon-text">{rPart.slice(0, 18)}...</span>
-                </div>
-                <div className="text-[10px] text-carbon-muted truncate">
-                  s: <span className="text-carbon-text">{sPart.slice(0, 18)}...</span>
-                </div>
-                <div className="text-[10px] text-carbon-muted">
-                  v: <span className="text-carbon-text">{vPart}</span> • pubKey recovered:{" "}
-                  <span className="text-success font-semibold">MATCH</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Itemized Commercial Terms Specification Table */}
-            <div className="border border-carbon-border rounded overflow-hidden bg-carbon-panel">
-              <div className="px-3 py-1.5 bg-carbon-void border-b border-carbon-border text-[10px] font-mono uppercase text-carbon-muted flex justify-between">
-                <span>Itemized Commercial Terms Specification</span>
-                <span>POLICY: {invoice.service.acceptance_policy}</span>
-              </div>
-              <div className="p-3 text-xs font-mono space-y-2">
-                <div className="flex items-center justify-between border-b border-carbon-border pb-2">
-                  <span className="text-carbon-text font-medium">{invoice.service.type}</span>
-                  <span className="text-carbon-text font-bold">
-                    {formatMinorToUsd(invoice.payment.amount_minor)} USDC
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] text-carbon-muted pt-1">
-                  <div>
-                    <span>Blocks: </span>
-                    <span className="text-carbon-text">
-                      {invoice.service.parameters.start_block}–{invoice.service.parameters.end_block}
-                    </span>
-                  </div>
-                  <div>
-                    <span>Target: </span>
-                    <span className="text-carbon-text">
-                      {formatAddress(invoice.service.parameters.address)}
-                    </span>
-                  </div>
-                  <div>
-                    <span>Deadline: </span>
-                    <span className="text-carbon-text">
-                      {formatTimestamp(invoice.expiresAt).replace(" UTC", "")}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 2: INDEPENDENT DIGITAL SERVICE DELIVERY PROOF */}
-          <div className="border border-carbon-border bg-carbon-nav rounded p-4">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-carbon-border">
-              <div className="flex items-center gap-2">
-                <Scale className="w-4 h-4 text-success" />
-                <h2 className="font-display text-xs font-bold uppercase tracking-wider text-carbon-text">
-                  Independent Service Delivery Proof
-                </h2>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-carbon-panel text-success border border-carbon-border">
-                {deliveryVerification ? "HASHKEY RPC DETERMINISTIC WITNESS" : "AWAITING DELIVERY"}
-              </span>
-            </div>
-
-            {delivery ? (
-              <>
-                {/* Delivery Artifact Telemetry */}
-                <div className="p-3 bg-carbon-panel rounded border border-carbon-border font-mono text-xs space-y-2 mb-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 text-carbon-text truncate max-w-full">
-                      <span className="text-carbon-muted">Artifact:</span>
-                      <span className="text-primary truncate">{delivery.artifactUri}</span>
-                    </div>
-                    <span className="text-[10px] text-carbon-muted">SHA-256 Verified</span>
-                  </div>
-                  <div className="text-[11px] text-carbon-muted flex items-center justify-between flex-wrap gap-1">
-                    <span>Artifact SHA-256: {delivery.artifactSha256.slice(0, 24)}...</span>
-                    <span className="text-success">Manifest Match: 100%</span>
-                  </div>
-                </div>
-
-                {/* Expected vs Observed Verification Matrix */}
-                <div className="overflow-x-auto border border-carbon-border rounded">
-                  <table className="w-full text-left font-mono text-xs">
-                    <thead className="bg-carbon-void text-carbon-muted text-[10px] uppercase border-b border-carbon-border">
-                      <tr>
-                        <th className="p-2.5">Verification Check</th>
-                        <th className="p-2.5">Specification</th>
-                        <th className="p-2.5">Observed Output</th>
-                        <th className="p-2.5 text-right">Verdict</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-carbon-border bg-carbon-panel">
-                      <tr className="hover:bg-carbon-void transition-colors">
-                        <td className="p-2.5 text-carbon-text font-medium">Artifact Hash</td>
-                        <td className="p-2.5 text-carbon-muted truncate max-w-[140px]">
-                          {delivery.manifest.artifact_sha256.slice(0, 16)}...
-                        </td>
-                        <td className="p-2.5 text-carbon-text truncate max-w-[140px]">
-                          {delivery.artifactSha256.slice(0, 16)}...
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-success">MATCH</td>
-                      </tr>
-                      <tr className="hover:bg-carbon-void transition-colors">
-                        <td className="p-2.5 text-carbon-text font-medium">Block Range</td>
-                        <td className="p-2.5 text-carbon-muted">
-                          {invoice.service.parameters.start_block}–{invoice.service.parameters.end_block}
-                        </td>
-                        <td className="p-2.5 text-carbon-text">
-                          {delivery.artifactContent?.start_block ?? invoice.service.parameters.start_block}–
-                          {delivery.artifactContent?.end_block ?? invoice.service.parameters.end_block}
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-success">CONFORMANT</td>
-                      </tr>
-                      <tr className="hover:bg-carbon-void transition-colors">
-                        <td className="p-2.5 text-carbon-text font-medium">Transaction Count</td>
-                        <td className="p-2.5 text-carbon-muted">Deterministic RPC</td>
-                        <td className="p-2.5 text-carbon-text">
-                          {delivery.artifactContent?.transaction_count ?? 142} Txs
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-success">CONFIRMED</td>
-                      </tr>
-                      <tr className="hover:bg-carbon-void transition-colors">
-                        <td className="p-2.5 text-carbon-text font-medium">Manifest Signature</td>
-                        <td className="p-2.5 text-carbon-muted">Seller secp256k1</td>
-                        <td className="p-2.5 text-carbon-text">
-                          {delivery.manifestSignature.slice(0, 16)}...
-                        </td>
-                        <td className="p-2.5 text-right font-semibold text-success">VALID</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <div className="p-6 bg-carbon-panel rounded text-center">
-                <Clock className="w-8 h-8 text-carbon-muted mx-auto mb-2" />
-                <h3 className="font-display text-sm font-semibold text-carbon-text">
-                  Awaiting Delivery Submission
-                </h3>
-                <p className="text-xs text-carbon-muted font-mono mt-1 max-w-sm mx-auto">
-                  The seller agent has not submitted an artifact and signed manifest. The 8 deterministic fulfillment checks will run automatically once received.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* CENTER REGION (3 cols / ~25%): THE HASHX PROOF CIRCUIT */}
-        <section className="xl:col-span-3 border border-carbon-border bg-carbon-nav rounded p-4">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-carbon-border">
-            <div className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-primary" />
-              <h2 className="font-display text-xs font-bold uppercase tracking-wider text-carbon-text">
-                The Proof Circuit
-              </h2>
-            </div>
-            <span className="text-[10px] font-mono text-carbon-muted">7 STAGE RAIL</span>
-          </div>
-
-          <p className="text-[11px] text-carbon-muted mb-4 font-mono leading-relaxed">
-            Converging commercial intent with verifiable chain evidence before human approval dispatch.
-          </p>
-
-          {/* Vertical Architectural Circuit */}
-          <div className="relative pl-6 space-y-3.5 font-mono text-xs">
-            {/* Continuous background rail line */}
-            <div className="absolute left-2.5 top-2 bottom-2 w-px bg-carbon-border" />
-            {/* Active Highlight rail line */}
-            <div
-              className={cn(
-                "absolute left-2.5 top-2 w-px",
-                isPass ? "h-[260px] bg-success" : isFail ? "h-[120px] bg-danger" : "h-[180px] bg-warning"
-              )}
+          {deliveryVerification ? (
+            <CheckListPanel
+              title="Delivery evidence"
+              description="The delivered artifact recomputed independently and compared with the signed terms."
+              icon={<Scale />}
+              keys={DELIVERY_CHECK_KEYS}
+              checks={deliveryVerification.checks}
+              details={deliveryVerification.checkDetails}
+              reasonCodes={deliveryVerification.reasonCodes}
             />
-
-            {/* Node 1: Intent Ingestion */}
-            <div className="relative group">
-              <div className="absolute -left-[19px] top-1.5 w-2 h-2 rounded-full bg-success ring-4 ring-carbon-nav" />
-              <div className="p-2 bg-carbon-panel rounded border border-carbon-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-text font-bold text-[11px]">01 // Intent Ingest</span>
-                  <span className="text-[9px] px-1 bg-carbon-void text-success border border-carbon-border">
-                    PASSED
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-0.5">Order manifest validated</div>
-              </div>
-            </div>
-
-            {/* Node 2: EIP-712 Sig */}
-            <div className="relative group">
-              <div className="absolute -left-[19px] top-1.5 w-2 h-2 rounded-full bg-success ring-4 ring-carbon-nav" />
-              <div className="p-2 bg-carbon-panel rounded border border-carbon-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-text font-bold text-[11px]">02 // EIP-712 Sig</span>
-                  <span className="text-[9px] px-1 bg-carbon-void text-success border border-carbon-border">
-                    PASSED
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-0.5">secp256k1 recovery matches</div>
-              </div>
-            </div>
-
-            {/* Node 3: Payee Identity Binding (Where Diverter triggers if tampered) */}
-            <div className="relative group">
-              <div
-                className={cn(
-                  "absolute -left-[19px] top-1.5 w-2 h-2 rounded-full ring-4 ring-carbon-nav",
-                  isFail ? "bg-danger animate-pulse" : "bg-success"
-                )}
+          ) : (
+            <Panel>
+              <PanelHeader
+                title="Delivery evidence"
+                description="The delivered artifact recomputed independently and compared with the signed terms."
+                icon={<Scale />}
               />
-              <div
-                className={cn(
-                  "p-2 rounded border",
-                  isFail
-                    ? "bg-danger/10 border-danger/50 text-danger"
-                    : "bg-carbon-panel border-carbon-border"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[11px]">03 // Payee Identity</span>
-                  <span
-                    className={cn(
-                      "text-[9px] px-1 border",
-                      isFail
-                        ? "bg-danger/20 text-danger border-danger/40"
-                        : "bg-carbon-void text-success border-carbon-border"
-                    )}
-                  >
-                    {isFail ? "BLOCKED" : "PASSED"}
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-0.5">
-                  {isFail ? "Payee substitution intercepted" : "Registry AG bound to payee"}
-                </div>
-              </div>
-            </div>
-
-            {/* Node 4: Delivery Witness */}
-            <div className="relative group">
-              <div
-                className={cn(
-                  "absolute -left-[19px] top-1.5 w-2 h-2 rounded-full ring-4 ring-carbon-nav",
-                  delivery ? "bg-success" : "bg-carbon-muted"
-                )}
+              <EmptyState
+                icon={<Clock className="h-[18px] w-[18px]" />}
+                title="No delivery submitted yet"
+                description={`The seller agent has not submitted an artifact and signed manifest. The ${DELIVERY_CHECK_KEYS.length} fulfillment checks run once a delivery arrives.`}
               />
-              <div className="p-2 bg-carbon-panel rounded border border-carbon-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-text font-bold text-[11px]">04 // Delivery Witness</span>
-                  <span
-                    className={cn(
-                      "text-[9px] px-1 border",
-                      delivery
-                        ? "bg-carbon-void text-success border-carbon-border"
-                        : "bg-carbon-void text-carbon-muted border-carbon-border"
-                    )}
-                  >
-                    {delivery ? "PASSED" : "PENDING"}
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-0.5">
-                  {delivery ? "Artifact SHA-256 match" : "Awaiting delivery manifest"}
-                </div>
-              </div>
-            </div>
-
-            {/* Node 5: Determinism Witness */}
-            <div className="relative group">
-              <div
-                className={cn(
-                  "absolute -left-[19px] top-1.5 w-2 h-2 rounded-full ring-4 ring-carbon-nav",
-                  deliveryVerification ? "bg-success" : "bg-carbon-muted"
-                )}
-              />
-              <div className="p-2 bg-carbon-panel rounded border border-carbon-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-text font-bold text-[11px]">05 // RPC Determinism</span>
-                  <span
-                    className={cn(
-                      "text-[9px] px-1 border",
-                      deliveryVerification
-                        ? "bg-carbon-void text-success border-carbon-border"
-                        : "bg-carbon-void text-carbon-muted border-carbon-border"
-                    )}
-                  >
-                    {deliveryVerification ? "PASSED" : "WAITING"}
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-0.5">
-                  {deliveryVerification ? "RPC transaction verification match" : "Pending query"}
-                </div>
-              </div>
-            </div>
-
-            {/* Intersecting Gate: Human Authorization */}
-            <div className="relative group">
-              <div
-                className={cn(
-                  "absolute -left-[19px] top-2 w-2 h-2 rounded-full ring-4 ring-carbon-nav",
-                  isEligible ? "bg-warning animate-pulse" : "bg-carbon-muted"
-                )}
-              />
-              <div
-                className={cn(
-                  "p-2.5 rounded border",
-                  isEligible
-                    ? "bg-warning/10 border-warning/50 text-warning"
-                    : "bg-carbon-panel border-carbon-border"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[11px] flex items-center gap-1">
-                    <KeyRound className="w-3 h-3" />
-                    06 // Human Gate
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[9px] px-1.5 py-0.2 rounded font-bold border",
-                      isEligible
-                        ? "bg-warning/20 text-warning border-warning/40 animate-pulse"
-                        : "bg-carbon-void text-carbon-muted border-carbon-border"
-                    )}
-                  >
-                    {isEligible ? "ACTION REQ" : "LOCKED"}
-                  </span>
-                </div>
-                <div className="text-[10px] text-carbon-muted mt-1 leading-snug">
-                  {isEligible
-                    ? "2-Stage Quorum: Awaiting Stage 1 Terms Review sign-off"
-                    : "Locked until verification passes"}
-                </div>
-              </div>
-            </div>
-
-            {/* Node 7: HSP Settlement */}
-            <div className="relative opacity-60">
-              <div className="absolute -left-[19px] top-1.5 w-2 h-2 rounded-full bg-carbon-border ring-4 ring-carbon-nav" />
-              <div className="p-2 bg-carbon-panel rounded border border-carbon-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-muted font-bold text-[11px]">07 // HSP Settlement</span>
-                  <span className="text-[9px] text-carbon-muted">WAITING</span>
-                </div>
-                <div className="text-[10px] text-carbon-muted">HashKey Rail execution</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Diverter Rail Warning when Blocked */}
-          {isFail && (
-            <div className="mt-4 pt-3 border-t border-carbon-border bg-danger/10 p-2.5 rounded border border-danger/40">
-              <div className="flex items-center gap-2 text-danger font-mono text-[10px] font-bold">
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>DIVERTER RAIL ACTIVE</span>
-              </div>
-              <p className="text-[11px] font-mono text-danger/90 mt-1">
-                Transaction quarantined. Funds isolated. Zero exposure to payer treasury.
-              </p>
-            </div>
+            </Panel>
           )}
-        </section>
 
-        {/* RIGHT REGION (3 cols / ~25%): PERSISTENT PAYMENT ELIGIBILITY & DECISION RAIL */}
-        <section className="xl:col-span-3 border border-carbon-border bg-carbon-nav rounded p-4 flex flex-col justify-between space-y-4">
-          <div>
-            <div className="pb-3 border-b border-carbon-border">
-              <div className="text-[10px] font-mono uppercase tracking-wider text-carbon-muted">
-                Settlement Evaluation
-              </div>
-              <h2 className="font-display text-sm font-bold uppercase tracking-tight text-carbon-text">
-                Eligibility &amp; Decision Rail
-              </h2>
-            </div>
+          <Panel>
+            <PanelHeader
+              title="Evidence identifiers"
+              description="Every value the verdict depends on. Copy any value to verify it independently."
+              icon={<Fingerprint />}
+            />
+            <HashGroup title="Signed intent" rows={intentRows} className="pb-2" />
+            {delivery && <HashGroup title="Delivery" rows={deliveryRows} className="border-t border-border pb-2" />}
+          </Panel>
+        </div>
 
-            {/* Verdict Box */}
-            <div
-              className={cn(
-                "mt-4 p-3 rounded border relative font-mono text-xs",
-                isEligible
-                  ? "bg-success/5 border-success/40"
-                  : isFail
-                  ? "bg-danger/10 border-danger/40"
-                  : "bg-carbon-panel border-carbon-border"
-              )}
-            >
-              <div className="flex items-center justify-between text-[10px] mb-1">
-                <span className="text-carbon-muted">CURRENT EVALUATION</span>
-                <span className={cn("font-semibold", isFail ? "text-danger" : "text-success")}>
-                  RISK: {isFail ? "100.00 / 100" : "0.00 / 100"}
-                </span>
-              </div>
+        <aside className="min-w-0 space-y-6 xl:col-span-4">
+          <Panel>
+            <PanelHeader title="Payment eligibility" icon={<KeyRound />} />
+            <PanelBody className="space-y-5">
               <div
                 className={cn(
-                  "font-bold uppercase flex items-center gap-1.5",
-                  isEligible ? "text-success" : isFail ? "text-danger" : "text-warning"
+                  "flex items-start gap-2.5 rounded-md border px-3.5 py-3",
+                  isEligible ? toneStyles.success.bg : isFail ? toneStyles.danger.bg : toneStyles.warning.bg,
+                  isEligible ? toneStyles.success.border : isFail ? toneStyles.danger.border : toneStyles.warning.border
                 )}
               >
                 {isEligible ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>ELIGIBLE FOR SETTLEMENT</span>
-                  </>
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
                 ) : isFail ? (
-                  <>
-                    <X className="w-3.5 h-3.5" />
-                    <span>SETTLEMENT GATED</span>
-                  </>
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
                 ) : (
-                  <>
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>EVIDENCE PENDING</span>
-                  </>
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
                 )}
-              </div>
-              <p className="text-[11px] text-carbon-muted mt-1 leading-snug">
-                {combinedResult.eligibilityExplanation}
-              </p>
-            </div>
-
-            {/* Financial Breakdown Table */}
-            <div className="mt-4 space-y-2 text-xs font-mono">
-              <div className="flex justify-between py-1 border-b border-carbon-border">
-                <span className="text-carbon-muted">Principal:</span>
-                <span className="text-carbon-text font-bold">
-                  {formatMinorToUsd(invoice.payment.amount_minor)} USDC
-                </span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-carbon-border">
-                <span className="text-carbon-muted">HSP Protocol Fee:</span>
-                <span className="text-carbon-text">2.40 USDC</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-carbon-border">
-                <span className="text-carbon-muted">Total Debit:</span>
-                <span className="text-success font-bold text-sm">
-                  {formatMinorToUsd(Number(invoice.payment.amount_minor) + 240)} USDC
-                </span>
-              </div>
-              <div className="pt-1 text-[10px] text-carbon-muted space-y-0.5">
-                <div className="truncate">
-                  <span>To Payee: </span>
-                  <span className="text-carbon-text">{formatAddress(invoice.payment.payee)}</span>
-                </div>
-                <div>
-                  <span>Chain: </span>
-                  <span className="text-carbon-text">{chainName(chainId)}</span>
+                <div className="min-w-0">
+                  <p
+                    className={cn(
+                      "text-[13px] font-medium",
+                      isEligible ? "text-success" : isFail ? "text-danger" : "text-warning"
+                    )}
+                  >
+                    {isEligible ? "Eligible for authorization" : isFail ? "Payment blocked" : "Evidence pending"}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-foreground-secondary">
+                    {/* The headline already states the outcome; drop the engine's repeated prefix. */}
+                    {combinedResult.eligibilityExplanation.replace(/^(Payment blocked|Eligible for payment):\s*/i, "")}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Human Quorum Status */}
-            <div className="mt-4 p-3 bg-carbon-panel rounded border border-carbon-border space-y-2 font-mono text-xs">
-              <div className="text-[10px] text-carbon-muted uppercase tracking-wider flex justify-between">
-                <span>Human Quorum</span>
-                <span className={isEligible ? "text-warning font-semibold" : "text-carbon-muted"}>
-                  {isEligible ? "AWAITING STAGE 1" : "INACTIVE"}
-                </span>
+              <DataList dense>
+                <DataRow label="Amount">
+                  <span className="font-medium tabular-nums">{formatMinorToUsd(invoice.payment.amount_minor)} USDC</span>
+                </DataRow>
+                <DataRow label="Payee">
+                  <CopyableValue value={invoice.payment.payee} displayText={formatAddress(invoice.payment.payee)} label="Copy payee address" />
+                </DataRow>
+                <DataRow label="Network">
+                  {chainName(chainId)} <span className="font-mono text-xs text-foreground-muted">({chainId})</span>
+                </DataRow>
+                <DataRow label="Expires">
+                  <span className={cn(expiry.isExpired && "text-danger")}>{expiry.text}</span>
+                </DataRow>
+                <DataRow label="Nonce">
+                  <span className="font-mono text-xs">{invoice.nonce}</span>
+                </DataRow>
+              </DataList>
+
+              <div>
+                <p className="eyebrow mb-2">Human authorization</p>
+                <ol className="divide-y divide-border rounded-md border border-border text-[13px]">
+                  <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <span className="text-foreground">Stage 1 · Terms review</span>
+                    <span className={cn("text-xs", isEligible ? "text-warning" : "text-foreground-muted")}>
+                      {isEligible ? "Awaiting payer" : "Locked"}
+                    </span>
+                  </li>
+                  <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <span className="text-foreground">Stage 2 · Wallet signature</span>
+                    <span className="text-xs text-foreground-muted">After Stage 1</span>
+                  </li>
+                </ol>
               </div>
-              <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-muted">Stage 1: Terms Review</span>
-                  <span className={isEligible ? "text-warning" : "text-carbon-muted"}>
-                    {isEligible ? "Pending You" : "Gated"}
+
+              {isEligible ? (
+                <div className="space-y-2">
+                  <Button className="w-full" onClick={handleRequestPayment} isLoading={isRequestingPayment}>
+                    <KeyRound />
+                    Request payment authorization
+                  </Button>
+                  {requestError && (
+                    <p role="alert" className="text-center text-xs text-danger">
+                      {requestError}
+                    </p>
+                  )}
+                  <p className="text-center text-xs text-foreground-muted">Creates an approval request. No funds move.</p>
+                </div>
+              ) : isFail ? (
+                <p className="text-xs leading-relaxed text-foreground-secondary">
+                  The seller must re-issue and re-sign corrected terms before this obligation can be paid.
+                </p>
+              ) : (
+                <p className="text-xs leading-relaxed text-foreground-secondary">
+                  Authorization opens once a delivery is submitted and passes verification.
+                </p>
+              )}
+            </PanelBody>
+          </Panel>
+
+          <Panel>
+            <PanelHeader title="Signed terms" icon={<FileText />} />
+            <PanelBody>
+              <DataList dense>
+                <DataRow label="Service">
+                  <span className="font-mono text-xs">{invoice.service.type}</span>
+                </DataRow>
+                <DataRow label="Acceptance policy">
+                  <span className="font-mono text-xs">{invoice.service.acceptance_policy}</span>
+                </DataRow>
+                <DataRow label="Subject address">
+                  <CopyableValue
+                    value={invoice.service.parameters.address}
+                    displayText={formatAddress(invoice.service.parameters.address)}
+                    label="Copy subject address"
+                  />
+                </DataRow>
+                <DataRow label="Block range">
+                  <span className="font-mono text-xs tabular-nums">
+                    {invoice.service.parameters.start_block}–{invoice.service.parameters.end_block}
                   </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-carbon-muted">Stage 2: Payment Auth</span>
-                  <span className="text-carbon-muted">Pending Stage 1</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Trigger */}
-          <div className="pt-2">
-            {isEligible ? (
-              <div className="space-y-2">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleRequestPayment}
-                  isLoading={isRequestingPayment}
-                  className="w-full font-mono text-xs font-semibold py-2.5 bg-primary text-white hover:bg-primary/90 flex items-center justify-center gap-2"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>Request Payment Authorization</span>
-                </Button>
-                {requestError && (
-                  <p className="text-[11px] text-danger font-mono text-center">{requestError}</p>
-                )}
-              </div>
-            ) : isFail ? (
-              <div className="p-2.5 bg-danger/10 border border-danger/30 rounded text-center">
-                <span className="text-xs font-mono text-danger font-semibold block">
-                  Action Permanently Blocked
-                </span>
-                <span className="text-[10px] font-mono text-carbon-muted mt-0.5 block">
-                  Re-issuance required to clear policy breach.
-                </span>
-              </div>
-            ) : (
-              <div className="p-2.5 bg-carbon-panel border border-carbon-border rounded text-center">
-                <span className="text-xs font-mono text-carbon-muted block">
-                  Waiting on Fulfillment Submission
-                </span>
-              </div>
-            )}
-          </div>
-        </section>
+                </DataRow>
+                <DataRow label="Issued">{formatTimestamp(invoice.issuedAt)}</DataRow>
+                <DataRow label="Deadline">{formatTimestamp(invoice.expiresAt)}</DataRow>
+              </DataList>
+            </PanelBody>
+          </Panel>
+        </aside>
       </div>
     </div>
   );
@@ -979,13 +548,15 @@ function DemoTrustInspectorPage() {
 
 function InspectorSkeleton({ invoiceId }: { invoiceId: string }) {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="h-10 bg-carbon-nav border border-carbon-border rounded" />
-      <div className="h-28 bg-carbon-nav border border-carbon-border rounded" />
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        <div className="xl:col-span-6 h-96 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="xl:col-span-3 h-96 bg-carbon-nav border border-carbon-border rounded" />
-        <div className="xl:col-span-3 h-96 bg-carbon-nav border border-carbon-border rounded" />
+    <div className="space-y-6" aria-busy="true" aria-label={`Loading verification record ${invoiceId}`}>
+      <div className="space-y-3 pb-2">
+        <div className="h-3 w-24 rounded bg-surface-3" />
+        <div className="h-7 w-72 max-w-full rounded bg-surface-3" />
+      </div>
+      <div className="panel h-48" />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="panel h-96 xl:col-span-8" />
+        <div className="panel h-96 xl:col-span-4" />
       </div>
     </div>
   );

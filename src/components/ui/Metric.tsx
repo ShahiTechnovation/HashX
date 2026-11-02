@@ -23,14 +23,14 @@ export const Metric: React.FC<MetricProps> = ({ label, value, hint, tone, href, 
         {tone && tone !== "neutral" && <span className={cn("w-1.5 h-1.5 rounded-full", toneStyles[tone].dot)} />}
         {label}
       </div>
-      <div className="mt-2 text-[26px] leading-none font-display font-medium tracking-[-0.03em] tabular-nums text-foreground">
+      <div className="mt-2.5 text-[26px] leading-none font-medium tracking-[-0.03em] tabular-nums text-foreground">
         {value}
       </div>
       {hint && <div className="mt-2 text-2xs text-foreground-muted">{hint}</div>}
     </>
   );
 
-  const cls = cn("block bg-surface-1 px-4 sm:px-5 py-4", href && "hover:bg-surface-2 transition-colors", className);
+  const cls = cn("block bg-surface-1 px-4 sm:px-5 py-4 sm:py-5", href && "hover:bg-surface-2 transition-colors", className);
   return href ? (
     <Link href={href} className={cls}>
       {body}

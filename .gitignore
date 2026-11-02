@@ -131,3 +131,6 @@ desktop.ini
 # Local-only deployment records (public-network records under deployments/ are committed)
 deployments/localhost.json
 deployments/hardhat.json
+
+# Local visual-QA scratch
+.qa/

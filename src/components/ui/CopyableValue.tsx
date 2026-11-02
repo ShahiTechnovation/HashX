@@ -36,7 +36,7 @@ export const CopyableValue: React.FC<CopyableValueProps> = ({
   };
 
   return (
-    <span className={cn("inline-flex items-center gap-1 min-w-0 group/copy", className)}>
+    <span className={cn("inline-flex items-center gap-1 min-w-0 max-w-full group/copy", className)}>
       <span
         title={value}
         className={cn("text-foreground/90 truncate", mono ? "font-mono text-xs tracking-tight" : "text-[13px]")}

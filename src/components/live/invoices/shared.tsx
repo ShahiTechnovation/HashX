@@ -47,7 +47,7 @@ export function setStep(steps: StepItem[], key: string, state: StepState, detail
 export const RoleBadge: React.FC<{ role: LiveInvoice["viewerRole"]; className?: string }> = ({ role, className }) => (
   <span
     className={cn(
-      "inline-flex items-center h-5 px-1.5 rounded-[5px] ring-1 ring-inset text-2xs font-medium",
+      "inline-flex items-center h-5 px-1.5 rounded ring-1 ring-inset text-2xs font-medium",
       role === "seller" ? toneStyles.accent.badge : role === "buyer" ? toneStyles.info.badge : toneStyles.neutral.badge,
       className
     )}
@@ -62,7 +62,7 @@ export function isLegacy(inv: LiveInvoice): boolean {
 }
 
 export const LegacyBadge: React.FC<{ className?: string }> = ({ className }) => (
-  <span className={cn("inline-flex items-center h-5 px-1.5 rounded-[5px] ring-1 ring-inset text-2xs font-medium", toneStyles.neutral.badge, className)}>
+  <span className={cn("inline-flex items-center h-5 px-1.5 rounded ring-1 ring-inset text-2xs font-medium", toneStyles.neutral.badge, className)}>
     Legacy v1 — not payable
   </span>
 );

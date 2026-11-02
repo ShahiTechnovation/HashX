@@ -3,60 +3,85 @@
 @tailwind utilities;
 
 /*
- * HashX PROOF SYSTEM Design Tokens
- * Dual-environment architecture:
- * 1. Application: Carbon Control Room (Dark)
- * 2. Public Marketing: Mineral Light (Tactile light editorial)
+ * HashX design tokens — "Quiet confidence for programmable payments."
+ *
+ * One light-first system shared by the marketing site and the application.
+ * Values are RGB channels so Tailwind opacity modifiers work (`bg-primary/10`).
+ * Contrast-checked against --background and --surface-1 (WCAG 2.2 AA for body
+ * and label text). See docs/design-system.md.
  */
 :root {
-  /* Carbon Control Room (Default dark application canvas) */
-  --background: 10 16 18;       /* #0A1012 Carbon Void */
-  --surface-1: 19 28 32;        /* #131C20 Elevated Carbon panel */
-  --surface-2: 24 34 39;        /* #182227 Surface level 2 */
-  --surface-3: 31 43 49;        /* #1F2B31 Surface level 3 / Active */
-  --surface-hover: 38 52 60;    /* #26343C Hover surface */
-  --surface-nav: 13 20 23;      /* #0D1417 Obsidian navigation rail */
+  /* Canvas & surfaces */
+  --background: 250 250 248;        /* #FAFAF8 warm canvas */
+  --surface-1: 255 255 255;         /* #FFFFFF content surfaces */
+  --surface-2: 245 244 247;         /* #F5F4F7 subtle / inset / input */
+  --surface-3: 240 238 244;         /* #F0EEF4 hover, selected segment */
+  --surface-hover: 234 232 239;     /* #EAE8EF pressed / strong hover */
+  --surface-nav: 250 250 248;       /* #FAFAF8 app navigation rail */
 
-  /* Signal Ultramarine — Primary interaction & verified focus */
-  --primary: 52 91 238;         /* #345BEE Signal Ultramarine */
-  --primary-hover: 39 72 199;   /* #2748C7 */
-  --primary-light: 98 130 245;  /* #6282F5 */
-  --primary-subtle: 52 91 238;
+  /* Ink */
+  --foreground: 25 24 29;           /* #19181D primary text (16.9:1) */
+  --foreground-secondary: 95 92 102;/* #5F5C66 body copy (6.3:1) */
+  --foreground-muted: 113 109 121;  /* #716D79 labels, meta (4.8:1) */
 
-  /* Typographic hierarchy */
-  --foreground: 240 241 237;          /* #F0F1ED Alabaster bone */
-  --foreground-secondary: 145 160 165;/* #91A0A5 Technical slate */
-  --foreground-muted: 90 104 111;     /* #5A686F Quiet annotations */
+  /* Hairlines */
+  --border: 232 230 235;            /* #E8E6EB */
+  --border-strong: 218 215 224;     /* #DAD7E0 */
 
-  /* Precision hairline boundaries */
-  --border: 39 49 55;           /* #273137 Carbon hairline */
-  --border-strong: 53 66 73;    /* #354249 Pronounced border */
+  /* Brand violet — a focused signal, never a wash */
+  --primary: 117 70 211;            /* #7546D3 */
+  --primary-hover: 99 56 187;       /* #6338BB */
+  --primary-light: 99 56 187;       /* accent TEXT on light surfaces (7.1:1) */
+  --primary-subtle: 240 234 252;    /* #F0EAFC brand-soft surface */
 
-  /* Semantic status colors */
-  --success: 45 212 191;        /* #2DD4BF Controlled Mint (Verified & Safe) */
-  --warning: 245 158 11;        /* #F59E0B Warm Amber (Human action required / Pending) */
-  --danger: 239 68 68;          /* #EF4444 Muted Signal Red (Blocked threat / Failed) */
-  --info: 38 166 154;           /* #26A69A Slate-Cyan (Safe but not finalized) */
+  /* Status — reserved for meaningful states, always paired with icon + label */
+  --success: 19 110 83;             /* #136E53 — ≥4.9:1 even on its own 10% tint */
+  --warning: 134 85 9;              /* #865509 */
+  --danger: 173 52 72;              /* #AD3448 */
+  --info: 42 98 163;                /* #2A62A3 */
 
-  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-  --font-display: var(--font-space-grotesk), 'Space Grotesk', var(--font-inter), sans-serif;
+  /* Layout rhythm */
+  --gutter: 20px;
+  --site-max: 1240px;
+  --header-h: 72px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Mineral Light Public Marketing Canvas */
-.mineral-light {
-  --background: 244 242 235;          /* #F4F2EB Warm Mineral White */
-  --surface-1: 251 250 246;           /* #FBFAF6 Paper White */
-  --surface-2: 244 242 235;           /* #F4F2EB Surface low */
-  --surface-3: 235 233 225;
-  --surface-hover: 230 228 220;
-  --surface-nav: 251 250 246;
-  --foreground: 17 23 25;             /* #111719 Deep Carbon Ink */
-  --foreground-secondary: 83 93 97;   /* #535D61 Secondary Graphite */
-  --foreground-muted: 130 140 144;
-  --border: 217 220 215;              /* #D9DCD7 Hairline structural rule */
-  --border-strong: 185 190 185;
-  --primary: 52 91 238;               /* #345BEE Signal Ultramarine */
+@media (min-width: 640px) { :root { --gutter: 24px; } }
+@media (min-width: 768px) { :root { --gutter: 32px; } }
+@media (min-width: 1024px) { :root { --gutter: 40px; } }
+@media (min-width: 1280px) { :root { --gutter: 56px; } }
+
+/*
+ * Ink surface — the one deliberate dark treatment, used for code and raw
+ * technical documents. Re-scopes the same tokens so components inside
+ * (copy buttons, JSON highlighting) render correctly without forks.
+ */
+.surface-ink {
+  --background: 22 21 26;           /* #16151A */
+  --surface-1: 30 29 35;            /* #1E1D23 */
+  --surface-2: 38 37 44;
+  --surface-3: 48 46 55;
+  --surface-hover: 58 56 66;
+  --foreground: 236 234 240;        /* #ECEAF0 */
+  --foreground-secondary: 190 186 198;
+  --foreground-muted: 154 150 163;  /* #9A96A3 (6.3:1 on ink) */
+  --border: 44 42 51;
+  --border-strong: 62 60 71;
+  --primary-light: 190 166 245;     /* violet text on ink */
+  --success: 110 210 170;
+  --warning: 232 182 96;
+  --danger: 240 128 145;
+  --info: 130 175 235;
+  color-scheme: dark;
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
 }
 
 * {
@@ -64,22 +89,34 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
+  scroll-padding-top: calc(var(--header-h) + 16px);
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
   background-color: rgb(var(--background));
   color: rgb(var(--foreground));
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01", "ss03";
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(var(--primary) / 0.16);
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -87,16 +124,19 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--border) / 0.8);
-  border-radius: 2px;
+  background: rgb(var(--border-strong));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--foreground-muted) / 0.6);
+  background: rgb(var(--foreground-muted) / 0.5);
+  background-clip: padding-box;
 }
 
 :focus-visible {
-  outline: 2px solid rgb(var(--primary) / 0.7);
+  outline: 2px solid rgb(var(--primary));
   outline-offset: 2px;
 }
 
@@ -105,35 +145,134 @@ body {
 }
 
 @layer components {
-  /* Surfaces */
+  /* ---------------------------------------------------------------- Layout */
+  .site-container {
+    width: 100%;
+    max-width: calc(var(--site-max) + 2 * var(--gutter));
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  .section-y {
+    padding-block: clamp(4rem, 2.5rem + 6vw, 8.5rem);
+  }
+
+  /* -------------------------------------------------------------- Surfaces */
   .panel {
-    @apply rounded border border-border bg-surface-1 shadow-panel;
+    @apply rounded-lg border border-border bg-surface-1 shadow-panel;
   }
 
   .panel-inset {
-    @apply rounded-sm border border-border/80 bg-background/80;
+    @apply rounded-md border border-border bg-surface-2;
   }
 
-  /* Architectural uppercase section label */
+  /* Small sentence-case section label. One per section, at most. */
   .eyebrow {
-    @apply font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-secondary;
+    @apply text-xs font-medium text-foreground-muted;
   }
 
-  /* Form controls */
+  /* ---------------------------------------------------------------- Forms */
   .input {
-    @apply h-8 w-full rounded border border-border bg-surface-2/80 px-3 text-[13px] text-foreground
-      placeholder:text-foreground-muted transition-colors duration-150
-      hover:border-border-strong
-      focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/30;
+    @apply h-9 w-full rounded-md border border-border-strong bg-surface-1 px-3 text-[13px] text-foreground
+      placeholder:text-foreground-muted transition-[border-color,box-shadow] duration-150
+      hover:border-foreground-muted/50
+      focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/15
+      disabled:bg-surface-2 disabled:text-foreground-muted disabled:cursor-not-allowed;
+  }
+
+  .input[aria-invalid="true"] {
+    @apply border-danger focus:ring-danger/15;
   }
 
   .select {
     @apply input cursor-pointer appearance-none bg-no-repeat pr-8;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2391A0A5' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-position: right 0.6rem center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23716D79' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.65rem center;
   }
 
   .code-inline {
-    @apply font-mono text-2xs px-1.5 py-0.5 rounded-sm bg-surface-2 border border-border text-foreground-secondary;
+    @apply font-mono text-[0.92em] px-1.5 py-px rounded bg-surface-2 border border-border text-foreground;
+  }
+
+  /* --------------------------------------------------------------- Tables */
+  .table-base {
+    @apply w-full text-left text-[13px];
+  }
+  .table-base thead th {
+    @apply h-10 px-4 text-xs font-medium text-foreground-muted border-b border-border bg-surface-1 whitespace-nowrap;
+  }
+  .table-base tbody td {
+    @apply px-4 py-3 border-b border-border/70 align-middle;
+  }
+  .table-base tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .table-base tbody tr {
+    @apply transition-colors duration-150;
+  }
+}
+
+/* ------------------------------------------------------------------ Motion */
+
+/*
+ * Scroll reveal: content is only hidden once JS has marked the document
+ * (`html.js`), so no-JS and crawlers always see everything. Animates once.
+ */
+.js [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(14px);
+}
+[data-reveal] {
+  transition: opacity 560ms var(--ease-out), transform 560ms var(--ease-out);
+}
+
+@keyframes hx-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hx-crossfade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-enter {
+  animation: hx-enter 520ms var(--ease-out) both;
+}
+/* Transform-only entrance for the LCP headline: it paints immediately, then settles. */
+@keyframes hx-rise {
+  from { transform: translateY(12px); }
+  to { transform: none; }
+}
+.animate-rise {
+  animation: hx-rise 520ms var(--ease-out) both;
+}
+.animate-crossfade {
+  animation: hx-crossfade 220ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .js [data-reveal]:not([data-revealed]) {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------- Print */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .receipt-paper {
+    box-shadow: none !important;
   }
 }

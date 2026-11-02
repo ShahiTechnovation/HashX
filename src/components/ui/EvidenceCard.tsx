@@ -46,7 +46,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
         </span>
 
         {index !== undefined && (
-          <span className="hidden sm:block w-5 text-2xs font-mono text-foreground-muted tabular-nums">{String(index).padStart(2, "0")}</span>
+          <span className="hidden sm:block w-5 text-xs text-foreground-muted tabular-nums">{String(index).padStart(2, "0")}</span>
         )}
 
         <span className="flex-1 min-w-0">
@@ -63,7 +63,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
           <span className="block text-xs text-foreground-muted truncate mt-0.5">{detail.rule}</span>
         </span>
 
-        <span className={cn("hidden sm:block text-2xs font-medium uppercase tracking-wider shrink-0", isFail ? "text-danger" : isPass ? "text-success" : "text-foreground-muted")}>
+        <span className={cn("hidden sm:block text-xs font-medium shrink-0", isFail ? "text-danger" : isPass ? "text-success" : "text-foreground-muted")}>
           {isFail ? "Fail" : isPass ? "Pass" : "Skipped"}
         </span>
         <ChevronRight
@@ -85,7 +85,7 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
               )}
               {detail.actual && (
                 <div className={cn("p-2.5 border-t md:border-t-0 md:border-l border-border", isFail ? "bg-danger/[0.06]" : "bg-background/60")}>
-                  <span className={cn("eyebrow block mb-1", isFail && "text-danger/80")}>Actual · recomputed</span>
+                  <span className={cn("eyebrow block mb-1", isFail && "text-danger")}>Actual · recomputed</span>
                   <div className={cn("font-mono text-xs break-all", isFail ? "text-danger" : "text-foreground/90")}>{detail.actual}</div>
                 </div>
               )}

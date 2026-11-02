@@ -28,7 +28,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   back,
   className,
 }) => (
-  <header className={cn("flex flex-col gap-4 pb-6", className)}>
+  <header className={cn("flex flex-col gap-4 pb-8", className)}>
     {back && (
       <Link
         href={back.href}
@@ -39,15 +39,15 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       </Link>
     )}
     <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 space-y-2">
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-[22px] sm:text-2xl font-display font-semibold tracking-[-0.025em] text-foreground leading-tight">
+          <h1 className="text-[26px] sm:text-[30px] font-semibold tracking-[-0.032em] text-foreground leading-[1.1]">
             {title}
           </h1>
           {badges}
         </div>
-        {description && <p className="text-[13px] text-foreground-secondary max-w-2xl leading-relaxed">{description}</p>}
+        {description && <p className="text-[15px] text-foreground-secondary max-w-2xl leading-relaxed">{description}</p>}
         {meta && <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-foreground-muted">{meta}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}

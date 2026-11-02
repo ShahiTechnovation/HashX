@@ -3,40 +3,32 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  RefreshCw,
-  ChevronRight,
-  ShieldCheck,
-  ShieldAlert,
-  FileText,
-  Search,
-  Download,
-  CheckCircle2,
-  Clock,
-  KeyRound,
-  ExternalLink,
-  Layers,
-  ArrowRight,
-} from "lucide-react";
+import { Plus, RefreshCw, ChevronRight, ShieldCheck, FileText, Download, ArrowRight } from "lucide-react";
 import { useApp } from "@/providers/AppContext";
 import { LiveInvoiceList } from "@/components/live/invoices/LiveInvoiceList";
 import { demoClient, connectedClient } from "@/lib/api/client";
 import { Invoice, InvoiceStatus } from "@/types/domain";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusBadge, toneStyles } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader, MetaItem } from "@/components/ui/PageHeader";
+import { Panel, PanelBody, PanelFooter } from "@/components/ui/Panel";
+import { DataList, DataRow } from "@/components/ui/DataList";
+import { CopyableValue } from "@/components/ui/CopyableValue";
+import { Button, buttonStyles } from "@/components/ui/Button";
+import { Segmented, SearchInput } from "@/components/ui/Field";
+import { SimulatedBadge } from "@/components/live/common";
 import { cn } from "@/lib/utils";
 import { formatAddress, formatMinorToUsd, formatTimestamp } from "@/lib/formatters";
 
 type Scope = "all" | "awaiting_delivery" | "witnessed" | "payable" | "settled" | "blocked";
 
 const SCOPES: Array<{ value: Scope; label: string; statuses: InvoiceStatus[] | null }> = [
-  { value: "all", label: "All Invoices", statuses: null },
-  { value: "awaiting_delivery", label: "Awaiting Delivery", statuses: ["DRAFT", "SIGNED"] },
-  { value: "witnessed", label: "Delivery Witnessed", statuses: ["VERIFIED", "DELIVERED"] },
-  { value: "payable", label: "Awaiting Authorization", statuses: ["DELIVERY_ACCEPTED"] },
-  { value: "settled", label: "Settled Archive", statuses: ["SETTLED"] },
-  { value: "blocked", label: "Quarantined", statuses: ["REJECTED", "DELIVERY_REJECTED"] },
+  { value: "all", label: "All", statuses: null },
+  { value: "awaiting_delivery", label: "Awaiting delivery", statuses: ["DRAFT", "SIGNED"] },
+  { value: "witnessed", label: "In verification", statuses: ["VERIFIED", "DELIVERED"] },
+  { value: "payable", label: "Awaiting authorization", statuses: ["DELIVERY_ACCEPTED"] },
+  { value: "settled", label: "Settled", statuses: ["SETTLED"] },
+  { value: "blocked", label: "Blocked", statuses: ["REJECTED", "DELIVERY_REJECTED"] },
 ];
 
 function DemoInvoicesPage() {
@@ -111,29 +103,34 @@ function DemoInvoicesPage() {
     .filter((i) => i.status !== "REJECTED" && i.status !== "DELIVERY_REJECTED")
     .reduce((sum, i) => sum + Number(i.payment.amount_minor), 0);
 
+  const signatureState = (inv: Invoice): { label: string; tone: "success" | "danger" | "warning" | "neutral" } => {
+    if (inv.signatureValid === true) return { label: "Signature valid", tone: "success" };
+    if (inv.signatureValid === false) return { label: "Signature invalid", tone: "danger" };
+    if (inv.signature) return { label: "Signed · not yet verified", tone: "warning" };
+    return { label: "Not signed", tone: "neutral" };
+  };
+
   return (
     <div className="space-y-6">
-      {/* 1. Header & Actions Strip */}
-      <section className="bg-carbon-nav border border-carbon-border p-4 rounded select-none">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-carbon-muted mb-1">
-              <span>Console</span>
-              <span className="text-carbon-border">/</span>
-              <span>Invoices &amp; Agreements</span>
-              <span className="text-carbon-border">/</span>
-              <span className="text-primary font-semibold">Commercial Registry v2.4</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-carbon-text tracking-tight uppercase">
-              Commercial Invoice Workspace &amp; EIP-712 Registry
-            </h1>
-            <p className="text-xs text-carbon-muted font-mono mt-0.5">
-              Deterministic cryptographic commitment &amp; independent chain witness settlement orchestrator.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+      <PageHeader
+        title="Invoices"
+        badges={<SimulatedBadge />}
+        description="Signed commercial agreements between agents. Each invoice binds seller, buyer, service terms and payment terms in EIP-712 typed data."
+        meta={
+          <>
+            <MetaItem label="Invoices">
+              <span className="tabular-nums">{invoices.length}</span>
+            </MetaItem>
+            <MetaItem label="Open volume">
+              <span className="tabular-nums">{formatMinorToUsd(totalDisbursementMinor)}</span>
+            </MetaItem>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(invoices, null, 2));
                 const dl = document.createElement("a");
@@ -141,276 +138,195 @@ function DemoInvoicesPage() {
                 dl.setAttribute("download", `hashx-invoices-${Date.now()}.json`);
                 dl.click();
               }}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Ledger</span>
-            </button>
-
-            <button
-              onClick={triggerRefresh}
-              disabled={isLoading}
-              className="px-3 py-1.5 rounded text-xs font-mono text-carbon-muted hover:text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
-              <span>Sync</span>
-            </button>
-
-            <Link
-              href="/app/invoices/new"
-              className="px-3.5 py-1.5 rounded text-xs font-mono font-semibold text-white bg-primary hover:bg-primary/90 flex items-center gap-1.5 shadow-sm transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create EIP-712 Invoice</span>
+              <Download />
+              Export
+            </Button>
+            <Button variant="secondary" size="sm" onClick={triggerRefresh} disabled={isLoading}>
+              <RefreshCw className={cn(isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Link href="/app/invoices/new" className={buttonStyles({ variant: "primary", size: "sm" })}>
+              <Plus />
+              Create invoice
             </Link>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Telemetry Strip */}
-        <div className="mt-4 pt-3 border-t border-carbon-border/70 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs font-mono text-carbon-muted">
-          <div>
-            Total Active Invoices: <span className="text-carbon-text font-bold">{invoices.length}</span>
-          </div>
-          <span>•</span>
-          <div>
-            Total Disbursement:{" "}
-            <span className="text-success font-semibold">
-              {formatMinorToUsd(totalDisbursementMinor)} USDC
-            </span>
-          </div>
-          <span>•</span>
-          <div>
-            Signer Standard: <span className="text-carbon-text">EIP-712 Typed Data</span>
-          </div>
-          <span>•</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            <span className="text-success font-medium">HSP Link Synchronized</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Split-Pane Operations Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT PANE (7 cols / ~58%): High-Density Ledger */}
-        <div className="lg:col-span-7 space-y-4">
-          {/* Filter Tabs */}
-          <div className="flex items-center overflow-x-auto gap-1 border-b border-carbon-border pb-1">
-            {SCOPES.map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setScope(s.value)}
-                className={cn(
-                  "px-3 py-1.5 rounded text-xs font-mono font-medium flex items-center gap-1.5 transition-colors shrink-0",
-                  scope === s.value
-                    ? "bg-carbon-panel text-carbon-text border border-carbon-border shadow-sm font-semibold"
-                    : "text-carbon-muted hover:text-carbon-text hover:bg-carbon-panel/40 border border-transparent"
-                )}
-              >
-                <span>{s.label}</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-carbon-void text-[10px] text-carbon-muted border border-carbon-border/50">
-                  {counts[s.value]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-carbon-muted" />
-            <input
-              type="text"
-              placeholder="Search by Invoice ID, Agent Counterparty, or Wallet..."
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        {/* Ledger */}
+        <Panel className="lg:col-span-8">
+          <div className="space-y-3 border-b border-border px-4 py-3 sm:px-5">
+            <div className="-mx-1 overflow-x-auto px-1">
+              <Segmented
+                value={scope}
+                onChange={setScope}
+                size="sm"
+                options={SCOPES.map((s) => ({ value: s.value, label: s.label, count: counts[s.value] }))}
+              />
+            </div>
+            <SearchInput
+              placeholder="Search invoice ID, seller, wallet, or reference"
+              aria-label="Search invoices"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-carbon-void pl-9 pr-3 py-2 rounded text-xs font-mono text-carbon-text border border-carbon-border focus:border-primary focus:outline-none placeholder:text-carbon-muted/60"
             />
           </div>
 
-          {/* Table */}
-          <div className="bg-carbon-nav border border-carbon-border rounded overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-carbon-void/80 border-b border-carbon-border text-[10px] font-mono uppercase tracking-wider text-carbon-muted">
-                    <th className="py-2.5 px-3">INVOICE ID</th>
-                    <th className="py-2.5 px-3">COUNTERPARTY</th>
-                    <th className="py-2.5 px-3 text-right">AMOUNT (USDC)</th>
-                    <th className="py-2.5 px-3 text-center">STATUS</th>
-                    <th className="py-2.5 px-3 text-right">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-carbon-border font-mono text-[11.5px]">
-                  {isLoading && invoices.length === 0 ? (
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i}>
-                        <td colSpan={5} className="p-4">
-                          <div className="h-4 rounded bg-carbon-panel animate-pulse" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : filteredInvoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center">
-                        <EmptyState
-                          title="No matching invoices"
-                          description="Adjust your search filters or create a new invoice to get started."
-                        />
+          <div className="overflow-x-auto">
+            <table className="table-base min-w-[640px]">
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Seller</th>
+                  <th className="text-right">Amount</th>
+                  <th>Status</th>
+                  <th className="text-right">
+                    <span className="sr-only">Open</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && invoices.length === 0 ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={5}>
+                        <div className="h-4 rounded bg-surface-2" />
                       </td>
                     </tr>
-                  ) : (
-                    filteredInvoices.map((inv) => {
-                      const isSelected = selectedInvoice?.id === inv.id;
-                      const isBlocked = inv.status === "REJECTED" || inv.status === "DELIVERY_REJECTED";
-                      return (
-                        <tr
-                          key={inv.id}
-                          onClick={() => setSelectedInvoiceId(inv.id)}
-                          className={cn(
-                            "cursor-pointer transition-colors",
-                            isSelected
-                              ? "bg-carbon-panel border-l-4 border-l-primary"
-                              : "hover:bg-carbon-panel/40"
-                          )}
-                        >
-                          <td className="py-3 px-3">
-                            <div className="font-bold text-carbon-text flex items-center gap-1">
-                              <span>{inv.id}</span>
-                            </div>
-                            <span className="text-[10px] text-carbon-muted block">
-                              {formatTimestamp(inv.issuedAt).replace(" UTC", "")}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <div className="font-sans font-medium text-carbon-text truncate max-w-[150px]">
-                              {inv.sellerDisplayName || "External Agent"}
-                            </div>
-                            <div className="text-[10px] text-carbon-muted">
-                              {formatAddress(inv.sellerWallet)}
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-3 text-right font-bold text-carbon-text">
-                            {formatMinorToUsd(inv.payment.amount_minor)}
-                          </td>
-
-                          <td className="py-3 px-3 text-center">
-                            <StatusBadge status={inv.status} type="invoice" size="sm" />
-                          </td>
-
-                          <td className="py-3 px-3 text-right">
-                            <Link
-                              href={`/app/invoices/${inv.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-carbon-panel hover:bg-carbon-void border border-carbon-border text-[11px] font-mono text-carbon-muted hover:text-carbon-text transition-colors"
-                            >
-                              <span>Open</span>
-                              <ChevronRight className="w-3 h-3" />
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-0">
+                      <EmptyState
+                        title="No matching invoices"
+                        description="Adjust the filter or search, or create a new invoice to get started."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((inv) => {
+                    const isSelected = selectedInvoice?.id === inv.id;
+                    return (
+                      <tr
+                        key={inv.id}
+                        onClick={() => setSelectedInvoiceId(inv.id)}
+                        aria-selected={isSelected}
+                        className={cn(
+                          "group cursor-pointer",
+                          isSelected ? "bg-primary-subtle/60 shadow-[inset_2px_0_0_rgb(var(--primary))]" : "hover:bg-surface-2/60"
+                        )}
+                      >
+                        <td>
+                          <div className="whitespace-nowrap font-mono text-xs font-medium text-foreground">{inv.id}</div>
+                          <div className="mt-0.5 text-xs text-foreground-muted">
+                            {formatTimestamp(inv.issuedAt).replace(" UTC", "")}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="max-w-[160px] truncate font-medium text-foreground">
+                            {inv.sellerDisplayName || "External agent"}
+                          </div>
+                          <div className="mt-0.5 font-mono text-xs text-foreground-muted">{formatAddress(inv.sellerWallet)}</div>
+                        </td>
+                        <td className="text-right font-medium text-foreground tabular-nums">
+                          {formatMinorToUsd(inv.payment.amount_minor)}
+                        </td>
+                        <td>
+                          <StatusBadge status={inv.status} type="invoice" size="sm" />
+                        </td>
+                        <td className="text-right">
+                          <Link
+                            href={`/app/invoices/${inv.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-[13px] text-foreground-muted transition-colors hover:text-foreground"
+                          >
+                            Open
+                            <ChevronRight className="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </Panel>
 
-        {/* RIGHT PANE (5 cols / ~42%): Interactive Inspect Preview Card */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* Selected invoice preview */}
+        <div className="lg:sticky lg:top-6 lg:col-span-4">
           {selectedInvoice ? (
-            <div className="bg-carbon-nav border border-carbon-border rounded p-5 space-y-5 sticky top-20 shadow-lg">
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-carbon-border">
-                <div>
-                  <span className="text-[10px] font-mono text-carbon-muted uppercase tracking-wider block">
-                    ACTIVE OBLIGATION PREVIEW
-                  </span>
-                  <h3 className="font-display text-base font-bold text-carbon-text">
-                    {selectedInvoice.id}
-                  </h3>
+            <Panel>
+              <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-foreground-muted">Selected invoice</p>
+                  <h2 className="mt-1 truncate font-mono text-[13px] font-medium text-foreground">{selectedInvoice.id}</h2>
                 </div>
                 <StatusBadge status={selectedInvoice.status} type="invoice" size="sm" />
               </div>
 
-              {/* Amount Box */}
-              <div className="p-4 bg-carbon-panel rounded border border-carbon-border">
-                <span className="text-[10px] font-mono text-carbon-muted uppercase block">
-                  Commercial Stake
-                </span>
-                <div className="text-2xl font-display font-bold text-carbon-text mt-1">
+              <div className="border-b border-border px-5 py-5">
+                <p className="text-xs text-foreground-muted">Amount</p>
+                <p className="mt-1 text-[30px] font-medium leading-none tracking-[-0.03em] text-foreground tabular-nums">
                   {formatMinorToUsd(selectedInvoice.payment.amount_minor)}{" "}
-                  <span className="text-xs font-mono font-normal text-carbon-muted">USDC</span>
-                </div>
-                <div className="text-[11px] font-mono text-carbon-muted mt-1">
-                  Payee: <span className="text-carbon-text font-mono">{formatAddress(selectedInvoice.payment.payee)}</span>
-                </div>
+                  <span className="text-[15px] font-normal tracking-normal text-foreground-muted">{selectedInvoice.payment.currency}</span>
+                </p>
               </div>
 
-              {/* Scope & Service */}
-              <div className="space-y-2 text-xs font-mono">
-                <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1.5">
-                  <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                    Service Specification
-                  </div>
-                  <div className="text-carbon-text font-medium">
-                    {selectedInvoice.service.type}
-                  </div>
-                  <div className="text-[10px] text-carbon-muted">
-                    Blocks: {selectedInvoice.service.parameters.start_block}–{selectedInvoice.service.parameters.end_block}
-                  </div>
-                  <div className="text-[10px] text-carbon-muted">
-                    Acceptance Policy: {selectedInvoice.service.acceptance_policy}
-                  </div>
-                </div>
-
-                {/* EIP-712 Verification Status */}
-                <div className="p-3 bg-carbon-panel rounded border border-carbon-border space-y-1.5">
-                  <div className="text-[10px] text-carbon-muted uppercase tracking-wider">
-                    Cryptographic Integrity
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-carbon-muted">EIP-712 Signature:</span>
-                    <span className="text-success font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Valid secp256k1
+              <PanelBody>
+                <DataList>
+                  <DataRow label="Payee">
+                    <CopyableValue value={selectedInvoice.payment.payee} displayText={formatAddress(selectedInvoice.payment.payee)} />
+                  </DataRow>
+                  <DataRow label="Service">
+                    <span className="font-mono text-xs">{selectedInvoice.service.type}</span>
+                  </DataRow>
+                  <DataRow label="Block range">
+                    <span className="font-mono text-xs tabular-nums">
+                      {selectedInvoice.service.parameters.start_block}–{selectedInvoice.service.parameters.end_block}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-carbon-muted">Anti-Replay Nonce:</span>
-                    <span className="text-carbon-text font-bold">#{selectedInvoice.nonce}</span>
-                  </div>
-                </div>
-              </div>
+                  </DataRow>
+                  <DataRow label="Acceptance policy">
+                    <span className="font-mono text-xs">{selectedInvoice.service.acceptance_policy}</span>
+                  </DataRow>
+                  <DataRow label="EIP-712 signature">
+                    {(() => {
+                      const sig = signatureState(selectedInvoice);
+                      return (
+                        <span className={cn("inline-flex items-center gap-1.5 text-[13px]", toneStyles[sig.tone].text)}>
+                          <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", toneStyles[sig.tone].dot)} />
+                          {sig.label}
+                        </span>
+                      );
+                    })()}
+                  </DataRow>
+                  <DataRow label="Nonce">
+                    <span className="font-mono text-xs tabular-nums">{selectedInvoice.nonce}</span>
+                  </DataRow>
+                </DataList>
+              </PanelBody>
 
-              {/* Action Buttons */}
-              <div className="pt-2 space-y-2 font-mono">
-                <Link
-                  href={`/app/trust/${selectedInvoice.id}`}
-                  className="w-full px-4 py-2 rounded text-xs font-semibold text-white bg-primary hover:bg-primary/90 flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Inspect Evidence in Trust Inspector</span>
+              <PanelFooter className="flex flex-col gap-2 sm:flex-row">
+                <Link href={`/app/trust/${selectedInvoice.id}`} className={cn(buttonStyles({ variant: "primary", size: "sm" }), "flex-1")}>
+                  <ShieldCheck />
+                  Inspect evidence
                 </Link>
-
-                <Link
-                  href={`/app/invoices/${selectedInvoice.id}`}
-                  className="w-full px-4 py-2 rounded text-xs font-medium text-carbon-text bg-carbon-panel border border-carbon-border hover:bg-carbon-void flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <span>Open Full Invoice Workspace</span>
-                  <ExternalLink className="w-3 h-3 text-carbon-muted" />
+                <Link href={`/app/invoices/${selectedInvoice.id}`} className={cn(buttonStyles({ variant: "secondary", size: "sm" }), "flex-1")}>
+                  Open invoice
+                  <ArrowRight />
                 </Link>
-              </div>
-            </div>
+              </PanelFooter>
+            </Panel>
           ) : (
-            <div className="bg-carbon-nav border border-carbon-border rounded p-8 text-center">
-              <FileText className="w-8 h-8 text-carbon-muted mx-auto mb-2" />
-              <p className="text-xs text-carbon-muted font-mono">
-                Select an invoice to inspect cryptographic intent and evidence.
-              </p>
-            </div>
+            <Panel>
+              <EmptyState
+                icon={<FileText className="h-[18px] w-[18px]" />}
+                title="No invoice selected"
+                description="Select an invoice to inspect its terms, signature, and evidence."
+              />
+            </Panel>
           )}
         </div>
       </div>
